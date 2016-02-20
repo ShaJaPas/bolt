@@ -8,9 +8,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * The receive buffer stores data chunks to be read by the application
+ * The receive buffer stores data chunks to be read by the application.
  *
- * @author schuller
+ * @author Cian O'Mahony
  */
 public class ReceiveBuffer {
 

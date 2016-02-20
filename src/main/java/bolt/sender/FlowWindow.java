@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * it is assumed that a single thread (the producer) stores new data,
  * and another single thread (the consumer) reads/removes data.<br/>
  *
- * @author schuller
+ * @author Cian O'Mahony
  */
 public class FlowWindow {
 
