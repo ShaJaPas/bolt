@@ -21,7 +21,7 @@ public class BoltServerSocket {
      * create a Bolt ServerSocket
      *
      * @param localAddress
-     * @param port         - the local port. If 0, an ephemeral port will be chosen
+     * @param port the local port. If 0, an ephemeral port will be chosen
      */
     public BoltServerSocket(InetAddress localAddress, int port) throws SocketException, UnknownHostException {
         endpoint = new BoltEndPoint(localAddress, port);

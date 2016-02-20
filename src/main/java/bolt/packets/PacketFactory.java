@@ -72,7 +72,7 @@ public class PacketFactory {
         else if (ControlPacketType.MESSAGE_DROP_REQUEST.getTypeId() == pktType) {
             packet = new MessageDropRequest(controlInformation);
         }
-        //TYPE 1111:8
+        //TYPE 1111:15
         else if (ControlPacketType.USER_DEFINED.getTypeId() == pktType) {
             packet = new UserDefined(controlInformation);
         }

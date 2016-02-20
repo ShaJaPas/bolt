@@ -27,7 +27,7 @@ public class BoltStatistics {
 
     private final String componentDescription;
     private final List<MeanValue> metrics = new ArrayList<MeanValue>();
-    private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<StatisticsHistoryEntry>();
+    private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
     boolean first = true;
     private volatile long roundTripTime;
     private volatile long roundTripTimeVariance;
@@ -220,16 +220,13 @@ public class BoltStatistics {
      * @param toFile
      */
     public void writeParameterHistory(File toFile) throws IOException {
-        FileWriter fos = new FileWriter(toFile);
-        try {
+        try (final FileWriter fos = new FileWriter(toFile)) {
             synchronized (statsHistory) {
-                for (StatisticsHistoryEntry s : statsHistory) {
+                for (StatisticsHistoryEntry s : new ArrayList<>(statsHistory)) {
                     fos.write(s.toString());
                     fos.write('\n');
                 }
             }
-        } finally {
-            fos.close();
         }
     }
 

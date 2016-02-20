@@ -68,7 +68,7 @@ public abstract class BoltSession {
         this.destination = destination;
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
         String clazzP = System.getProperty(CC_CLASS, BoltCongestionControl.class.getName());
-        Object ccObject = null;
+        Object ccObject;
         try {
             Class<?> clazz = Class.forName(clazzP);
             ccObject = clazz.getDeclaredConstructor(BoltSession.class).newInstance(this);

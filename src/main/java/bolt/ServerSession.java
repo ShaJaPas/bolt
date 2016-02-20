@@ -151,7 +151,7 @@ public class ServerSession extends BoltSession {
      */
     protected void ackInitialHandshake(ConnectionHandshake handshake) throws IOException {
         ConnectionHandshake responseHandshake = new ConnectionHandshake();
-        //compare the packet size and choose minimun
+        //compare the packet size and choose minimum
         long clientBufferSize = handshake.getPacketSize();
         long myBufferSize = getDatagramSize();
         long bufferSize = Math.min(clientBufferSize, myBufferSize);

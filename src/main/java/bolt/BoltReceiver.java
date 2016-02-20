@@ -520,10 +520,8 @@ public class BoltReceiver {
     }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("BoltReceiver ").append(session).append("\n");
-        sb.append("LossList: " + receiverLossList);
-        return sb.toString();
+        return "BoltReceiver " + session + "\n" +
+                "LossList: " + receiverLossList;
     }
 
 }

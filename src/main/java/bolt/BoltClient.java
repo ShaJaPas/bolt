@@ -14,7 +14,8 @@ import java.util.logging.Logger;
 
 public class BoltClient {
 
-    private static final Logger logger = Logger.getLogger(BoltClient.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(BoltClient.class.getName());
+
     private final BoltEndPoint clientEndpoint;
     private ClientSession clientSession;
 
@@ -22,13 +23,13 @@ public class BoltClient {
     public BoltClient(InetAddress address, int localport) throws SocketException, UnknownHostException {
         //create endpoint
         clientEndpoint = new BoltEndPoint(address, localport);
-        logger.info("Created client endpoint on port " + localport);
+        LOGGER.info("Created client endpoint on port " + localport);
     }
 
     public BoltClient(InetAddress address) throws SocketException, UnknownHostException {
         //create endpoint
         clientEndpoint = new BoltEndPoint(address);
-        logger.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
+        LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
 
     public BoltClient(BoltEndPoint endpoint) throws SocketException, UnknownHostException {
@@ -55,7 +56,7 @@ public class BoltClient {
         while (!clientSession.isReady()) {
             Thread.sleep(50);
         }
-        logger.info("The BoltClient is connected");
+        LOGGER.info("The BoltClient is connected");
     }
 
     /**
@@ -103,7 +104,7 @@ public class BoltClient {
             try {
                 clientEndpoint.doSend(shutdown);
             } catch (IOException e) {
-                logger.log(Level.SEVERE, "ERROR: Connection could not be stopped!", e);
+                LOGGER.log(Level.SEVERE, "ERROR: Connection could not be stopped!", e);
             }
             clientSession.getSocket().getReceiver().stop();
             clientEndpoint.stop();

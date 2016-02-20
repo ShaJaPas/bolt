@@ -15,40 +15,55 @@ import java.util.logging.Logger;
 public class BoltCongestionControl implements CongestionControl {
 
     private static final Logger logger = Logger.getLogger(BoltCongestionControl.class.getName());
+    private static final long PS = BoltEndPoint.DATAGRAM_SIZE;
+    private static final double BETA_DIV_PS = 0.0000015 / PS;
 
     protected final BoltSession session;
 
     protected final BoltStatistics statistics;
-    private final long PS = BoltEndPoint.DATAGRAM_SIZE;
-    private final double BetaDivPS = 0.0000015 / PS;
-    //round trip time in microseconds
+
+    /** round trip time in microseconds */
     protected long roundTripTime = 0;
-    //rate in packets per second
+
+    /** rate in packets per second */
     protected long packetArrivalRate = 0;
-    //link capacity in packets per second
+
+    /** link capacity in packets per second */
     protected long estimatedLinkCapacity = 0;
-    // Packet sending period = packet send interval, in microseconds
+
+    /**  Packet sending period = packet send interval, in microseconds */
     protected double packetSendingPeriod = 1;
-    // Congestion window size, in packets
+
+    /**  Congestion window size, in packets */
     protected double congestionWindowSize = 16;
-    //if larger than 0, the receiver should acknowledge every n'th packet
+
+    /** if larger than 0, the receiver should acknowledge every n'th packet */
     protected long ackInterval = -1;
-    //number of decreases in a congestion epoch
+
+    /** number of decreases in a congestion epoch */
     long decCount = 1;
-    //random threshold on decrease by number of loss events
+
+    /** random threshold on decrease by number of loss events */
     long decreaseRandom = 1;
-    //average number of NAKs per congestion
+
+    /** average number of NAKs per congestion */
     long averageNACKNum;
-    /*if in slow start phase*/
+
+    /** if in slow start phase */
     private boolean slowStartPhase = true;
-    /*last ACKed seq no*/
+
+    /** last ACKed seq no */
     private long lastAckSeqNumber = -1;
-    /*max packet seq. no. sent out when last decrease happened*/
+
+    /** max packet seq. no. sent out when last decrease happened */
     private long lastDecreaseSeqNo;
-    //NAK counter
+
+    /** NAK counter */
     private long nACKCount = 1;
-    //this flag avoids immediate rate increase after a NAK
+
+    /** this flag avoids immediate rate increase after a NAK */
     private boolean loss = false;
+
 
     public BoltCongestionControl(BoltSession session) {
         this.session = session;
@@ -116,21 +131,21 @@ public class BoltCongestionControl implements CongestionControl {
         return congestionWindowSize;
     }
 
-    /* (non-Javadoc)
+    /**
      * @see bolt.CongestionControl#onACK(long)
      */
-    public void onACK(long ackSeqno) {
+    public void onACK(long ackSeqNo) {
         //increase window during slow start
         if (slowStartPhase) {
-            congestionWindowSize += ackSeqno - lastAckSeqNumber;
-            lastAckSeqNumber = ackSeqno;
+            congestionWindowSize += ackSeqNo - lastAckSeqNumber;
+            lastAckSeqNumber = ackSeqNo;
             //but not beyond a maximum size
             if (congestionWindowSize > session.getFlowWindowSize()) {
                 slowStartPhase = false;
                 if (packetArrivalRate > 0) {
                     packetSendingPeriod = 1000000.0 / packetArrivalRate;
                 } else {
-                    packetSendingPeriod = (double) congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
+                    packetSendingPeriod = congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
                 }
             }
 
@@ -173,7 +188,7 @@ public class BoltCongestionControl implements CongestionControl {
             return 1.0 / BoltEndPoint.DATAGRAM_SIZE;
         } else {
             double exp = Math.ceil(Math.log10(remaining * PS * 8));
-            double power10 = Math.pow(10.0, exp) * BetaDivPS;
+            double power10 = Math.pow(10.0, exp) * BETA_DIV_PS;
             return Math.max(power10, 1 / PS);
         }
     }
@@ -227,27 +242,15 @@ public class BoltCongestionControl implements CongestionControl {
         return;
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#onTimeout()
-     */
     public void onTimeout() {
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#onPacketSend(long)
-     */
     public void onPacketSend(long packetSeqNo) {
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#onPacketReceive(long)
-     */
     public void onPacketReceive(long packetSeqNo) {
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#close()
-     */
     public void close() {
     }
 

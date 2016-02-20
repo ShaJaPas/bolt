@@ -23,7 +23,7 @@ public class SimpleTCP extends BoltCongestionControl {
     }
 
     @Override
-    public void onACK(long ackSeqno) {
+    public void onACK(long ackSeqNo) {
         congestionWindowSize += 1 / congestionWindowSize;
     }
 

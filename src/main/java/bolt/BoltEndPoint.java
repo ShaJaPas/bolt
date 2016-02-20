@@ -30,14 +30,14 @@ public class BoltEndPoint {
     final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
-    //active sessions keyed by socket ID
+
+    /** active sessions keyed by socket ID */
     private final Map<Long, BoltSession> sessions = new ConcurrentHashMap<>();
     private final Map<Destination, BoltSession> sessionsBeingConnected = Collections.synchronizedMap(new HashMap<>());
     //if the endpoint is configured for a server socket,
     //this queue is used to handoff new BoltSessions to the application
     private final SynchronousQueue<BoltSession> sessionHandoff = new SynchronousQueue<>();
-    //last received packet
-    private BoltPacket lastPacket;
+
     private boolean serverSocketMode = false;
     //has the endpoint been stopped?
     private volatile boolean stopped = false;
@@ -159,10 +159,6 @@ public class BoltEndPoint {
         return dgSocket;
     }
 
-    BoltPacket getLastPacket() {
-        return lastPacket;
-    }
-
     public void addSession(Long destinationID, BoltSession session) {
         logger.info("Storing session <" + destinationID + ">");
         sessions.put(destinationID, session);
@@ -207,12 +203,11 @@ public class BoltEndPoint {
                 Destination peer = new Destination(dp.getAddress(), dp.getPort());
                 int l = dp.getLength();
                 BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
-                lastPacket = packet;
 
                 long dest = packet.getDestinationID();
                 BoltSession session = sessions.get(dest);
                 if (session != null) {
-                    //dispatch to existing session
+                    // dispatch to existing session
                     session.received(packet, peer);
                 } else if (packet.isConnectionHandshake()) {
                     connectionHandshake((ConnectionHandshake) packet, peer);
