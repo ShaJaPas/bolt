@@ -3,11 +3,11 @@ package bolt;
 import bolt.packets.*;
 import bolt.sender.FlowWindow;
 import bolt.sender.SenderLossList;
+import bolt.statistic.BoltStatistics;
 import bolt.statistic.MeanThroughput;
 import bolt.statistic.MeanValue;
-import bolt.statistic.BoltStatistics;
-import bolt.util.SequenceNumber;
 import bolt.util.BoltThreadFactory;
+import bolt.util.SequenceNumber;
 import bolt.util.Util;
 
 import java.io.IOException;
@@ -227,7 +227,25 @@ public class BoltSender {
         }
     }
 
-    protected void onAcknowledge(Acknowledgement acknowledgement) throws IOException {
+    /**
+     * On ACK packet received:
+     * <ol>
+     * <li> Update the largest acknowledged sequence number.
+     * <li> Send back an ACK2 with the same ACK sequence number in this ACK.
+     * <li> Update RTT and RTTVar.
+     * <li> Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
+     * <li> Update flow window size.
+     * <li> If this is a Light ACK, stop.
+     * <li> Update packet arrival rate: A = (A * 7 + a) / 8, where a is the value carried in the ACK.
+     * <li> Update estimated link capacity: B = (B * 7 + b) / 8, where b is the value carried in the ACK.
+     * <li> Update sender's buffer (by releasing the buffer that has been acknowledged).
+     * <li> Update sender's loss list (by removing all those that has been acknowledged).
+     * </ol>
+     *
+     * @param acknowledgement the received ACK packet.
+     * @throws IOException if sending of ACK2 fails.
+     */
+    protected void onAcknowledge(final Acknowledgement acknowledgement) throws IOException {
         ackLock.lock();
         ackCondition.signal();
         ackLock.unlock();
@@ -268,9 +286,14 @@ public class BoltSender {
     }
 
     /**
-     * procedure when a NAK is received (spec. p 14)
+     * On NAK packet received:
+     * <ol>
+     * <li> Add all sequence numbers carried in the NAK into the sender's loss list.
+     * <li> Update the SND period by rate control (see section 3.6).
+     * <li> Reset the EXP time variable.
+     * </ol>
      *
-     * @param nak
+     * @param nak NAK packet received.
      */
     protected void onNAKPacketReceived(NegativeAcknowledgement nak) {
         for (Integer i : nak.getDecodedLossInfo()) {
@@ -284,7 +307,6 @@ public class BoltSender {
             logger.finer("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
                     + "set send period to " + session.getCongestionControl().getSendInterval());
         }
-        return;
     }
 
     //send single keep alive packet -> move to socket!
@@ -303,6 +325,30 @@ public class BoltSender {
         endpoint.doSend(ackOfAckPkt);
     }
 
+    /**
+     * Data Sending Algorithm:
+     * <ol>
+     * <li> If the sender's loss list is not empty, retransmit the first
+     * packet in the list and remove it from the list. Go to 5).
+     * <li> In messaging mode, if the packets has been the loss list for a
+     * time more than the application specified TTL (time-to-live), send
+     * a message drop request and remove all related packets from the
+     * loss list. Go to 1).
+     * <li> Wait until there is application data to be sent.
+     * <li>
+     * a. If the number of unacknowledged packets exceeds the flow/congestion
+     * window size, wait until an ACK comes. Go back to step 1). <br/>
+     * b. Pack a new data packet and send it out.
+     * </ol>
+     * <li> If the sequence number of the current packet is 16n, where n is an
+     * integer, go to 2).
+     * <li> Wait (SND - t) time, where SND is the inter-packet interval updated by
+     * congestion control and t is the total time used by step 1 to step 5. Go to 1).
+     * </ol>
+     *
+     * @throws InterruptedException if the thread is interrupted wating for an ACK.
+     * @throws IOException          on failure to send the DataPacket.
+     */
     public void senderAlgorithm() throws InterruptedException, IOException {
         while (!paused) {
             iterationStart = Util.getCurrentTime();
@@ -355,7 +401,7 @@ public class BoltSender {
     /**
      * re-transmit an entry from the sender loss list
      *
-     * @param entry
+     * @param seqNumber
      */
     protected void handleRetransmit(Long seqNumber) {
         try {
@@ -452,9 +498,9 @@ public class BoltSender {
     }
 
     /**
-     * wait for the next acknowledge
+     * Wait for the next acknowledge.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException if the thread is interrupted.
      */
     public void waitForAck() throws InterruptedException {
         ackLock.lock();

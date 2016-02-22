@@ -1,5 +1,6 @@
 package bolt;
 
+
 public interface BoltPacket extends Comparable<BoltPacket> {
 
 

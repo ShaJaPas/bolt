@@ -20,9 +20,7 @@ public class ServerSession extends BoltSession {
     private static final Logger logger = Logger.getLogger(ServerSession.class.getName());
 
     private final BoltEndPoint endPoint;
-    int n_handshake = 0;
-    //last received packet (for testing purposes)
-    private BoltPacket lastPacket;
+
     private ConnectionHandshake finalConnectionHandshake;
 
     public ServerSession(Destination peer, BoltEndPoint endPoint) throws SocketException, UnknownHostException {
@@ -77,13 +75,6 @@ public class ServerSession extends BoltSession {
     }
 
     /**
-     * for testing use only
-     */
-    BoltPacket getLastPacket() {
-        return lastPacket;
-    }
-
-    /**
      * reply to a connection handshake message
      *
      * @param connectionHandshake
@@ -107,7 +98,6 @@ public class ServerSession extends BoltSession {
             }
 
             try {
-                n_handshake++;
                 boolean handShakeComplete = handleSecondHandShake(connectionHandshake);
                 if (handShakeComplete) {
                     logger.info("Client/Server handshake complete!");
@@ -145,7 +135,7 @@ public class ServerSession extends BoltSession {
         return true;
     }
 
-    /*
+    /**
      * response after the initial connection handshake received:
      * compute cookie
      */
@@ -179,7 +169,7 @@ public class ServerSession extends BoltSession {
 
         if (finalConnectionHandshake == null) {
             finalConnectionHandshake = new ConnectionHandshake();
-            //compare the packet size and choose minimun
+            //compare the packet size and choose minimum
             long clientBufferSize = handshake.getPacketSize();
             long myBufferSize = getDatagramSize();
             long bufferSize = Math.min(clientBufferSize, myBufferSize);

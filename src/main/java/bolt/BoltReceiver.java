@@ -4,10 +4,10 @@ import bolt.packets.*;
 import bolt.packets.ControlPacket.ControlPacketType;
 import bolt.packets.Shutdown;
 import bolt.receiver.*;
-import bolt.statistic.MeanValue;
 import bolt.statistic.BoltStatistics;
-import bolt.util.SequenceNumber;
+import bolt.statistic.MeanValue;
 import bolt.util.BoltThreadFactory;
+import bolt.util.SequenceNumber;
 import bolt.util.Util;
 
 import java.io.IOException;
@@ -69,33 +69,65 @@ public class BoltReceiver {
     long roundTripTimeVar = roundTripTime / 2;
     //for storing the arrival time of the last received data packet
     private volatile long lastDataPacketArrivalTime = 0;
-    //largest received data packet sequence number(LRSN)
+
+    /**
+     * LRSN: A variable to record the largest received data packet sequence
+     * number. LRSN is initialized to the initial sequence number minus 1.
+     */
     private volatile long largestReceivedSeqNumber = 0;
-    //last Ack number
+
+    /**
+     * last Ack number
+     */
     private long lastAckNumber = 0;
-    //largest Ack number ever acknowledged by ACK2
+
+    /**
+     * largest Ack number ever acknowledged by ACK2
+     */
     private volatile long largestAcknowledgedAckNumber = -1;
-    //a variable to record number of continuous EXP time-out events
+
+    /**
+     * a variable to record number of continuous EXP time-out events
+     */
     private volatile long expCount = 0;
-    //to check the ACK, NAK, or EXP timer
+
+    /**
+     * to check the ACK, NAK, or EXP timer
+     */
     private long nextACK;
-    //microseconds to next ACK event
+
+    /**
+     * microseconds to next ACK event
+     */
     private long ackTimerInterval = Util.getSYNTime();
-    private long nextNAK;
-    //microseconds to next NAK event
+
+    /**
+     * microseconds to next NAK event
+     */
     private long nakTimerInterval = Util.getSYNTime();
-    private long nextEXP;
-    //microseconds to next EXP event
+    private long nextNAK;
+
+    /**
+     * microseconds to next EXP event
+     */
     private long expTimerInterval = 100 * Util.getSYNTime();
+    private long nextEXP;
+
     private Thread receiverThread;
     private volatile boolean stopped = false;
-    //(optional) ack interval (see CongestionControl interface)
+
+    /**
+     * (optional) ack interval (see CongestionControl interface)
+     */
     private volatile long ackInterval = -1;
     private MeanValue dgReceiveInterval;
     private MeanValue dataPacketInterval;
     private MeanValue processTime;
     private MeanValue dataProcessTime;
-    //number of received data packets
+
+    /**
+     * number of received data packets
+     */
     private int n = 0;
     private volatile long ackSequenceNumber = 0;
 
@@ -174,34 +206,55 @@ public class BoltReceiver {
     }
 
     /**
-     * receiver algorithm
-     * see specification P11.
+     * Data Receiving Algorithm:
+     * <ol>
+     * <li> Query the system time to check if ACK, NAK, or EXP timer has
+     * expired. If there is any, process the event (as described below
+     * in this section) and reset the associated time variables. For
+     * ACK, also check the ACK packet interval.
+     * <li> Start time bounded UDP receiving. If no packet arrives, go to 1).
+     * 1) Reset the ExpCount to 1. If there is no unacknowledged data
+     * packet, or if this is an ACK or NAK control packet, reset the EXP
+     * timer.
+     * <li> Check the flag bit of the packet header. If it is a control
+     * packet, process it according to its type and go to 1).
+     * <li> If the sequence number of the current data packet is 16n + 1,
+     * where n is an integer, record the time interval between this
+     * packet and the last data packet in the Packet Pair Window.
+     * <li> Record the packet arrival time in PKT History Window.
+     * <li>
+     * a. If the sequence number of the current data packet is greater
+     * than LRSN + 1, put all the sequence numbers between (but
+     * excluding) these two values into the receiver's loss list and
+     * send them to the sender in an NAK packet. <br/>
+     * b. If the sequence number is less than LRSN, remove it from the
+     * receiver's loss list.
+     * <li> Update LRSN. Go to 1).
+     * </ol>
      */
     public void receiverAlgorithm() throws InterruptedException, IOException {
-        //check ACK timer
+        // check ACK timer
         long currentTime = Util.getCurrentTime();
         if (nextACK < currentTime) {
             nextACK = currentTime + ackTimerInterval;
             processACKEvent(true);
         }
-        //check NAK timer
+        // check NAK timer
         if (nextNAK < currentTime) {
             nextNAK = currentTime + nakTimerInterval;
             processNAKEvent();
         }
-
-        //check EXP timer
+        // check EXP timer
         if (nextEXP < currentTime) {
             nextEXP = currentTime + expTimerInterval;
             processEXPEvent();
         }
-        //perform time-bounded UDP receive
+        // perform time-bounded UDP receive
         BoltPacket packet = handoffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
         if (packet != null) {
-            //reset exp count to 1
+            // reset exp count to 1
             expCount = 1;
-            //If there is no unacknowledged data packet, or if this is an
-            //ACK or NAK control packet, reset the EXP timer.
+            // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
             boolean needEXPReset = false;
             if (packet.isControlPacket()) {
                 ControlPacket cp = (ControlPacket) packet;
@@ -225,10 +278,42 @@ public class BoltReceiver {
     }
 
     /**
-     * process ACK event (see spec. p 12)
+     * ACK Event Processing:
+     * <ol>
+     * <li> Find the sequence number prior to which all the packets have been
+     * received by the receiver (ACK number) according to the following
+     * rule: if the receiver's loss list is empty, the ACK number is LRSN
+     * + 1; otherwise it is the smallest sequence number in the
+     * receiver's loss list.
+     * <li> If (a) the ACK number equals to the largest ACK number ever
+     * acknowledged by ACK2, or (b) it is equal to the ACK number in the
+     * last ACK and the time interval between this two ACK packets is
+     * less than 2 RTTs, stop (do not send this ACK).
+     * <li> Assign this ACK a unique increasing ACK sequence number. Pack the
+     * ACK packet with RTT, RTT Variance, and flow window size (available
+     * receiver buffer size). If this ACK is not triggered by ACK timers,
+     * send out this ACK and stop.
+     * <li> Calculate the packet arrival speed according to the following
+     * algorithm:
+     * Calculate the median value of the last 16 packet arrival
+     * intervals (AI) using the values stored in PKT History Window.
+     * In these 16 values, remove those either greater than AI*8 or
+     * less than AI/8. If more than 8 values are left, calculate the
+     * average of the left values AI', and the packet arrival speed is
+     * 1/AI' (number of packets per second). Otherwise, return 0.
+     * <li> Calculate the estimated link capacity according to the following
+     * algorithm:
+     * Calculate the median value of the last 16 packet pair
+     * intervals (PI) using the values in Packet Pair Window, and the
+     * link capacity is 1/PI (number of packets per second).
+     * <li> Pack the packet arrival speed and estimated link capacity into the
+     * ACK packet and send it out.
+     * <li> Record the ACK sequence number, ACK number and the departure time
+     * of this ACK in the ACK History Window.
+     * </ol>
      */
     protected void processACKEvent(boolean isTriggeredByTimer) throws IOException {
-        //(1).Find the sequence number *prior to which* all the packets have been received
+        // 1: Find the sequence number *prior to which* all the packets have been received
         final long ackNumber;
         ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
         if (entry == null) {
@@ -236,7 +321,7 @@ public class BoltReceiver {
         } else {
             ackNumber = entry.getSequenceNumber();
         }
-        //(2).a) if ackNumber equals to the largest sequence number ever acknowledged by ACK2
+        // 2a: If ackNumber equals to the largest sequence number ever acknowledged by ACK2
         if (ackNumber == largestAcknowledgedAckNumber) {
             //do not send this ACK
             return;
@@ -267,16 +352,32 @@ public class BoltReceiver {
     }
 
     /**
-     * process NAK event (see spec. p 13)
+     * NAK Event Processing:
+     * <p>
+     * Search the receiver's loss list, find out all those sequence numbers
+     * whose last feedback time is k*RTT before, where k is initialized as 2
+     * and increased by 1 each time the number is fed back. Compress
+     * (according to section 6.4) and send these numbers back to the sender
+     * in an NAK packet.
      */
     protected void processNAKEvent() throws IOException {
-        //find out all sequence numbers whose last feedback time larger than is k*RTT
-        List<Long> seqNumbers = receiverLossList.getFilteredSequenceNumbers(roundTripTime, true);
+        final List<Long> seqNumbers = receiverLossList.getFilteredSequenceNumbers(roundTripTime, true);
         sendNAK(seqNumbers);
     }
 
     /**
-     * process EXP event (see spec. p 13)
+     * EXP Event Processing:
+     * <ol>
+     * <li> Put all the unacknowledged packets into the sender's loss list.
+     * <li> If (ExpCount > 16) and at least 3 seconds has elapsed since that
+     * last time when ExpCount is reset to 1, or, 3 minutes has elapsed,
+     * close the UDT connection and exit.
+     * <li> If the sender's loss list is empty, send a keep-alive packet to
+     * the peer side.
+     * <li> Increase ExpCount by 1.
+     * </ol>
+     *
+     * @throws IOException if shutdown, stop or send of keep-alive fails.
      */
     protected void processEXPEvent() throws IOException {
         if (session.getSocket() == null || !session.getSocket().isActive()) return;
@@ -317,7 +418,6 @@ public class BoltReceiver {
         } else if (p instanceof Shutdown) {
             onShutdown();
         }
-
     }
 
     protected void onDataPacketReceived(DataPacket dp) throws IOException {
@@ -404,7 +504,7 @@ public class BoltReceiver {
     }
 
     protected void sendNAK(List<Long> sequenceNumbers) throws IOException {
-        if (sequenceNumbers.size() == 0) return;
+        if (sequenceNumbers.isEmpty()) return;
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(sequenceNumbers);
         nAckPacket.setSession(session);
@@ -455,15 +555,16 @@ public class BoltReceiver {
     }
 
     /**
-     * spec p. 13: <br/>
-     * 1) Locate the related ACK in the ACK History Window according to the
-     * ACK sequence number in this ACK2.  <br/>
-     * 2) Update the largest ACK number ever been acknowledged. <br/>
-     * 3) Calculate new rtt according to the ACK2 arrival time and the ACK
-     * departure time, and update the RTT value as: RTT = (RTT * 7 +
-     * rtt) / 8.  <br/>
-     * 4) Update RTTVar by: RTTVar = (RTTVar * 3 + abs(RTT - rtt)) / 4.  <br/>
-     * 5) Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.  <br/>
+     * On ACK2 packet received:
+     * <ol>
+     * <li> Locate the related ACK in the ACK History Window according to the
+     * ACK sequence number in this ACK2.
+     * <li> Update the largest ACK number ever been acknowledged.
+     * <li> Calculate new rtt according to the ACK2 arrival time and the ACK
+     * departure time, and update the RTT value as: RTT = (RTT * 7 + rtt) / 8.
+     * <li> Update RTTVar by: RTTVar = (RTTVar * 3 + abs(RTT - rtt)) / 4.
+     * <li> Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
+     * </ol>
      */
     protected void onAck2PacketReceived(Acknowledgment2 ack2) {
         AckHistoryEntry entry = ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
@@ -479,6 +580,20 @@ public class BoltReceiver {
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }
+    }
+
+    /**
+     * On message drop request received:
+     * <ol>
+     * <li> Tag all packets belong to the message in the receiver buffer so
+     * that they will not be read.
+     * <li> Remove all corresponding packets in the receiver's loss list.
+     * </ol>
+     *
+     * @param messageDropRequest the received MessageDropRequest packet.
+     */
+    protected void onMessageDropRequest(MessageDropRequest messageDropRequest) {
+        //TODO this was never implemented. Investigate if required and implications.
     }
 
     protected void sendKeepAlive() throws IOException {

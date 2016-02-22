@@ -3,7 +3,9 @@ package bolt.sender;
 import java.util.LinkedList;
 
 /**
- * stores the sequence number of the lost packets in increasing order
+ * The sender's loss list is used to store the sequence numbers of
+ * the lost packets fed back by the receiver through NAK packets or
+ * inserted in a timeout event. The numbers are stored in increasing order.
  */
 public class SenderLossList {
 
@@ -16,14 +18,15 @@ public class SenderLossList {
         backingList = new LinkedList<>();
     }
 
-    public void insert(Long obj) {
+    public void insert(final Long obj) {
         synchronized (backingList) {
             for (int i = 0; i < backingList.size(); i++) {
-                Long entry = backingList.get(i);
+                final Long entry = backingList.get(i);
                 if (obj < entry) {
                     backingList.add(i, obj);
                     return;
-                } else if (obj.equals(entry)) return;
+                }
+                else if (obj.equals(entry)) return;
             }
             backingList.add(obj);
         }
@@ -36,7 +39,7 @@ public class SenderLossList {
     }
 
     /**
-     * retrieves the loss list entry with the lowest sequence number, or <code>null</code> if loss list is empty
+     * Retrieves the loss list entry with the lowest sequence number, or null if loss list is empty.
      */
     public Long getFirstEntry() {
         synchronized (backingList) {
@@ -57,4 +60,5 @@ public class SenderLossList {
             return backingList.toString();
         }
     }
+
 }

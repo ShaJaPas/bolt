@@ -9,8 +9,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>
  * it is assumed that a single thread (the producer) stores new data,
  * and another single thread (the consumer) reads/removes data.<br/>
- *
- * @author Cian O'Mahony
  */
 public class FlowWindow {
 
@@ -20,22 +18,31 @@ public class FlowWindow {
     private final ReentrantLock lock;
     private volatile boolean isEmpty = true;
     private volatile boolean isFull = false;
-    //valid entries that can be read
+
+    /**
+     * Valid entries that can be read.
+     */
     private volatile int validEntries = 0;
     private volatile boolean isCheckout = false;
-    //index where the next data packet will be written to
+
+    /**
+     * Index where the next data packet will be written to.
+     */
     private volatile int writePos = 0;
-    //one before the index where the next data packet will be read from
+
+    /**
+     * One before the index where the next data packet will be read from.
+     */
     private volatile int readPos = -1;
     private volatile int consumed = 0;
     private volatile int produced = 0;
 
     /**
-     * @param size      - flow window size
-     * @param chunkSize - data chunk size
+     * @param flowWindowSize flow window size
+     * @param chunkSize      data chunk size
      */
-    public FlowWindow(int size, int chunkSize) {
-        this.length = size + 1;
+    public FlowWindow(final int flowWindowSize, final int chunkSize) {
+        this.length = flowWindowSize + 1;
         packets = new DataPacket[length];
         for (int i = 0; i < packets.length; i++) {
             packets[i] = new DataPacket();
@@ -45,9 +52,9 @@ public class FlowWindow {
     }
 
     /**
-     * get a data packet for updating with new data
+     * Get a data packet for updating with new data.
      *
-     * @return <code>null</code> if flow window is full
+     * @return data packet to update, or null if flow window is full.
      */
     public DataPacket getForProducer() {
         lock.lock();
@@ -64,8 +71,8 @@ public class FlowWindow {
     }
 
     /**
-     * notify the flow window that the data packet obtained by {@link #getForProducer()}
-     * has been filled with data and is ready for sending out
+     * Notify the flow window that the data packet obtained by {@link this#getForProducer()}
+     * has been filled with data and is ready for sending out.
      */
     public void produce() {
         lock.lock();
@@ -82,7 +89,6 @@ public class FlowWindow {
             lock.unlock();
         }
     }
-
 
     public DataPacket consumeData() {
         lock.lock();
@@ -108,32 +114,20 @@ public class FlowWindow {
     }
 
     /**
-     * check if another entry can be added
+     * Check if another entry can be added.
      *
-     * @return
+     * @return true if window is full, otherwise false.
      */
     public boolean isFull() {
         return isFull;
     }
 
-    int readPos() {
-        return readPos;
-    }
-
-    int writePos() {
-        return writePos;
-    }
-
-    int consumed() {
-        return consumed;
-    }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("FlowWindow size=").append(length);
-        sb.append(" full=").append(isFull).append(" empty=").append(isEmpty);
-        sb.append(" readPos=").append(readPos).append(" writePos=").append(writePos);
-        sb.append(" consumed=").append(consumed).append(" produced=").append(produced);
-        return sb.toString();
+        return "FlowWindow size=" + length +
+                " full=" + isFull + " empty=" + isEmpty +
+                " readPos=" + readPos + " writePos=" + writePos +
+                " consumed=" + consumed + " produced=" + produced;
     }
+
 }

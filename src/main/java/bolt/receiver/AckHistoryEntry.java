@@ -9,9 +9,11 @@ import bolt.util.Util;
 public class AckHistoryEntry {
 
     private final long ackSequenceNumber;
-    //the sequence number prior to which all the packets have been received
+
+    /** the sequence number prior to which all the packets have been received */
     private final long ackNumber;
-    //time when the Acknowledgement entry was sent
+
+    /** time when the Acknowledgement entry was sent */
     private final long sentTime;
 
     public AckHistoryEntry(long ackSequenceNumber, long ackNumber, long sentTime) {

@@ -71,23 +71,14 @@ public class BoltCongestionControl implements CongestionControl {
         lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#init()
-     */
     public void init() {
-
+        // Do nothing.
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#setRTT(long, long)
-     */
     public void setRTT(long rtt, long rttVar) {
         this.roundTripTime = rtt;
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#setPacketArrivalRate(long, long)
-     */
     public void updatePacketArrivalRate(long rate, long linkCapacity) {
         //see spec p. 14.
         if (packetArrivalRate > 0) packetArrivalRate = (packetArrivalRate * 7 + rate) / 8;
@@ -104,9 +95,6 @@ public class BoltCongestionControl implements CongestionControl {
         return estimatedLinkCapacity;
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#getSendInterval()
-     */
     public double getSendInterval() {
         return packetSendingPeriod;
     }
@@ -134,12 +122,12 @@ public class BoltCongestionControl implements CongestionControl {
     /**
      * @see bolt.CongestionControl#onACK(long)
      */
-    public void onACK(long ackSeqNo) {
-        //increase window during slow start
+    public void onACK(final long ackSeqNo) {
+        // increase window during slow start
         if (slowStartPhase) {
             congestionWindowSize += ackSeqNo - lastAckSeqNumber;
             lastAckSeqNumber = ackSeqNo;
-            //but not beyond a maximum size
+            // but not beyond a maximum size
             if (congestionWindowSize > session.getFlowWindowSize()) {
                 slowStartPhase = false;
                 if (packetArrivalRate > 0) {
@@ -150,8 +138,7 @@ public class BoltCongestionControl implements CongestionControl {
             }
 
         } else {
-            //1.if it is  not in slow start phase,set the congestion window size
-            //to the product of packet arrival rate and(rtt +SYN)
+            // 1. if it's not in slow start phase,set the congestion window size to the product of packet arrival rate and(rtt +SYN)
             double A = packetArrivalRate / 1000000.0 * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
             if (logger.isLoggable(Level.FINER)) {
@@ -159,10 +146,10 @@ public class BoltCongestionControl implements CongestionControl {
             }
         }
 
-        //no rate increase during slow start
+        // no rate increase during slow start
         if (slowStartPhase) return;
 
-        //no rate increase "immediately" after a NAK
+        // no rate increase "immediately" after a NAK
         if (loss) {
             loss = false;
             return;
@@ -193,12 +180,9 @@ public class BoltCongestionControl implements CongestionControl {
         }
     }
 
-    /* (non-Javadoc)
-     * @see bolt.CongestionControl#onNAK(java.util.List)
-     */
-    public void onLoss(List<Integer> lossInfo) {
+    public void onLoss(final List<Integer> lossInfo) {
         loss = true;
-        long firstBiggestlossSeqNo = lossInfo.get(0);
+        long firstBiggestLossSeqNo = lossInfo.get(0);
         nACKCount++;
         /*1) If it is in slow start phase, set inter-packet interval to
              1/recvrate. Slow start ends. Stop. */
@@ -214,7 +198,7 @@ public class BoltCongestionControl implements CongestionControl {
 
         long currentMaxSequenceNumber = session.getSocket().getSender().getCurrentSequenceNumber();
         // 2)If this NAK starts a new congestion epoch
-        if (firstBiggestlossSeqNo > lastDecreaseSeqNo) {
+        if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {
             // -increase inter-packet interval
             packetSendingPeriod = Math.ceil(packetSendingPeriod * 1.125);
             // -Update AvgNAKNum(the average number of NAKs per congestion)
@@ -239,7 +223,6 @@ public class BoltCongestionControl implements CongestionControl {
         }
 
         statistics.setSendPeriod(packetSendingPeriod);
-        return;
     }
 
     public void onTimeout() {

@@ -8,7 +8,7 @@ import bolt.util.Util;
 public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> {
 
     private final long sequenceNumber;
-    private long lastFeedbacktime;
+    private long lastFeedbackTime;
     private long k = 2;
 
     /**
@@ -21,7 +21,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
             throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
         }
         this.sequenceNumber = sequenceNumber;
-        this.lastFeedbacktime = Util.getCurrentTime();
+        this.lastFeedbackTime = Util.getCurrentTime();
     }
 
 
@@ -30,7 +30,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      */
     public void feedback() {
         k++;
-        lastFeedbacktime = Util.getCurrentTime();
+        lastFeedbackTime = Util.getCurrentTime();
     }
 
     public long getSequenceNumber() {
@@ -47,7 +47,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
     }
 
     public long getLastFeedbackTime() {
-        return lastFeedbacktime;
+        return lastFeedbackTime;
     }
 
     /**
@@ -59,7 +59,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
 
 
     public String toString() {
-        return sequenceNumber + "[k=" + k + ",time=" + lastFeedbacktime + "]";
+        return sequenceNumber + "[k=" + k + ",time=" + lastFeedbackTime + "]";
     }
 
 
@@ -83,9 +83,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
         if (getClass() != obj.getClass())
             return false;
         ReceiverLossListEntry other = (ReceiverLossListEntry) obj;
-        if (sequenceNumber != other.sequenceNumber)
-            return false;
-        return true;
+        return (sequenceNumber == other.sequenceNumber);
     }
 
 }

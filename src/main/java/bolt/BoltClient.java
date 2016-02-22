@@ -20,14 +20,12 @@ public class BoltClient {
     private ClientSession clientSession;
 
 
-    public BoltClient(InetAddress address, int localport) throws SocketException, UnknownHostException {
-        //create endpoint
-        clientEndpoint = new BoltEndPoint(address, localport);
-        LOGGER.info("Created client endpoint on port " + localport);
+    public BoltClient(InetAddress address, int localPort) throws SocketException, UnknownHostException {
+        clientEndpoint = new BoltEndPoint(address, localPort);
+        LOGGER.info("Created client endpoint on port " + localPort);
     }
 
     public BoltClient(InetAddress address) throws SocketException, UnknownHostException {
-        //create endpoint
         clientEndpoint = new BoltEndPoint(address);
         LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }

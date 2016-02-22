@@ -3,7 +3,8 @@ package bolt.receiver;
 import bolt.util.CircularArray;
 
 /**
- * A circular array that records the packet arrival times
+ * Packet History Window is a circular array that records the arrival time
+ * of each data packet.
  */
 public class PacketHistoryWindow extends CircularArray<Long> {
 

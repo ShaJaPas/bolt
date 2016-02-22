@@ -8,8 +8,11 @@ import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
- * the receiver loss list stores information about lost packets,
- * ordered by increasing sequence number.
+ * Receiver's Loss List is a list of tuples whose values include:
+ * the sequence numbers of detected lost data packets, the latest
+ * feedback time of each tuple, and a parameter k that is the number
+ * of times each one has been fed back in NAK. Values are stored in
+ * the increasing order of packet sequence numbers.
  *
  * @see ReceiverLossListEntry
  */
@@ -57,8 +60,8 @@ public class ReceiverLossList {
     /**
      * return all sequence numbers whose last feedback time is larger than k*RTT
      *
-     * @param RTT        - the current round trip time
-     * @param doFeedback - true if the k parameter should be increased and the time should
+     * @param RTT        the current round trip time
+     * @param doFeedback true if the k parameter should be increased and the time should
      *                   be reset (using {@link ReceiverLossListEntry#feedback()} )
      * @return
      */

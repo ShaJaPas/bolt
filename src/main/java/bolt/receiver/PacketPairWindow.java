@@ -3,8 +3,8 @@ package bolt.receiver;
 import bolt.util.CircularArray;
 
 /**
- * a circular array that records time intervals between two probing data packets.
- * It is used to determine the estimated link capacity.
+ * Packet Pair Window is a circular array that records the time
+ * interval between each probing packet pair.
  *
  * @see {@link CircularArray}
  */
