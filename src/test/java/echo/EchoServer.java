@@ -23,7 +23,7 @@ public class EchoServer implements Runnable {
 
     public EchoServer(int port) throws Exception {
         server = new BoltServerSocket(InetAddress.getByName("localhost"), port);
-        serverThread = BoltThreadFactory.get().newThread(this);
+        serverThread = BoltThreadFactory.get().newThread(this, "Echo", false);
     }
 
     public void start() {

@@ -74,9 +74,9 @@ public class ReceiveBuffer {
      * specified waiting time elapses before an element is available
      * @throws InterruptedException if interrupted while waiting
      */
-    public AppData poll(int timeout, TimeUnit units) throws InterruptedException {
+    public AppData poll(int timeout, TimeUnit unit) throws InterruptedException {
         lock.lockInterruptibly();
-        long nanos = units.toNanos(timeout);
+        long nanos = unit.toNanos(timeout);
 
         try {
             for (; ; ) {

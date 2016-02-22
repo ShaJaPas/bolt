@@ -159,9 +159,7 @@ public class Acknowledgement extends ControlPacket {
             // can't happen
             return null;
         }
-
     }
-
 
     @Override
     public boolean equals(Object obj) {

@@ -187,9 +187,8 @@ public class BoltReceiver {
             }
             logger.info("STOPPING RECEIVER for " + session);
         };
-        receiverThread = BoltThreadFactory.get().newThread(r);
         String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-        receiverThread.setName("BoltReceiver-" + s + "-" + receiverThread.getName());
+        receiverThread = BoltThreadFactory.get().newThread(r, "Receiver-" + s, false);
         receiverThread.start();
     }
 

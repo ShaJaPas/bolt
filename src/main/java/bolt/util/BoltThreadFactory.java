@@ -1,5 +1,6 @@
 package bolt.util;
 
+import java.text.MessageFormat;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,9 +15,14 @@ public class BoltThreadFactory implements ThreadFactory {
         return theInstance;
     }
 
-    public Thread newThread(Runnable r) {
-        Thread t = new Thread(r);
-        t.setName("Bolt-Thread-" + num.incrementAndGet());
+    public Thread newThread(final Runnable r) {
+        return newThread(r, "Thread", false);
+    }
+
+    public Thread newThread(final Runnable r, final String threadType, final boolean daemon) {
+        final Thread t = new Thread(r);
+        t.setName(MessageFormat.format("Bolt-{0}-{1}", threadType, num.incrementAndGet()));
+        t.setDaemon(daemon);
         return t;
     }
 

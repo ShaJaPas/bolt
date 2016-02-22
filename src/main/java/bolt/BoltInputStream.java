@@ -173,7 +173,7 @@ public class BoltInputStream extends InputStream {
     }
 
     /**
-     * used for storing application data and the associated
+     * Used for storing application data and the associated
      * sequence number in the queue in ascending order
      */
     public static class AppData implements Comparable<AppData> {

@@ -14,9 +14,9 @@ public class AckHistoryWindow extends CircularArray<AckHistoryEntry> {
     }
 
     /**
-     * return  the time for the given seq no, or <code>-1 </code> if not known
+     * @param ackNumber the ACK number.
      *
-     * @param ackNumber
+     * @return the time for the given seq no, or <code>-1</code> if not known.
      */
     public long getTime(long ackNumber) {
         for (AckHistoryEntry obj : circularArray) {

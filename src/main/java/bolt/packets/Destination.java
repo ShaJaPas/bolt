@@ -54,7 +54,7 @@ public class Destination {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Destination other = (Destination) obj;
+        final Destination other = (Destination) obj;
         if (address == null) {
             if (other.address != null)
                 return false;

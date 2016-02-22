@@ -130,9 +130,8 @@ public class BoltSender {
             }
             logger.info("STOPPING SENDER for " + session);
         };
-        senderThread = BoltThreadFactory.get().newThread(r);
         String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-        senderThread.setName("BoltSender-" + s + "-" + senderThread.getName());
+        senderThread = BoltThreadFactory.get().newThread(r, "Sender-" + s, false);
         senderThread.start();
     }
 

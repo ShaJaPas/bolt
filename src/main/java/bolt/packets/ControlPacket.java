@@ -178,7 +178,6 @@ public abstract class ControlPacket implements BoltPacket {
     /**
      * complete header+ControlInformation packet for transmission
      */
-
     public byte[] getEncoded() {
         byte[] header = getHeader();
         byte[] controlInfo = encodeControlInformation();

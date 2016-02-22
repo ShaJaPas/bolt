@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * the UDPEndpoint takes care of sending and receiving UDP network packets,
+ * The UDPEndpoint takes care of sending and receiving UDP network packets,
  * dispatching them to the correct {@link BoltSession}
  */
 public class BoltEndPoint {
@@ -39,6 +39,7 @@ public class BoltEndPoint {
     private final SynchronousQueue<BoltSession> sessionHandoff = new SynchronousQueue<>();
 
     private boolean serverSocketMode = false;
+
     //has the endpoint been stopped?
     private volatile boolean stopped = false;
 
@@ -101,15 +102,15 @@ public class BoltEndPoint {
     }
 
     protected void configureSocket() throws SocketException {
-        //set a time out to avoid blocking in doReceive()
-        dgSocket.setSoTimeout(100000);
-        //buffer size
+        // set a time out to avoid blocking in doReceive()
+        dgSocket.setSoTimeout(100_000);
+        // buffer size
         dgSocket.setReceiveBufferSize(128 * 1024);
         dgSocket.setReuseAddress(false);
     }
 
     /**
-     * start the endpoint. If the serverSocketModeEnabled flag is <code>true</code>,
+     * start the endpoint. If the serverSocketModeEnabled flag is true,
      * a new connection can be handed off to an application. The application needs to
      * call #accept() to get the socket
      *
@@ -118,16 +119,14 @@ public class BoltEndPoint {
     public void start(boolean serverSocketModeEnabled) {
         serverSocketMode = serverSocketModeEnabled;
         //start receive thread
-        Runnable receive = () -> {
+        final Runnable receive = () -> {
             try {
                 doReceive();
             } catch (Exception ex) {
                 logger.log(Level.WARNING, "", ex);
             }
         };
-        Thread t = BoltThreadFactory.get().newThread(receive);
-        t.setName("UDPEndpoint-" + t.getName());
-        t.setDaemon(true);
+        final Thread t = BoltThreadFactory.get().newThread(receive, "UDPEndpoint", true);
         t.start();
         logger.info("BoltEndpoint started.");
     }
@@ -175,8 +174,8 @@ public class BoltEndPoint {
     /**
      * wait the given time for a new connection
      *
-     * @param timeout - the time to wait
-     * @param unit    - the {@link TimeUnit}
+     * @param timeout the time to wait
+     * @param unit    the {@link TimeUnit}
      * @return a new {@link BoltSession}
      * @throws InterruptedException
      */
@@ -185,11 +184,11 @@ public class BoltEndPoint {
     }
 
     /**
-     * single receive, run in the receiverThread, see {@link #start()}
+     * Single receive, run in the receiverThread, see {@link #start()}.
      * <ul>
-     * <li>Receives UDP packets from the network</li>
-     * <li>Converts them to Bolt packets</li>
-     * <li>dispatches the Bolt packets according to their destination ID.</li>
+     * <li>Receives UDP packets from the network.
+     * <li>Converts them to Bolt packets.
+     * <li>dispatches the Bolt packets according to their destination ID.
      * </ul>
      *
      * @throws IOException
@@ -234,14 +233,15 @@ public class BoltEndPoint {
      * @throws InterruptedException
      */
     protected synchronized void connectionHandshake(ConnectionHandshake packet, Destination peer) throws IOException, InterruptedException {
-        Destination p = new Destination(peer.getAddress(), peer.getPort());
+        final Destination p = new Destination(peer.getAddress(), peer.getPort());
         BoltSession session = sessionsBeingConnected.get(peer);
         long destID = packet.getDestinationID();
         if (session != null && session.getSocketID() == destID) {
             //confirmation handshake
             sessionsBeingConnected.remove(p);
             addSession(destID, session);
-        } else if (session == null) {
+        }
+        else if (session == null) {
             session = new ServerSession(peer, this);
             sessionsBeingConnected.put(p, session);
             sessions.put(session.getSocketID(), session);
@@ -250,7 +250,8 @@ public class BoltEndPoint {
                 sessionHandoff.put(session);
                 logger.fine("Request taken for processing.");
             }
-        } else {
+        }
+        else {
             throw new IOException("dest ID sent by client does not match");
         }
         Long peerSocketID = packet.getSocketID();

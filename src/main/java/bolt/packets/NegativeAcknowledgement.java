@@ -102,10 +102,9 @@ public class NegativeAcknowledgement extends ControlPacket {
      * @param sequenceNumbers - a list of sequence numbers
      */
     public void addLossInfo(List<Long> sequenceNumbers) {
-        long start = 0;
         int index = 0;
         do {
-            start = sequenceNumbers.get(index);
+            long start = sequenceNumbers.get(index);
             long end = 0;
             int c = 0;
             do {
@@ -114,14 +113,18 @@ public class NegativeAcknowledgement extends ControlPacket {
                 if (index < sequenceNumbers.size()) {
                     end = sequenceNumbers.get(index);
                 }
-            } while (end - start == c);
+            }
+            while (end - start == c);
+
             if (end == 0) {
                 addLossInfo(start);
-            } else {
+            }
+            else {
                 end = sequenceNumbers.get(index - 1);
                 addLossInfo(start, end);
             }
-        } while (index < sequenceNumbers.size());
+        }
+        while (index < sequenceNumbers.size());
     }
 
     /**
@@ -153,8 +156,8 @@ public class NegativeAcknowledgement extends ControlPacket {
             return false;
         NegativeAcknowledgement other = (NegativeAcknowledgement) obj;
 
-        List<Integer> thisLost = null;
-        List<Integer> otherLost = null;
+        List<Integer> thisLost;
+        List<Integer> otherLost;
 
         //compare the loss info
         if (lostSequenceNumbers != null) {
