@@ -19,7 +19,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * receiver part of a Bolt entity
+ * Receiver half of a Bolt entity.
+ * <p>
+ * The receiver receives both data packets and control packets, and sends
+ * out control packets according to the received packets and the timers.
+ * <p>
+ * The receiver is also responsible for triggering and processing all control
+ * events, including congestion control and reliability control, and
+ * their related mechanisms such as RTT estimation, bandwidth estimation,
+ * acknowledging and retransmission.
  *
  * @see BoltSender
  */

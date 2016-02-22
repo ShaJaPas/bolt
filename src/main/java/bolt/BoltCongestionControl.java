@@ -8,7 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * default Bolt congestion control.<br/>
+ * Default Bolt congestion control.
  * <p>
  * The algorithm is adapted from the C++ reference implementation.
  */

@@ -24,7 +24,10 @@ import java.util.logging.Logger;
 
 
 /**
- * sender part of a Bolt entity
+ * Sender half of a Bolt entity.
+ * <p>
+ * The sender sends (and retransmits) application data according to the
+ * flow control and congestion control.
  *
  * @see BoltReceiver
  */
@@ -213,8 +216,10 @@ public class BoltSender {
         }
     }
 
-    //receive a packet from server from the peer
-    protected void receive(BoltPacket p) throws IOException {
+    /**
+     * Receive a packet from server from the peer.
+     * */
+    protected void receive(final BoltPacket p) throws IOException {
         if (p instanceof Acknowledgement) {
             Acknowledgement acknowledgement = (Acknowledgement) p;
             onAcknowledge(acknowledgement);

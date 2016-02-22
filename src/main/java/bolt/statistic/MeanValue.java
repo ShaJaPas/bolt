@@ -6,7 +6,7 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 /**
- * holds a floating mean timing value (measured in microseconds)
+ * Holds a floating mean timing value (measured in microseconds).
  */
 public class MeanValue {
 
@@ -19,14 +19,14 @@ public class MeanValue {
     private long start;
 
 
-    public MeanValue(String name) {
+    public MeanValue(final String name) {
         format = NumberFormat.getNumberInstance(Locale.ENGLISH);
         format.setMaximumFractionDigits(2);
         format.setGroupingUsed(false);
         this.name = name;
     }
 
-    public void addValue(double value) {
+    public void addValue(final double value) {
         mean = (mean * n + value) / (n + 1);
         n++;
         max = Math.max(max, value);
