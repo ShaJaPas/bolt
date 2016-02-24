@@ -1,6 +1,11 @@
 package bolt.packets;
 
-
+/**
+ * Shutdown.
+ * <p>
+ * Additional Info: Undefined   <br>
+ * Control Info: None           <br>
+ */
 public class Shutdown extends ControlPacket {
 
     public Shutdown() {

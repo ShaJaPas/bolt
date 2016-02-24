@@ -30,21 +30,19 @@ public class ServerSession extends BoltSession {
     }
 
     @Override
-    public void received(BoltPacket packet, Destination peer) {
+    public void received(final BoltPacket packet, final Destination peer) {
         lastPacket = packet;
 
         if (packet.isConnectionHandshake()) {
             handleHandShake((ConnectionHandshake) packet);
-            return;
         }
 
-        if (packet instanceof KeepAlive) {
+        else if (packet instanceof KeepAlive) {
             socket.getReceiver().resetEXPTimer();
             active = true;
-            return;
         }
 
-        if (packet instanceof Shutdown) {
+        else if (packet instanceof Shutdown) {
             try {
                 socket.getReceiver().stop();
             } catch (IOException ex) {
@@ -53,10 +51,9 @@ public class ServerSession extends BoltSession {
             setState(shutdown);
             active = false;
             logger.info("Connection shutdown initiated by peer.");
-            return;
         }
 
-        if (getState() == ready) {
+        else if (getState() == ready) {
             active = true;
             try {
                 if (packet.forSender()) {
@@ -69,15 +66,14 @@ public class ServerSession extends BoltSession {
                 logger.log(Level.SEVERE, "", ex);
                 setState(invalid);
             }
-            return;
         }
 
     }
 
     /**
-     * reply to a connection handshake message
+     * Reply to a connection handshake message.
      *
-     * @param connectionHandshake
+     * @param connectionHandshake incoming connection handshake from the client.
      */
     protected void handleHandShake(ConnectionHandshake connectionHandshake) {
         logger.info("Received " + connectionHandshake + " in state <" + getState() + ">");
@@ -85,12 +81,12 @@ public class ServerSession extends BoltSession {
             //just send confirmation packet again
             try {
                 sendFinalHandShake(connectionHandshake);
-            } catch (IOException io) {
             }
-            return;
+            catch (IOException io) {
+            }
         }
 
-        if (getState() < ready) {
+        else if (getState() < ready) {
             destination.setSocketID(connectionHandshake.getSocketID());
 
             if (getState() < handshaking) {

@@ -1,5 +1,11 @@
 package bolt.packets;
 
+/**
+ * Keep-alive
+ * <p>
+ * Additional Info: Undefined   <br>
+ * Control Info: None           <br>
+ */
 public class KeepAlive extends ControlPacket {
 
     public KeepAlive() {

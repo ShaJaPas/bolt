@@ -102,6 +102,7 @@ public abstract class ControlPacket implements BoltPacket {
 
     protected long messageNumber;
 
+    // TODO can remove
     protected long timeStamp;
 
     protected long destinationID;
@@ -237,6 +238,7 @@ public abstract class ControlPacket implements BoltPacket {
         return (int) (getPacketSequenceNumber() - other.getPacketSequenceNumber());
     }
 
+    //TODO trim fat
     public enum ControlPacketType {
 
         CONNECTION_HANDSHAKE(0),

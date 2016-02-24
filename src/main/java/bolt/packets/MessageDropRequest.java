@@ -3,6 +3,16 @@ package bolt.packets;
 import java.io.ByteArrayOutputStream;
 
 
+/**
+ * Message Drop Request.
+ * <p>
+ * Additional Info: Message ID      <br>
+ * Control Info:                    <br>
+ * <ol>
+ * <li> 32 bits: First sequence number in the message
+ * <li> 32 bits: Last sequence number in the message
+ * </ol>
+ */
 public class MessageDropRequest extends ControlPacket {
     //Bits 35-64: Message number
 

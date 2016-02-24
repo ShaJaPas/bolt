@@ -6,8 +6,21 @@ import bolt.BoltSender;
 import java.io.ByteArrayOutputStream;
 
 /**
- * Acknowledgement is sent by the {@link BoltReceiver} to the {@link BoltSender} to acknowledge
- * receipt of packets
+ * Acknowledgement (ACK) is sent by the {@link BoltReceiver} to the {@link BoltSender}
+ * to acknowledge receipt of packets.
+ * <p>
+ * Additional Info: ACK sequence number     <br>
+ * Control Info:                            <br>
+ * <ol>
+ * <li> 32 bits: The packet sequence number to which all the
+ * previous packets have been received (excluding)
+ * <br> [The following fields are optional]
+ * <li> 32 bits: RTT (in microseconds)
+ * <li> 32 bits: RTT variance
+ * <li> 32 bits: Available buffer size (in bytes)
+ * <li> 32 bits: Packets receiving rate (in number of packets per second)
+ * <li> 32 bits: Estimated link capacity (in number of packets per second)
+ * </ol>
  */
 public class Acknowledgement extends ControlPacket {
 

@@ -6,6 +6,23 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 
+/**
+ * Protocol Connection Handshake
+ * <p>
+ * Additional Info: Undefined       <br>
+ * Control Info:                    <br>
+ * <ol>
+ * <li> 32 bits: UDT version
+ * <li> 32 bits: Socket Type (STREAM or DGRAM)
+ * <li> 32 bits: initial packet sequence number
+ * <li> 32 bits: maximum packet size (including UDP/IP headers)
+ * <li> 32 bits: maximum flow window size
+ * <li> 32 bits: connection type (regular or rendezvous)
+ * <li> 32 bits: socket ID
+ * <li> 32 bits: SYN cookie
+ * <li> 128 bits: the IP address of the peer's UDP socket
+ * </ol>
+ */
 public class ConnectionHandshake extends ControlPacket {
     public static final long SOCKET_TYPE_STREAM = 0;
     public static final long SOCKET_TYPE_DGRAM = 1;

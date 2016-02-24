@@ -3,7 +3,11 @@ package bolt.packets;
 import bolt.BoltSender;
 
 /**
- * Ack2 is sent by the {@link BoltSender} as immediate reply to an {@link Acknowledgement}
+ * Acknowledgement of Acknowledgement (ACK2) is sent by the {@link BoltSender}
+ * as immediate reply to an {@link Acknowledgement}.
+ * <p>
+ * Additional Info: ACK sequence number     <br>
+ * Control Info: None                       <br>
  */
 public class Acknowledgment2 extends ControlPacket {
 

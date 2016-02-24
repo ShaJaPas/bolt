@@ -52,6 +52,8 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     private byte[] data;
     private long packetSequenceNumber;
     private long messageNumber;
+
+    //TODO remove timestamp
     private long timeStamp;
     private long destinationID;
 
@@ -65,7 +67,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     /**
      * Create a DataPacket from the given raw data.
      *
-     * @param encodedData - all bytes of packet including headers.
+     * @param encodedData all bytes of packet including headers.
      */
     public DataPacket(byte[] encodedData) {
         this(encodedData, encodedData.length);

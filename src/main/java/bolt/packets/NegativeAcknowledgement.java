@@ -7,9 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * NAK carries information about lost packets
+ * Negative Acknowledgement (NAK) carries information about lost packets.
  * <p>
- * loss info is described in the spec on p.15
+ * Additional Info: Undefined
+ * Control Info:
+ * <ol>
+ * <li> 32 bits integer array of compressed loss information (see section 3.9).
+ * </ol>
  */
 public class NegativeAcknowledgement extends ControlPacket {
 
@@ -118,8 +122,7 @@ public class NegativeAcknowledgement extends ControlPacket {
 
             if (end == 0) {
                 addLossInfo(start);
-            }
-            else {
+            } else {
                 end = sequenceNumbers.get(index - 1);
                 addLossInfo(start, end);
             }

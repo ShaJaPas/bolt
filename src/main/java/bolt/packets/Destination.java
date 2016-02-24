@@ -8,7 +8,7 @@ public class Destination {
 
     private final InetAddress address;
 
-    //Bolt socket ID of the peer
+    /** Bolt socket ID of the peer */
     private long socketID;
 
     public Destination(InetAddress address, int port) {

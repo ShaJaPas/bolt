@@ -87,7 +87,6 @@ public class ClientSession extends BoltSession {
                 logger.log(Level.SEVERE, "Error in " + toString(), ex);
                 setState(invalid);
             }
-            return;
         }
     }
 

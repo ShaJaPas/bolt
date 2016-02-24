@@ -33,7 +33,7 @@ import java.util.logging.Logger;
  */
 public class BoltSender {
 
-    private static final Logger logger = Logger.getLogger(BoltClient.class.getName());
+    private static final Logger LOG = Logger.getLogger(BoltClient.class.getName());
 
     private final BoltEndPoint endpoint;
 
@@ -41,32 +41,31 @@ public class BoltSender {
 
     private final BoltStatistics statistics;
 
-    //senderLossList stores the sequence numbers of lost packets
-    //fed back by the receiver through NAK pakets
+    /** Stores the seq numbers of lost packets fed back by the receiver through NAK packets */
     private final SenderLossList senderLossList;
 
-    //sendBuffer stores the sent data packets and their sequence numbers
+    /** Stores the sent data packets and their sequence numbers */
     private final Map<Long, byte[]> sendBuffer;
 
     private final FlowWindow flowWindow;
-    //protects against races when reading/writing to the sendBuffer
+
+    /** Protects against races when reading/writing to the sendBuffer */
     private final Object sendLock = new Object();
-    //number of unacknowledged data packets
+
+    /** Number of unacknowledged data packets */
     private final AtomicInteger unacknowledged = new AtomicInteger(0);
-    //used by the sender to wait for an ACK
+
+    /** Used by the sender to wait for an ACK */
     private final ReentrantLock ackLock = new ReentrantLock();
     private final Condition ackCondition = ackLock.newCondition();
+
     private final boolean storeStatistics;
-    private final int chunksize;
+    private final int chunkSize;
     private final DataPacket retransmit = new DataPacket();
-    /**
-     * sender algorithm
-     */
-    long iterationStart;
-    //thread reading packets from send queue and sending them
-    private Thread senderThread;
-    //for generating data packet sequence numbers
+
+    /** For generating data packet sequence numbers */
     private volatile long currentSequenceNumber = 0;
+
     //the largest data packet sequence number that has actually been sent out
     private volatile long largestSentSequenceNumber = -1;
     //last acknowledge number, initialised to the initial sequence number
@@ -74,24 +73,25 @@ public class BoltSender {
     private volatile boolean started = false;
     private volatile boolean stopped = false;
     private volatile boolean paused = false;
-    //used to signal that the sender should start to send
+
+    /** Used to signal that the sender should start to send */
     private volatile CountDownLatch startLatch = new CountDownLatch(1);
     private MeanValue dgSendTime;
     private MeanValue dgSendInterval;
     private MeanThroughput throughput;
 
-    public BoltSender(BoltSession session, BoltEndPoint endpoint) {
+    public BoltSender(final BoltSession session, final BoltEndPoint endpoint) {
         if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
         this.session = session;
-        statistics = session.getStatistics();
-        senderLossList = new SenderLossList();
-        sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
-        chunksize = session.getDatagramSize() - 24;//need space for the header;
-        flowWindow = new FlowWindow(session.getFlowWindowSize(), chunksize);
-        lastAckSequenceNumber = session.getInitialSequenceNumber();
-        currentSequenceNumber = session.getInitialSequenceNumber() - 1;
-        storeStatistics = Boolean.getBoolean("bolt.sender.storeStatistics");
+        this.statistics = session.getStatistics();
+        this.senderLossList = new SenderLossList();
+        this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
+        this.chunkSize = session.getDatagramSize() - 24;//need space for the header;
+        this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
+        this.lastAckSequenceNumber = session.getInitialSequenceNumber();
+        this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
+        this.storeStatistics = Boolean.getBoolean("bolt.sender.storeStatistics");
         initMetrics();
         doStart();
     }
@@ -107,20 +107,22 @@ public class BoltSender {
     }
 
     /**
-     * start the sender thread
+     * Start the sender thread.
      */
     public void start() {
-        logger.info("STARTING SENDER for " + session);
+        LOG.info("STARTING SENDER for " + session);
         startLatch.countDown();
         started = true;
     }
 
-    //starts the sender algorithm
+    /**
+     * Starts the sender algorithm
+     */
     private void doStart() {
-        Runnable r = () -> {
+        final Runnable r = () -> {
             try {
                 while (!stopped) {
-                    //wait until explicitly (re)started
+                    // Wait until explicitly (re)started.
                     startLatch.await();
                     paused = false;
                     senderAlgorithm();
@@ -129,12 +131,12 @@ public class BoltSender {
                 ie.printStackTrace();
             } catch (IOException ex) {
                 ex.printStackTrace();
-                logger.log(Level.SEVERE, "", ex);
+                LOG.log(Level.SEVERE, "", ex);
             }
-            logger.info("STOPPING SENDER for " + session);
+            LOG.info("STOPPING SENDER for " + session);
         };
         String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-        senderThread = BoltThreadFactory.get().newThread(r, "Sender-" + s, false);
+        final Thread senderThread = BoltThreadFactory.get().newThread(r, "Sender-" + s, false);
         senderThread.start();
     }
 
@@ -154,7 +156,7 @@ public class BoltSender {
                 throughput.end();
                 throughput.begin();
             }
-            //store data for potential retransmit
+            // Store data for potential retransmit.
             int l = p.getLength();
             byte[] data = new byte[l];
             System.arraycopy(p.getData(), 0, data, 0, l);
@@ -177,7 +179,7 @@ public class BoltSender {
             packet.setPacketSequenceNumber(getNextSequenceNumber());
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
-            int len = Math.min(bb.remaining(), chunksize);
+            int len = Math.min(bb.remaining(), chunkSize);
             byte[] data = packet.getData();
             bb.get(data, 0, len);
             packet.setLength(len);
@@ -188,8 +190,8 @@ public class BoltSender {
     }
 
     /**
-     * writes a data packet, waiting at most for the specified time
-     * if this is not possible due to a full send queue
+     * Writes a data packet, waiting at most for the specified time.
+     * If this is not possible due to a full send queue
      *
      * @param timeout
      * @param units
@@ -271,7 +273,7 @@ public class BoltSender {
         long ackNumber = acknowledgement.getAckNumber();
         cc.onACK(ackNumber);
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
-        //need to remove all sequence numbers up the ack number from the sendBuffer
+        // Need to remove all sequence numbers up the ACK number from the sendBuffer.
         boolean removed;
         for (long s = lastAckSequenceNumber; s < ackNumber; s++) {
             synchronized (sendLock) {
@@ -283,7 +285,7 @@ public class BoltSender {
             }
         }
         lastAckSequenceNumber = Math.max(lastAckSequenceNumber, ackNumber);
-        //send ACK2 packet to the receiver
+        // Send ACK2 packet to the receiver.
         sendAck2(ackNumber);
         statistics.incNumberOfACKReceived();
         if (storeStatistics) statistics.storeParameters();
@@ -307,16 +309,17 @@ public class BoltSender {
         session.getSocket().getReceiver().resetEXPTimer();
         statistics.incNumberOfNAKReceived();
 
-        if (logger.isLoggable(Level.FINER)) {
-            logger.finer("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
+        if (LOG.isLoggable(Level.FINER)) {
+            LOG.finer("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
                     + "set send period to " + session.getCongestionControl().getSendInterval());
         }
     }
 
-    //send single keep alive packet -> move to socket!
+    /**
+     * Send single keep alive packet -> TODO: move to socket!
+     */
     protected void sendKeepAlive() throws Exception {
         KeepAlive keepAlive = new KeepAlive();
-        //TODO
         keepAlive.setSession(session);
         endpoint.doSend(keepAlive);
     }
@@ -355,19 +358,19 @@ public class BoltSender {
      */
     public void senderAlgorithm() throws InterruptedException, IOException {
         while (!paused) {
-            iterationStart = Util.getCurrentTime();
-            //if the sender's loss list is not empty
+            long iterationStart = Util.getCurrentTime();
+            // If the sender's loss list is not empty
             Long entry = senderLossList.getFirstEntry();
             if (entry != null) {
                 handleRetransmit(entry);
             } else {
-                //if the number of unacknowledged data packets does not exceed the congestion
-                //and the flow window sizes, pack a new packet
+                // If the number of unacknowledged data packets does not exceed the congestion
+                // and the flow window sizes, pack a new packet.
                 int unAcknowledged = unacknowledged.get();
 
                 if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize()
                         && unAcknowledged < session.getFlowWindowSize()) {
-                    //check for application data
+                    // Check for application data
                     DataPacket dp = flowWindow.consumeData();
                     if (dp != null) {
                         send(dp);
@@ -376,7 +379,7 @@ public class BoltSender {
                         statistics.incNumberOfMissingDataEvents();
                     }
                 } else {
-                    //congestion window full, wait for an ack
+                    // Congestion window full, wait for an ack
                     if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
                         statistics.incNumberOfCCWindowExceededEvents();
                     }
@@ -384,7 +387,7 @@ public class BoltSender {
                 }
             }
 
-            //wait
+            // Wait
             if (largestSentSequenceNumber % 16 != 0) {
                 long snd = (long) session.getCongestionControl().getSendInterval();
                 long passed = Util.getCurrentTime() - iterationStart;
@@ -403,13 +406,13 @@ public class BoltSender {
     }
 
     /**
-     * re-transmit an entry from the sender loss list
+     * Re-transmit an entry from the sender loss list.
      *
      * @param seqNumber
      */
     protected void handleRetransmit(Long seqNumber) {
         try {
-            //retransmit the packet and remove it from  the list
+            // Retransmit the packet and remove it from the list.
             byte[] data = sendBuffer.get(seqNumber);
             if (data != null) {
                 retransmit.setPacketSequenceNumber(seqNumber);
@@ -420,7 +423,7 @@ public class BoltSender {
                 statistics.incNumberOfRetransmittedDataPackets();
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "", e);
+            LOG.log(Level.WARNING, "", e);
         }
     }
 
@@ -436,8 +439,8 @@ public class BoltSender {
     }
 
     /**
-     * the next sequence number for data packets.
-     * The initial sequence number is "0"
+     * The next sequence number for data packets.
+     * The initial sequence number is "0".
      */
     public long getNextSequenceNumber() {
         currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
@@ -446,20 +449,6 @@ public class BoltSender {
 
     public long getCurrentSequenceNumber() {
         return currentSequenceNumber;
-    }
-
-    /**
-     * returns the largest sequence number sent so far
-     */
-    public long getLargestSentSequenceNumber() {
-        return largestSentSequenceNumber;
-    }
-
-    /**
-     * returns the last Ack. sequence number
-     */
-    public long getLastAckSequenceNumber() {
-        return lastAckSequenceNumber;
     }
 
     boolean haveAcknowledgementFor(long sequenceNumber) {
