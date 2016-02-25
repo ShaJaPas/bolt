@@ -29,7 +29,7 @@ public class TestBoltLargeDataCC1 extends TestBoltLargeData {
 	public void test1()throws Exception{
 		Logger.getLogger("bolt").setLevel(Level.INFO);
 		BoltReceiver.dropRate=0;
-		System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
+//		System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
 		TIMEOUT=Integer.MAX_VALUE;
 		doTest();
 	}

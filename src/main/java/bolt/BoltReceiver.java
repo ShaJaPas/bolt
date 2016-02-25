@@ -33,49 +33,59 @@ import java.util.logging.Logger;
  */
 public class BoltReceiver {
 
-    private static final Logger logger = Logger.getLogger(BoltReceiver.class.getName());
+    private static final Logger LOG = Logger.getLogger(BoltReceiver.class.getName());
+
     /**
-     * if set to true connections will not expire, but will only be
+     * If set to true connections will not expire, but will only be
      * closed by a Shutdown message
      */
     public static boolean connectionExpiryDisabled = false;
-    //every nth packet will be discarded... for testing only of course
-    public static int dropRate = 0;
     private final BoltEndPoint endpoint;
     private final BoltSession session;
     private final BoltStatistics statistics;
-    //record seqNo of detected lostdata and latest feedback time
+
+    //every nth packet will be discarded... for testing only of course
+    public static int dropRate = 0;
+
+    /** record seqNo of detected lost data and latest feedback time */
     private final ReceiverLossList receiverLossList;
-    //record each sent ACK and the sent time
+
+    /** record each sent ACK and the sent time */
     private final AckHistoryWindow ackHistoryWindow;
-    //Packet history window that stores the time interval between the current and the last seq.
+
+    /** Packet history window that stores the time interval between the current and the last seq. */
     private final PacketHistoryWindow packetHistoryWindow;
 
     //ACK event related
-    /*records the time interval between each probing pair
-    compute the median packet pair interval of the last
-    16 packet pair intervals (PI) and the estimate link capacity.(packet/s)*/
+    /**
+     * Records the time interval between each probing pair compute the
+     * median packet pair interval of the last 16 packet pair intervals (PI)
+     * and the estimate link capacity.(packet/s)
+     */
     private final PacketPairWindow packetPairWindow;
+
     //instant when the session was created (for expiry checking)
     private final long sessionUpSince;
 
     //EXP event related
-    //milliseconds to timeout a new session that stays idle
-    private final long IDLE_TIMEOUT = 3 * 60 * 1000;
-    //buffer size for storing data
+    /** Milliseconds to timeout a new session that stays idle */
+    private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
+
+    /** buffer size for storing data */
     private final long bufferSize;
-    //stores received packets to be sent
+
+    /** stores received packets to be sent */
     private final BlockingQueue<BoltPacket> handoffQueue;
-    private final boolean storeStatistics;
-    //estimated link capacity
+
+    /** estimated link capacity */
     long estimateLinkCapacity;
-    // the packet arrival rate
+    /** the packet arrival rate */
     long packetArrivalSpeed;
-    //round trip time, calculated from ACK/ACK2 pairs
+    /** round trip time, calculated from ACK/ACK2 pairs */
     long roundTripTime = 0;
-    //round trip time variance
+    /** round trip time variance */
     long roundTripTimeVar = roundTripTime / 2;
-    //for storing the arrival time of the last received data packet
+    /** for storing the arrival time of the last received data packet */
     private volatile long lastDataPacketArrivalTime = 0;
 
     /**
@@ -121,13 +131,14 @@ public class BoltReceiver {
     private long expTimerInterval = 100 * Util.getSYNTime();
     private long nextEXP;
 
-    private Thread receiverThread;
     private volatile boolean stopped = false;
 
     /**
      * (optional) ack interval (see CongestionControl interface)
      */
     private volatile long ackInterval = -1;
+
+    private final boolean storeStatistics;
     private MeanValue dgReceiveInterval;
     private MeanValue dataPacketInterval;
     private MeanValue processTime;
@@ -144,20 +155,20 @@ public class BoltReceiver {
      *
      * @param session
      */
-    public BoltReceiver(BoltSession session, BoltEndPoint endpoint) {
+    public BoltReceiver(final BoltSession session, final BoltEndPoint endpoint) {
+        if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
         this.session = session;
         this.sessionUpSince = System.currentTimeMillis();
         this.statistics = session.getStatistics();
-        if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
-        ackHistoryWindow = new AckHistoryWindow(16);
-        packetHistoryWindow = new PacketHistoryWindow(16);
-        receiverLossList = new ReceiverLossList();
-        packetPairWindow = new PacketPairWindow(16);
-        largestReceivedSeqNumber = session.getInitialSequenceNumber() - 1;
-        bufferSize = session.getReceiveBufferSize();
-        handoffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
-        storeStatistics = Boolean.getBoolean("bolt.receiver.storeStatistics");
+        this.ackHistoryWindow = new AckHistoryWindow(16);
+        this.packetHistoryWindow = new PacketHistoryWindow(16);
+        this.receiverLossList = new ReceiverLossList();
+        this.packetPairWindow = new PacketPairWindow(16);
+        this.largestReceivedSeqNumber = session.getInitialSequenceNumber() - 1;
+        this.bufferSize = session.getReceiveBufferSize();
+        this.handoffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
+        this.storeStatistics = Boolean.getBoolean("bolt.receiver.storeStatistics");
         initMetrics();
         start();
     }
@@ -174,15 +185,14 @@ public class BoltReceiver {
         statistics.addMetric(dataProcessTime);
     }
 
-    //starts the sender algorithm
+    /** Starts the sender algorithm */
     private void start() {
-
-        Runnable r = () -> {
+        final Runnable r = () -> {
             try {
                 while (session.getSocket() == null) Thread.sleep(100);
                 session.getSocket().getInputStream();
 
-                logger.info("STARTING RECEIVER for " + session);
+                LOG.info("STARTING RECEIVER for " + session);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * expTimerInterval;
@@ -191,12 +201,12 @@ public class BoltReceiver {
                     receiverAlgorithm();
                 }
             } catch (Exception ex) {
-                logger.log(Level.SEVERE, "", ex);
+                LOG.log(Level.SEVERE, "", ex);
             }
-            logger.info("STOPPING RECEIVER for " + session);
+            LOG.info("STOPPING RECEIVER for " + session);
         };
         String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-        receiverThread = BoltThreadFactory.get().newThread(r, "Receiver-" + s, false);
+        final Thread receiverThread = BoltThreadFactory.get().newThread(r, "Receiver-" + s, false);
         receiverThread.start();
     }
 
@@ -205,8 +215,8 @@ public class BoltReceiver {
      */
     protected void receive(BoltPacket p) throws IOException {
         if (storeStatistics) dgReceiveInterval.end();
-        if (!p.isControlPacket() && logger.isLoggable(Level.FINE)) {
-            logger.fine("++ " + p + " queuesize=" + handoffQueue.size());
+        if (!p.isControlPacket() && LOG.isLoggable(Level.FINE)) {
+            LOG.fine("++ " + p + " queuesize=" + handoffQueue.size());
         }
         handoffQueue.offer(p);
         if (storeStatistics) dgReceiveInterval.begin();
@@ -332,7 +342,8 @@ public class BoltReceiver {
         if (ackNumber == largestAcknowledgedAckNumber) {
             //do not send this ACK
             return;
-        } else if (ackNumber == lastAckNumber) {
+        }
+        else if (ackNumber == lastAckNumber) {
             //or it is equals to the ackNumber in the last ACK
             //and the time interval between these two ACK packets
             //is less than 2 RTTs,do not send(stop)
@@ -395,7 +406,7 @@ public class BoltReceiver {
             if (!connectionExpiryDisabled && !stopped) {
                 sendShutdown();
                 stop();
-                logger.info("Session " + session + " expired.");
+                LOG.info("Session " + session + " expired.");
                 return;
             }
         }
@@ -434,7 +445,7 @@ public class BoltReceiver {
 //		n++;
 //		//if(dropRate>0 && n % dropRate == 0){
 //			if(n % 1111 == 0){
-//				logger.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
+//				LOG.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
 //				return;
 //			}
 //		//}
@@ -506,7 +517,7 @@ public class BoltReceiver {
             receiverLossList.insert(detectedLossSeqNumber);
         }
         endpoint.doSend(nAckPacket);
-        //logger.info("NAK for "+currentSequenceNumber);
+        //LOG.info("NAK for "+currentSequenceNumber);
         statistics.incNumberOfNAKSent();
     }
 

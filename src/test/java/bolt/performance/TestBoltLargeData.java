@@ -36,7 +36,7 @@ public class TestBoltLargeData extends BoltTestBase {
         Logger.getLogger("bolt").setLevel(Level.INFO);
 //		System.setProperty("bolt.receiver.storeStatistics","true");
 //		System.setProperty("bolt.sender.storeStatistics","true");
-        System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
+//        System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
         BoltReceiver.dropRate = 0;
         TIMEOUT = Integer.MAX_VALUE;
         try {

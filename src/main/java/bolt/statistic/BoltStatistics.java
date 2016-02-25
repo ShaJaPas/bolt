@@ -26,7 +26,7 @@ public class BoltStatistics {
     private final AtomicInteger numberOfCCWindowExceededEvents = new AtomicInteger(0);
 
     private final String componentDescription;
-    private final List<MeanValue> metrics = new ArrayList<MeanValue>();
+    private final List<MeanValue> metrics = new ArrayList<>();
     private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
     boolean first = true;
     private volatile long roundTripTime;

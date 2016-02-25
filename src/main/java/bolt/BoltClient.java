@@ -117,10 +117,6 @@ public class BoltClient {
         return clientSession.getSocket().getOutputStream();
     }
 
-    public BoltEndPoint getEndpoint() throws IOException {
-        return clientEndpoint;
-    }
-
     public BoltStatistics getStatistics() {
         return clientSession.getStatistics();
     }

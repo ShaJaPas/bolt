@@ -66,7 +66,7 @@ public class ReceiverLossList {
      * @return
      */
     public List<Long> getFilteredSequenceNumbers(long RTT, boolean doFeedback) {
-        List<Long> result = new ArrayList<Long>();
+        List<Long> result = new ArrayList<>();
         ReceiverLossListEntry[] sorted = backingList.toArray(new ReceiverLossListEntry[0]);
         Arrays.sort(sorted);
         for (ReceiverLossListEntry e : sorted) {

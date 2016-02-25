@@ -38,7 +38,7 @@ public interface CongestionControl {
     /**
      * get the current value of the estimated link capacity
      */
-    public long getEstimatedLinkCapacity();
+    long getEstimatedLinkCapacity();
 
     /**
      * get the current value of the inter-packet interval in microseconds

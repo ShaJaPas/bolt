@@ -68,7 +68,7 @@ public class BoltCongestionControl implements CongestionControl {
     public BoltCongestionControl(BoltSession session) {
         this.session = session;
         this.statistics = session.getStatistics();
-        lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;
+        this.lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;
     }
 
     public void init() {

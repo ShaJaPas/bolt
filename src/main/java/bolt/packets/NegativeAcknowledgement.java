@@ -38,7 +38,7 @@ public class NegativeAcknowledgement extends ControlPacket {
      * @param lossInfo
      */
     private List<Integer> decode(byte[] lossInfo) {
-        List<Integer> lostSequenceNumbers = new ArrayList<Integer>();
+        List<Integer> lostSequenceNumbers = new ArrayList<>();
         ByteBuffer bb = ByteBuffer.wrap(lossInfo);
         byte[] buffer = new byte[4];
         while (bb.remaining() > 0) {

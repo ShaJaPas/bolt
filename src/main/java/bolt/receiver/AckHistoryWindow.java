@@ -19,12 +19,8 @@ public class AckHistoryWindow extends CircularArray<AckHistoryEntry> {
      * @return the time for the given seq no, or <code>-1</code> if not known.
      */
     public long getTime(long ackNumber) {
-        for (AckHistoryEntry obj : circularArray) {
-            if (obj.getAckNumber() == ackNumber) {
-                return obj.getSentTime();
-            }
-        }
-        return -1;
+        final AckHistoryEntry obj = getEntry(ackNumber);
+        return (obj == null) ? -1 : obj.getSentTime();
     }
 
     public AckHistoryEntry getEntry(long ackNumber) {

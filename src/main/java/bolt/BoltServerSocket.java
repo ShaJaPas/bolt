@@ -62,7 +62,4 @@ public class BoltServerSocket {
         endpoint.stop();
     }
 
-    public BoltEndPoint getEndpoint() {
-        return endpoint;
-    }
 }

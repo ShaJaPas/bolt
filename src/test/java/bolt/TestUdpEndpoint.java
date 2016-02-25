@@ -55,7 +55,7 @@ public class TestUdpEndpoint extends BoltTestBase {
 		BoltEndPoint endpoint=new BoltEndPoint(localhost,65322);
 		endpoint.start();
 		Destination d1=new Destination(localhost,12345);
-		int dataSize= BoltSession.DEFAULT_DATAGRAM_SIZE;
+		int dataSize= BoltEndPoint.DATAGRAM_SIZE;
 		DatagramPacket p=new DatagramPacket(getRandomData(dataSize),dataSize,d1.getAddress(),d1.getPort());
 		int N=100000;
 		long start=System.currentTimeMillis();
