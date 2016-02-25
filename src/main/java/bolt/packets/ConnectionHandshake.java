@@ -23,22 +23,26 @@ import java.net.InetAddress;
  * <li> 128 bits: the IP address of the peer's UDP socket
  * </ol>
  */
-public class ConnectionHandshake extends ControlPacket {
-    public static final long SOCKET_TYPE_STREAM = 0;
-    public static final long SOCKET_TYPE_DGRAM = 1;
-    public static final long CONNECTION_TYPE_REGULAR = 1L;
+public class ConnectionHandshake extends ControlPacket
+{
+    public static final long SOCKET_TYPE_STREAM         = 0;
+    public static final long SOCKET_TYPE_DGRAM          = 1;
+    public static final long CONNECTION_TYPE_REGULAR    = 1L;
     public static final long CONNECTION_TYPE_RENDEZVOUS = 0L;
     /**
      * connection type in response handshake packet
      */
-    public static final long CONNECTION_SERVER_ACK = -1L;
-    private long boltVersion = 4;
-    private long socketType = SOCKET_TYPE_DGRAM; //stream or dgram
-    private long initialSeqNo = 0;
+    public static final long CONNECTION_SERVER_ACK      = -1L;
+    private             long boltVersion                = 4;
+    private             long socketType                 = SOCKET_TYPE_DGRAM; //stream or dgram
+    private             long initialSeqNo               = 0;
     private long packetSize;
     private long maxFlowWndSize;
     private long connectionType = CONNECTION_TYPE_REGULAR;//regular or rendezvous mode
 
+    /**
+     * Tell peer what the socket ID on this side is.
+     */
     private long socketID;
 
     private long cookie = 0;
@@ -46,21 +50,55 @@ public class ConnectionHandshake extends ControlPacket {
     //address of the UDP socket
     private InetAddress address;
 
-    public ConnectionHandshake() {
+    public ConnectionHandshake()
+    {
         this.controlPacketType = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId();
     }
 
-    public ConnectionHandshake(byte[] controlInformation) throws IOException {
+    public ConnectionHandshake(byte[] controlInformation) throws IOException
+    {
         this();
         decode(controlInformation);
     }
 
+    public ConnectionHandshake(long packetSize, long boltVersion, long initialSeqNo, long connectionType, long maxFlowWndSize,
+            long socketID, long destinationID, long cookie, InetAddress address)
+    {
+        this();
+        this.packetSize = packetSize;
+        this.boltVersion = boltVersion;
+        this.initialSeqNo = initialSeqNo;
+        this.connectionType = connectionType;
+        this.maxFlowWndSize = maxFlowWndSize;
+        this.socketID = socketID;
+        this.destinationID = destinationID;
+        this.cookie = cookie;
+        this.address = address;
+    }
+
+    public static ConnectionHandshake ofClientInitial(long packetSize, long initialSeqNo, long maxFlowWndSize,
+            long socketID, InetAddress address) {
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
+    }
+
+    public static ConnectionHandshake ofClientSecond(long packetSize, long initialSeqNo, long maxFlowWndSize,
+            long socketID, InetAddress address) {
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
+    }
+
+    public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, long initialSeqNo, long maxFlowWndSize,
+            long socketID, long destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID, destinationID, cookie, address);
+    }
+
     //faster than instanceof...
-    public boolean isConnectionHandshake() {
+    public boolean isConnectionHandshake()
+    {
         return true;
     }
 
-    void decode(byte[] data) throws IOException {
+    void decode(byte[] data) throws IOException
+    {
         boltVersion = PacketUtil.decode(data, 0);
         socketType = PacketUtil.decode(data, 4);
         initialSeqNo = PacketUtil.decode(data, 8);
@@ -73,81 +111,101 @@ public class ConnectionHandshake extends ControlPacket {
         address = PacketUtil.decodeInetAddress(data, 32, false);
     }
 
-    public long getBoltVersion() {
+    public long getBoltVersion()
+    {
         return boltVersion;
     }
 
-    public void setBoltVersion(long boltVersion) {
+    public void setBoltVersion(long boltVersion)
+    {
         this.boltVersion = boltVersion;
     }
 
-    public long getSocketType() {
+    public long getSocketType()
+    {
         return socketType;
     }
 
-    public void setSocketType(long socketType) {
+    public void setSocketType(long socketType)
+    {
         this.socketType = socketType;
     }
 
-    public long getInitialSeqNo() {
+    public long getInitialSeqNo()
+    {
         return initialSeqNo;
     }
 
-    public void setInitialSeqNo(long initialSeqNo) {
+    public void setInitialSeqNo(long initialSeqNo)
+    {
         this.initialSeqNo = initialSeqNo;
     }
 
-    public long getPacketSize() {
+    public long getPacketSize()
+    {
         return packetSize;
     }
 
-    public void setPacketSize(long packetSize) {
+    public void setPacketSize(long packetSize)
+    {
         this.packetSize = packetSize;
     }
 
-    public long getMaxFlowWndSize() {
+    public long getMaxFlowWndSize()
+    {
         return maxFlowWndSize;
     }
 
-    public void setMaxFlowWndSize(long maxFlowWndSize) {
+    public void setMaxFlowWndSize(long maxFlowWndSize)
+    {
         this.maxFlowWndSize = maxFlowWndSize;
     }
 
-    public long getConnectionType() {
+    public long getConnectionType()
+    {
         return connectionType;
     }
 
-    public void setConnectionType(long connectionType) {
+    public void setConnectionType(long connectionType)
+    {
         this.connectionType = connectionType;
     }
 
-    public long getSocketID() {
+    public long getSocketID()
+    {
         return socketID;
     }
 
-    public void setSocketID(long socketID) {
+    public void setSocketID(long socketID)
+    {
         this.socketID = socketID;
     }
 
-    public long getCookie() {
+    public long getCookie()
+    {
         return cookie;
     }
 
-    public void setCookie(long cookie) {
+    public void setCookie(long cookie)
+    {
         this.cookie = cookie;
     }
 
-    public InetAddress getAddress() {
+    public InetAddress getAddress()
+    {
         return address;
     }
 
-    public void setAddress(InetAddress address) {
+    public void setAddress(InetAddress address)
+    {
         this.address = address;
     }
 
     @Override
-    public byte[] encodeControlInformation() {
-        try {
+    public byte[] encodeControlInformation()
+    {
+        try
+        {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(48);
             bos.write(PacketUtil.encode(boltVersion));
             bos.write(PacketUtil.encode(socketType));
@@ -159,14 +217,17 @@ public class ConnectionHandshake extends ControlPacket {
             bos.write(PacketUtil.encode(cookie));
             bos.write(PacketUtil.encode(address));
             return bos.toByteArray();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             // can't happen
             return null;
         }
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(Object obj)
+    {
         if (this == obj)
             return true;
         if (!super.equals(obj))
@@ -195,13 +256,14 @@ public class ConnectionHandshake extends ControlPacket {
         return true;
     }
 
-
-    public String toString() {
+    public String toString()
+    {
         StringBuilder sb = new StringBuilder();
         sb.append("ConnectionHandshake [");
         sb.append("connectionType=").append(connectionType);
         BoltSession session = getSession();
-        if (session != null) {
+        if (session != null)
+        {
             sb.append(", ");
             sb.append(session.getDestination());
         }
@@ -211,11 +273,11 @@ public class ConnectionHandshake extends ControlPacket {
         sb.append(", maxFlowWndSize=").append(maxFlowWndSize);
         sb.append(", socketType=").append(socketType);
         sb.append(", destSocketID=").append(destinationID);
-        if (cookie > 0) sb.append(", cookie=").append(cookie);
+        if (cookie > 0)
+            sb.append(", cookie=").append(cookie);
         sb.append(", address=").append(address);
         sb.append("]");
         return sb.toString();
     }
-
 
 }

@@ -79,7 +79,7 @@ public class ServerSession extends BoltSession {
     protected void handleHandShake(ConnectionHandshake connectionHandshake) {
         LOG.info("Received " + connectionHandshake + " in state <" + getState() + ">");
         if (getState() == READY) {
-            //just send confirmation packet again
+            // Just send confirmation packet again.
             try {
                 sendFinalHandShake(connectionHandshake);
             }
@@ -103,7 +103,7 @@ public class ServerSession extends BoltSession {
                     cc.init();
                 }
             } catch (IOException ex) {
-                //session invalid
+                // Session invalid.
                 LOG.log(Level.WARNING, "Error processing ConnectionHandshake", ex);
                 setState(INVALID);
             }
@@ -133,11 +133,10 @@ public class ServerSession extends BoltSession {
     }
 
     /**
-     * response after the initial connection handshake received:
+     * Response after the initial connection handshake received:
      * compute cookie
      */
     protected void ackInitialHandshake(ConnectionHandshake handshake) throws IOException {
-        ConnectionHandshake responseHandshake = new ConnectionHandshake();
         //compare the packet size and choose minimum
         long clientBufferSize = handshake.getPacketSize();
         long myBufferSize = getDatagramSize();
@@ -145,18 +144,11 @@ public class ServerSession extends BoltSession {
         long initialSequenceNumber = handshake.getInitialSeqNo();
         setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        responseHandshake.setPacketSize(bufferSize);
-        responseHandshake.setBoltVersion(4);
-        responseHandshake.setInitialSeqNo(initialSequenceNumber);
-        responseHandshake.setConnectionType(-1);
-        responseHandshake.setMaxFlowWndSize(handshake.getMaxFlowWndSize());
-        //tell peer what the socket ID on this side is
-        responseHandshake.setSocketID(mySocketID);
-        responseHandshake.setDestinationID(this.getDestination().getSocketID());
-        responseHandshake.setSession(this);
         sessionCookie = SequenceNumber.random();
-        responseHandshake.setCookie(sessionCookie);
-        responseHandshake.setAddress(endPoint.getLocalAddress());
+
+        final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
+                handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
+        responseHandshake.setSession(this);
         LOG.info("Sending reply " + responseHandshake);
         endPoint.doSend(responseHandshake);
     }
@@ -165,25 +157,17 @@ public class ServerSession extends BoltSession {
     protected void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
 
         if (finalConnectionHandshake == null) {
-            finalConnectionHandshake = new ConnectionHandshake();
-            //compare the packet size and choose minimum
+            // Compare the packet size and choose minimum
             long clientBufferSize = handshake.getPacketSize();
             long myBufferSize = getDatagramSize();
             long bufferSize = Math.min(clientBufferSize, myBufferSize);
             long initialSequenceNumber = handshake.getInitialSeqNo();
             setInitialSequenceNumber(initialSequenceNumber);
             setDatagramSize((int) bufferSize);
-            finalConnectionHandshake.setPacketSize(bufferSize);
-            finalConnectionHandshake.setBoltVersion(4);
-            finalConnectionHandshake.setInitialSeqNo(initialSequenceNumber);
-            finalConnectionHandshake.setConnectionType(-1);
-            finalConnectionHandshake.setMaxFlowWndSize(handshake.getMaxFlowWndSize());
-            //tell peer what the socket ID on this side is
-            finalConnectionHandshake.setSocketID(mySocketID);
-            finalConnectionHandshake.setDestinationID(this.getDestination().getSocketID());
+
+            finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
+                    handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
             finalConnectionHandshake.setSession(this);
-            finalConnectionHandshake.setCookie(sessionCookie);
-            finalConnectionHandshake.setAddress(endPoint.getLocalAddress());
         }
         LOG.info("Sending final handshake ack " + finalConnectionHandshake);
         endPoint.doSend(finalConnectionHandshake);
