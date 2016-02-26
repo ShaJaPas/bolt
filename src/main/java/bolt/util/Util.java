@@ -29,7 +29,7 @@ public class Util {
      * @return
      */
     public static long getSYNTime() {
-        return 10000;
+        return 10_000;
     }
 
     public static double getSYNTimeD() {

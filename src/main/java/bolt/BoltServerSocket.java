@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 
 public class BoltServerSocket {
 
-    private static final Logger logger = Logger.getLogger(BoltClient.class.getName());
+    private static final Logger LOG = Logger.getLogger(BoltClient.class.getName());
 
     private final BoltEndPoint endpoint;
 
@@ -25,16 +25,18 @@ public class BoltServerSocket {
      */
     public BoltServerSocket(InetAddress localAddress, int port) throws SocketException, UnknownHostException {
         endpoint = new BoltEndPoint(localAddress, port);
-        logger.info("Created server endpoint on port " + endpoint.getLocalPort());
+        LOG.info("Created server endpoint on port " + endpoint.getLocalPort());
     }
 
-    //starts a server on localhost
+    /**
+     * Starts a server on localhost.
+     */
     public BoltServerSocket(int port) throws SocketException, UnknownHostException {
         this(InetAddress.getLocalHost(), port);
     }
 
     /**
-     * listens and blocks until a new client connects and returns a valid {@link BoltSocket}
+     * Listens and blocks until a new client connects and returns a valid {@link BoltSocket}
      * for the new connection
      *
      * @return
@@ -47,7 +49,7 @@ public class BoltServerSocket {
         while (!shutdown) {
             BoltSession session = endpoint.accept(10000, TimeUnit.MILLISECONDS);
             if (session != null) {
-                //wait for handshake to complete
+                // Wait for handshake to complete.
                 while (!session.isReady() || session.getSocket() == null) {
                     Thread.sleep(100);
                 }

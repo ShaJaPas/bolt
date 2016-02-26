@@ -1,9 +1,8 @@
 package bolt.performance;
 
-import org.junit.Test;
 import bolt.*;
-import bolt.cc.SimpleTCP;
 import bolt.util.TestUtil;
+import org.junit.Test;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -30,6 +29,10 @@ public class TestBoltLargeData extends BoltTestBase {
     volatile boolean serverRunning = true;
     volatile boolean serverStarted = false;
     volatile String md5_received = null;
+
+    public static void main(String[] args) throws Exception {
+        new TestBoltLargeData().test1();
+    }
 
     @Test
     public void test1() throws Exception {
@@ -112,10 +115,6 @@ public class TestBoltLargeData extends BoltTestBase {
         Runnable serverProcess = () -> {
 
             try {
-                Boolean devNull = Boolean.getBoolean("bolt.dev.null");
-                if (devNull) {
-                    while (true) Thread.sleep(10000);
-                }
                 MessageDigest md5 = MessageDigest.getInstance("MD5");
                 long start = System.currentTimeMillis();
                 BoltSocket s = serverSocket.accept();

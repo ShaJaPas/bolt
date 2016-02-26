@@ -78,17 +78,20 @@ public class ConnectionHandshake extends ControlPacket
 
     public static ConnectionHandshake ofClientInitial(long packetSize, long initialSeqNo, long maxFlowWndSize,
             long socketID, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
+                0, 0, address);
     }
 
     public static ConnectionHandshake ofClientSecond(long packetSize, long initialSeqNo, long maxFlowWndSize,
-            long socketID, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
+            long socketID, long destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
+                destinationID, cookie, address);
     }
 
     public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, long initialSeqNo, long maxFlowWndSize,
             long socketID, long destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID, destinationID, cookie, address);
+        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
+                destinationID, cookie, address);
     }
 
     //faster than instanceof...

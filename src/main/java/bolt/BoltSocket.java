@@ -8,9 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * BoltSocket is analogous to a normal java.net.Socket, it provides input and
- * output streams for the application
- * <p>
- * TODO is it possible to actually extend java.net.Socket ?
+ * output streams for the application.
  */
 public class BoltSocket {
 
@@ -19,8 +17,8 @@ public class BoltSocket {
     private final BoltSession session;
     private volatile boolean active;
     //processing received data
-    private BoltReceiver receiver;
-    private BoltSender sender;
+    private final BoltReceiver receiver;
+    private final BoltSender sender;
     private BoltInputStream inputStream;
     private BoltOutputStream outputStream;
 
@@ -29,7 +27,7 @@ public class BoltSocket {
      * @param session
      * @throws SocketException,UnknownHostException
      */
-    public BoltSocket(BoltEndPoint endpoint, BoltSession session) throws SocketException, UnknownHostException {
+    public BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
         this.endpoint = endpoint;
         this.session = session;
         this.receiver = new BoltReceiver(session, endpoint);
@@ -40,28 +38,12 @@ public class BoltSocket {
         return receiver;
     }
 
-    public void setReceiver(BoltReceiver receiver) {
-        this.receiver = receiver;
-    }
-
     public BoltSender getSender() {
         return sender;
     }
 
-    public void setSender(BoltSender sender) {
-        this.sender = sender;
-    }
-
     public boolean isActive() {
         return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public BoltEndPoint getEndpoint() {
-        return endpoint;
     }
 
     /**
@@ -114,9 +96,7 @@ public class BoltSocket {
         try {
             doWrite(data, offset, length, 10, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ie) {
-            IOException io = new IOException();
-            io.initCause(ie);
-            throw io;
+            throw new IOException(ie);
         }
     }
 
@@ -144,18 +124,18 @@ public class BoltSocket {
     }
 
     /**
-     * will block until the outstanding packets have really been sent out
-     * and acknowledged
+     * Will block until the outstanding packets have really been sent out
+     * and acknowledged.
      */
-    protected void flush() throws InterruptedException {
+    protected void flush() throws InterruptedException, IllegalStateException {
         if (!active) return;
         final long seqNo = sender.getCurrentSequenceNumber();
         if (seqNo < 0) throw new IllegalStateException();
-        while (!sender.isSentOut(seqNo)) {
+        while (active && !sender.isSentOut(seqNo)) {
             Thread.sleep(5);
         }
         if (seqNo > -1) {
-            //wait until data has been sent out and acknowledged
+            // Wait until data has been sent out and acknowledged.
             while (active && !sender.haveAcknowledgementFor(seqNo)) {
                 sender.waitForAck(seqNo);
             }
@@ -164,14 +144,16 @@ public class BoltSocket {
 //        sender.pause();
     }
 
-    //writes and wait for ack
+    /**
+     * Writes and wait for ack.
+     */
     protected void doWriteBlocking(byte[] data) throws IOException, InterruptedException {
         doWrite(data);
         flush();
     }
 
     /**
-     * close the connection
+     * Close the connection.
      *
      * @throws IOException
      */

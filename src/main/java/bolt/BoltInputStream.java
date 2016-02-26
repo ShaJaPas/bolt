@@ -121,7 +121,8 @@ public class BoltInputStream extends InputStream {
                     while (!closed && currentChunk == null) {
                         currentChunk = receiveBuffer.poll(1000, TimeUnit.MILLISECONDS);
                     }
-                } else currentChunk = receiveBuffer.poll(10, TimeUnit.MILLISECONDS);
+                }
+                else currentChunk = receiveBuffer.poll(10, TimeUnit.MILLISECONDS);
 
             } catch (InterruptedException ie) {
                 throw new IOException(ie);

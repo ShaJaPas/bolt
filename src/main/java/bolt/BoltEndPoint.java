@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  */
 public class BoltEndPoint {
 
-    private static final Logger logger = Logger.getLogger(ClientSession.class.getName());
+    private static final Logger LOG = Logger.getLogger(ClientSession.class.getName());
 
     public static final int DATAGRAM_SIZE = 1400;
 
@@ -123,12 +123,12 @@ public class BoltEndPoint {
             try {
                 doReceive();
             } catch (Exception ex) {
-                logger.log(Level.WARNING, "", ex);
+                LOG.log(Level.WARNING, "", ex);
             }
         };
         final Thread t = BoltThreadFactory.get().newThread(receive, "UDPEndpoint", true);
         t.start();
-        logger.info("BoltEndpoint started.");
+        LOG.info("BoltEndpoint started.");
     }
 
     public void start() {
@@ -159,7 +159,7 @@ public class BoltEndPoint {
     }
 
     public void addSession(Long destinationID, BoltSession session) {
-        logger.info("Storing session <" + destinationID + ">");
+        LOG.info("Storing session <" + destinationID + ">");
         sessions.put(destinationID, session);
     }
 
@@ -211,14 +211,14 @@ public class BoltEndPoint {
                 } else if (packet.isConnectionHandshake()) {
                     connectionHandshake((ConnectionHandshake) packet, peer);
                 } else {
-                    logger.warning("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
+                    LOG.warning("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
                 }
             } catch (SocketException ex) {
-                logger.log(Level.INFO, "SocketException: " + ex.getMessage());
+                LOG.log(Level.INFO, "SocketException: " + ex.getMessage());
             } catch (SocketTimeoutException ste) {
                 //can safely ignore... we will retry until the endpoint is stopped
             } catch (Exception ex) {
-                logger.log(Level.WARNING, "Got: " + ex.getMessage(), ex);
+                LOG.log(Level.WARNING, "Got: " + ex.getMessage(), ex);
             }
         }
     }
@@ -237,7 +237,7 @@ public class BoltEndPoint {
         BoltSession session = sessionsBeingConnected.get(peer);
         long destID = packet.getDestinationID();
         if (session != null && session.getSocketID() == destID) {
-            //confirmation handshake
+            // Confirmation handshake
             sessionsBeingConnected.remove(p);
             addSession(destID, session);
         }
@@ -246,9 +246,9 @@ public class BoltEndPoint {
             sessionsBeingConnected.put(p, session);
             sessions.put(session.getSocketID(), session);
             if (serverSocketMode) {
-                logger.fine("Pooling new request.");
+                LOG.fine("Pooling new request.");
                 sessionHandoff.put(session);
-                logger.fine("Request taken for processing.");
+                LOG.fine("Request taken for processing.");
             }
         }
         else {

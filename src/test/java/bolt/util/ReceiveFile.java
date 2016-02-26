@@ -100,12 +100,7 @@ public class ReceiveFile extends Application {
             }
             long size = decode(sizeInfo, 0);
 
-            Boolean devNull = Boolean.getBoolean("bolt.dev.null");
-            if (devNull) {
-                while (true) Thread.sleep(10000);
-            }
-
-            File file = new File(new String(localFile));
+            File file = new File(localFile);
             System.out.println("[ReceiveFile] Write to local file <" + file.getAbsolutePath() + ">");
             FileOutputStream fos = new FileOutputStream(file);
             OutputStream os = new BufferedOutputStream(fos, 1024 * 1024);

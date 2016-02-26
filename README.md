@@ -1,7 +1,7 @@
 
 **TODO**
 - [ ] Reliable/Unreliable packets
-- [ ] Assembly/Disassembly
+- [ ] Message assembly/disassembly
 - [ ] Delivery strategy (aggressive, on NACK)
 - [ ] Trim control and data packets
 - [ ] Simulated packet-loss

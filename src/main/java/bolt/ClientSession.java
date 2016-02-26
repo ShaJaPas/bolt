@@ -42,7 +42,8 @@ public class ClientSession extends BoltSession {
             if (getState().seqNo() <= HANDSHAKING.seqNo()) {
                 setState(HANDSHAKING);
                 sendInitialHandShake();
-            } else if (getState() == HANDSHAKING2) {
+            }
+            else if (getState() == HANDSHAKING2) {
                 sendSecondHandshake();
             }
 
@@ -80,8 +81,9 @@ public class ClientSession extends BoltSession {
                 } else {
                     socket.getReceiver().receive(packet);
                 }
-            } catch (Exception ex) {
-                //session is invalid
+            }
+            catch (Exception ex) {
+                // Session is invalid.
                 LOG.log(Level.SEVERE, "Error in " + toString(), ex);
                 setState(INVALID);
             }
@@ -144,24 +146,11 @@ public class ClientSession extends BoltSession {
      * Second handshake for connect.
      */
     protected void sendSecondHandshake() throws IOException {
-        ConnectionHandshake handshake = new ConnectionHandshake();
-        handshake.setConnectionType(ConnectionHandshake.CONNECTION_TYPE_REGULAR);
-        handshake.setSocketType(ConnectionHandshake.SOCKET_TYPE_DGRAM);
-
-        //TODO CIAN: REMOVED
-//        handshake.setInitialSeqNo(initialSequenceNo);
-        handshake.setInitialSeqNo(getInitialSequenceNumber());
-
-
-        handshake.setPacketSize(getDatagramSize());
-        handshake.setSocketID(mySocketID);
-        handshake.setMaxFlowWndSize(flowWindowSize);
-        handshake.setSession(this);
-        handshake.setCookie(sessionCookie);
-        handshake.setAddress(endPoint.getLocalAddress());
-        handshake.setDestinationID(getDestination().getSocketID());
-        LOG.info("Sending confirmation " + handshake);
-        endPoint.doSend(handshake);
+        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), getInitialSequenceNumber(),
+                flowWindowSize, mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
+        ch.setSession(this);
+        LOG.info("Sending confirmation " + ch);
+        endPoint.doSend(ch);
     }
 
 

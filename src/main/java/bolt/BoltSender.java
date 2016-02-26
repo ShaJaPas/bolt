@@ -172,9 +172,11 @@ public class BoltSender {
         do {
             packet = flowWindow.getForProducer();
             if (packet == null) {
-                Thread.sleep(10);
+                Thread.sleep(5);
             }
-        } while (packet == null);//TODO check timeout...
+        }
+        while (packet == null);//TODO check timeout...
+
         try {
             packet.setPacketSequenceNumber(getNextSequenceNumber());
             packet.setSession(session);
@@ -363,7 +365,8 @@ public class BoltSender {
             Long entry = senderLossList.getFirstEntry();
             if (entry != null) {
                 handleRetransmit(entry);
-            } else {
+            }
+            else {
                 // If the number of unacknowledged data packets does not exceed the congestion
                 // and the flow window sizes, pack a new packet.
                 int unAcknowledged = unacknowledged.get();
@@ -378,7 +381,8 @@ public class BoltSender {
                     } else {
                         statistics.incNumberOfMissingDataEvents();
                     }
-                } else {
+                }
+                else {
                     // Congestion window full, wait for an ack
                     if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
                         statistics.incNumberOfCCWindowExceededEvents();
@@ -393,7 +397,7 @@ public class BoltSender {
                 long passed = Util.getCurrentTime() - iterationStart;
                 int x = 0;
                 while (snd - passed > 0) {
-                    //can't wait with microsecond precision :(
+                    // Can't wait with microsecond precision :(
                     if (x == 0) {
                         statistics.incNumberOfCCSlowDownEvents();
                         x++;

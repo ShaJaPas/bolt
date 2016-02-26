@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Holds a fixed number of {@link DataPacket} instances which are sent out.<br/>
  * <p>
  * It is assumed that a single thread (the producer) stores new data,
- * and another single thread (the consumer) reads/removes data.<br/>
+ * and another single thread (the consumer) reads/removes data.
  */
 public class FlowWindow {
 
@@ -57,6 +57,10 @@ public class FlowWindow {
      * @return data packet to update, or null if flow window is full.
      */
     public DataPacket getForProducer() {
+        // Do quick check before locking.
+        if (isFull) {
+            return null;
+        }
         lock.lock();
         try {
             if (isFull) {
@@ -91,6 +95,10 @@ public class FlowWindow {
     }
 
     public DataPacket consumeData() {
+        // Do quick check before locking.
+        if (isEmpty) {
+            return null;
+        }
         lock.lock();
         try {
             if (isEmpty) {

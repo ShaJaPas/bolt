@@ -14,6 +14,10 @@ public class TestSendFileReceiveFile extends BoltTestBase {
 
     volatile boolean serverStarted = false;
 
+    public static void main(String[] args) throws Exception {
+        new TestSendFileReceiveFile().test1();
+    }
+
     @Test
     public void test1() throws Exception {
         runServer();

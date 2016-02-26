@@ -145,7 +145,7 @@ public class BoltReceiver {
     private MeanValue dataProcessTime;
 
     /**
-     * number of received data packets
+     * Number of received data packets.
      */
     private int n = 0;
     private volatile long ackSequenceNumber = 0;
@@ -210,8 +210,8 @@ public class BoltReceiver {
         receiverThread.start();
     }
 
-    /*
-     * packets are written by the endpoint
+    /**
+     * Packets are written by the endpoint.
      */
     protected void receive(BoltPacket p) throws IOException {
         if (storeStatistics) dgReceiveInterval.end();
@@ -266,10 +266,10 @@ public class BoltReceiver {
             nextEXP = currentTime + expTimerInterval;
             processEXPEvent();
         }
-        // perform time-bounded UDP receive
+        // Perform time-bounded UDP receive
         BoltPacket packet = handoffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
         if (packet != null) {
-            // reset exp count to 1
+            // Reset exp count to 1
             expCount = 1;
             // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
             boolean needEXPReset = false;
@@ -290,8 +290,6 @@ public class BoltReceiver {
 
             if (storeStatistics) processTime.end();
         }
-
-        Thread.yield();
     }
 
     /**
@@ -648,7 +646,7 @@ public class BoltReceiver {
     public void stop() throws IOException {
         stopped = true;
         session.getSocket().close();
-        //stop our sender as well
+        // Stop our sender as well.
         session.getSocket().getSender().stop();
     }
 

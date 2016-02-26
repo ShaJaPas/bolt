@@ -1,6 +1,6 @@
 package bolt.sender;
 
-import java.util.LinkedList;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * The sender's loss list is used to store the sequence numbers of
@@ -9,42 +9,28 @@ import java.util.LinkedList;
  */
 public class SenderLossList {
 
-    private final LinkedList<Long> backingList;
+    private final ConcurrentSkipListSet<Long> backingList;
 
     /**
      * Create a new sender lost list.
      */
     public SenderLossList() {
-        backingList = new LinkedList<>();
+        backingList = new ConcurrentSkipListSet<>();
     }
 
     public void insert(final Long obj) {
-        synchronized (backingList) {
-            for (int i = 0; i < backingList.size(); i++) {
-                final Long entry = backingList.get(i);
-                if (obj < entry) {
-                    backingList.add(i, obj);
-                    return;
-                }
-                else if (obj.equals(entry)) return;
-            }
-            backingList.add(obj);
-        }
+        backingList.add(obj);
     }
 
     public void remove(Long obj) {
-        synchronized (backingList) {
-            backingList.remove(obj);
-        }
+        backingList.remove(obj);
     }
 
     /**
      * Retrieves the loss list entry with the lowest sequence number, or null if loss list is empty.
      */
     public Long getFirstEntry() {
-        synchronized (backingList) {
-            return backingList.poll();
-        }
+        return backingList.pollFirst();
     }
 
     public boolean isEmpty() {
@@ -56,9 +42,7 @@ public class SenderLossList {
     }
 
     public String toString() {
-        synchronized (backingList) {
-            return backingList.toString();
-        }
+        return backingList.toString();
     }
 
 }

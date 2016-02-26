@@ -144,15 +144,18 @@ public abstract class BoltSession {
     protected int receiveBufferSize = 64 * 32768;
     //session cookie created during handshake
     protected long sessionCookie = 0;
+
     /**
-     * flow window size, i.e. how many data packets are
+     * Flow window size, i.e. how many data packets are
      * in-flight at a single time
      */
     protected int flowWindowSize = 1024 * 10;
+
     /**
      * local port
      */
     protected int localPort;
+
     /**
      * Buffer size (i.e. datagram size)
      * This is negotiated during connection setup
