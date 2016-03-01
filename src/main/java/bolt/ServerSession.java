@@ -119,7 +119,7 @@ public class ServerSession extends BoltSession {
     protected boolean handleSecondHandShake(ConnectionHandshake handshake) throws IOException {
         if (sessionCookie == 0) {
             ackInitialHandshake(handshake);
-            //need one more handshake
+            // Need one more handshake.
             return false;
         }
 
@@ -137,7 +137,7 @@ public class ServerSession extends BoltSession {
      * compute cookie
      */
     protected void ackInitialHandshake(ConnectionHandshake handshake) throws IOException {
-        //compare the packet size and choose minimum
+        // Compare the packet size and choose minimum.
         long clientBufferSize = handshake.getPacketSize();
         long myBufferSize = getDatagramSize();
         long bufferSize = Math.min(clientBufferSize, myBufferSize);

@@ -14,6 +14,15 @@ public class PacketUtil {
         return new byte[]{m4, m3, m2, m1};
     }
 
+    public static byte[] encodeInt(int value) {
+        byte m4 = (byte) (value >> 24);
+        byte m3 = (byte) (value >> 16);
+        byte m2 = (byte) (value >> 8);
+        byte m1 = (byte) (value);
+        return new byte[]{m4, m3, m2, m1};
+    }
+
+
     public static byte[] encodeSetHighest(boolean highest, long value) {
         byte m4;
         if (highest) {
@@ -35,6 +44,22 @@ public class PacketUtil {
         return new byte[]{m4, m3, 0, 0};
     }
 
+    public static boolean isBitSet(int data, int position) {
+        return ((data >> position) & 1) == 1;
+    }
+
+    public static int decodeInt(byte[] data, int start) {
+        return (data[start] & 0xFF) << 24
+                | (data[start + 1] & 0xFF) << 16
+                | (data[start + 2] & 0xFF) << 8
+                | (data[start + 3] & 0xFF);
+    }
+
+    public static int decodeInt(byte[] data, int start, int startBit, int endBit) {
+        int decoded = decodeInt(data, start);
+        decoded = decoded >> startBit;
+        return decoded & ((int)Math.pow(2, endBit - startBit) - 1);
+    }
 
     public static long decode(byte[] data, int start) {
         long result = (data[start] & 0xFF) << 24
@@ -43,7 +68,6 @@ public class PacketUtil {
                 | (data[start + 3] & 0xFF);
         return result;
     }
-
 
     public static int decodeType(byte[] data, int start) {
         int result = data[start + 1] & 0xFF;

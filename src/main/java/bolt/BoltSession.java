@@ -146,23 +146,16 @@ public abstract class BoltSession {
     protected long sessionCookie = 0;
 
     /**
-     * Flow window size, i.e. how many data packets are
-     * in-flight at a single time
+     * Flow window size (how many data packets are in-flight at a single time).
      */
     protected int flowWindowSize = 1024 * 10;
 
     /**
-     * local port
-     */
-    protected int localPort;
-
-    /**
-     * Buffer size (i.e. datagram size)
-     * This is negotiated during connection setup
+     * Buffer size (i.e. datagram size). This is negotiated during connection setup.
      */
     protected int datagramSize = BoltEndPoint.DATAGRAM_SIZE;
 
-    protected Long initialSequenceNumber = null;
+    protected Integer initialSequenceNumber = null;
     private volatile SessionState state = SessionState.START;
     // Cache dgPacket (peer stays the same always)
     private DatagramPacket dgPacket;
@@ -241,14 +234,14 @@ public abstract class BoltSession {
     }
 
 
-    public synchronized long getInitialSequenceNumber() {
+    public synchronized int getInitialSequenceNumber() {
         if (initialSequenceNumber == null) {
             initialSequenceNumber = SequenceNumber.random();
         }
         return initialSequenceNumber;
     }
 
-    public synchronized void setInitialSequenceNumber(long initialSequenceNumber) {
+    public synchronized void setInitialSequenceNumber(int initialSequenceNumber) {
         this.initialSequenceNumber = initialSequenceNumber;
     }
 

@@ -4,7 +4,6 @@ import bolt.BoltInputStream;
 import bolt.BoltOutputStream;
 import bolt.BoltServerSocket;
 import bolt.BoltSocket;
-import bolt.util.BoltThreadFactory;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -16,18 +15,12 @@ public class EchoServer implements Runnable {
     final ExecutorService pool = Executors.newFixedThreadPool(2);
 
     final BoltServerSocket server;
-    final Thread serverThread;
 
     volatile boolean started = false;
     volatile boolean stopped = false;
 
     public EchoServer(int port) throws Exception {
         server = new BoltServerSocket(InetAddress.getByName("localhost"), port);
-        serverThread = BoltThreadFactory.get().newThread(this, "Echo", false);
-    }
-
-    public void start() {
-        serverThread.start();
     }
 
     public void stop() {

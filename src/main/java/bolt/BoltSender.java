@@ -41,21 +41,31 @@ public class BoltSender {
 
     private final BoltStatistics statistics;
 
-    /** Stores the seq numbers of lost packets fed back by the receiver through NAK packets */
+    /**
+     * Stores the seq numbers of lost packets fed back by the receiver through NAK packets
+     */
     private final SenderLossList senderLossList;
 
-    /** Stores the sent data packets and their sequence numbers */
-    private final Map<Long, byte[]> sendBuffer;
+    /**
+     * Stores the sent data packets and their sequence numbers
+     */
+    private final Map<Integer, byte[]> sendBuffer;
 
     private final FlowWindow flowWindow;
 
-    /** Protects against races when reading/writing to the sendBuffer */
+    /**
+     * Protects against races when reading/writing to the sendBuffer
+     */
     private final Object sendLock = new Object();
 
-    /** Number of unacknowledged data packets */
+    /**
+     * Number of unacknowledged data packets
+     */
     private final AtomicInteger unacknowledged = new AtomicInteger(0);
 
-    /** Used by the sender to wait for an ACK */
+    /**
+     * Used by the sender to wait for an ACK
+     */
     private final ReentrantLock ackLock = new ReentrantLock();
     private final Condition ackCondition = ackLock.newCondition();
 
@@ -63,18 +73,22 @@ public class BoltSender {
     private final int chunkSize;
     private final DataPacket retransmit = new DataPacket();
 
-    /** For generating data packet sequence numbers */
-    private volatile long currentSequenceNumber = 0;
+    /**
+     * For generating data packet sequence numbers
+     */
+    private volatile int currentSequenceNumber = 0;
 
     //the largest data packet sequence number that has actually been sent out
-    private volatile long largestSentSequenceNumber = -1;
+    private volatile int largestSentSequenceNumber = -1;
     //last acknowledge number, initialised to the initial sequence number
-    private volatile long lastAckSequenceNumber;
+    private volatile int lastAckSequenceNumber;
     private volatile boolean started = false;
     private volatile boolean stopped = false;
     private volatile boolean paused = false;
 
-    /** Used to signal that the sender should start to send */
+    /**
+     * Used to signal that the sender should start to send
+     */
     private volatile CountDownLatch startLatch = new CountDownLatch(1);
     private MeanValue dgSendTime;
     private MeanValue dgSendInterval;
@@ -127,9 +141,11 @@ public class BoltSender {
                     paused = false;
                     senderAlgorithm();
                 }
-            } catch (InterruptedException ie) {
+            }
+            catch (InterruptedException ie) {
                 ie.printStackTrace();
-            } catch (IOException ex) {
+            }
+            catch (IOException ex) {
                 ex.printStackTrace();
                 LOG.log(Level.SEVERE, "", ex);
             }
@@ -143,7 +159,7 @@ public class BoltSender {
     /**
      * sends the given data packet, storing the relevant information
      */
-    private void send(DataPacket p) throws IOException {
+    private void send(final DataPacket p) throws IOException {
         synchronized (sendLock) {
             if (storeStatistics) {
                 dgSendInterval.end();
@@ -156,12 +172,15 @@ public class BoltSender {
                 throughput.end();
                 throughput.begin();
             }
-            // Store data for potential retransmit.
-            int l = p.getLength();
-            byte[] data = new byte[l];
-            System.arraycopy(p.getData(), 0, data, 0, l);
-            sendBuffer.put(p.getPacketSequenceNumber(), data);
-            unacknowledged.incrementAndGet();
+            if (p.isReliable()) {
+                // Store data for potential retransmit.
+                int l = p.getLength();
+                byte[] data = new byte[l];
+                System.arraycopy(p.getData(), 0, data, 0, l);
+                sendBuffer.put(p.getPacketSequenceNumber(), data);
+                unacknowledged.incrementAndGet();
+                largestSentSequenceNumber = p.getPacketSequenceNumber();
+            }
         }
         statistics.incNumberOfSentDataPackets();
     }
@@ -178,14 +197,15 @@ public class BoltSender {
         while (packet == null);//TODO check timeout...
 
         try {
-            packet.setPacketSequenceNumber(getNextSequenceNumber());
+            packet.setPacketSequenceNumber(reliable ? getNextSequenceNumber() : 0);
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
             int len = Math.min(bb.remaining(), chunkSize);
             byte[] data = packet.getData();
             bb.get(data, 0, len);
             packet.setLength(len);
-        } finally {
+        }
+        finally {
             flowWindow.produce();
         }
 
@@ -209,28 +229,32 @@ public class BoltSender {
             if (packet == null) {
                 Thread.sleep(10);
             }
-        } while (packet == null);
+        }
+        while (packet == null);
         try {
-            packet.setPacketSequenceNumber(getNextSequenceNumber());
+            packet.setPacketSequenceNumber(reliable ? getNextSequenceNumber() : 0);
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
             packet.setData(data);
-        } finally {
+        }
+        finally {
             flowWindow.produce();
         }
     }
 
     /**
      * Receive a packet from server from the peer.
-     * */
+     */
     protected void receive(final BoltPacket p) throws IOException {
         if (p instanceof Acknowledgement) {
             Acknowledgement acknowledgement = (Acknowledgement) p;
             onAcknowledge(acknowledgement);
-        } else if (p instanceof NegativeAcknowledgement) {
+        }
+        else if (p instanceof NegativeAcknowledgement) {
             NegativeAcknowledgement nak = (NegativeAcknowledgement) p;
             onNAKPacketReceived(nak);
-        } else if (p instanceof KeepAlive) {
+        }
+        else if (p instanceof KeepAlive) {
             session.getSocket().getReceiver().resetEXPCount();
         }
     }
@@ -272,12 +296,12 @@ public class BoltSender {
             statistics.setPacketArrivalRate(cc.getPacketArrivalRate(), cc.getEstimatedLinkCapacity());
         }
 
-        long ackNumber = acknowledgement.getAckNumber();
+        int ackNumber = acknowledgement.getAckNumber();
         cc.onACK(ackNumber);
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
         // Need to remove all sequence numbers up the ACK number from the sendBuffer.
         boolean removed;
-        for (long s = lastAckSequenceNumber; s < ackNumber; s++) {
+        for (int s = lastAckSequenceNumber; s < ackNumber; s++) {
             synchronized (sendLock) {
                 removed = sendBuffer.remove(s) != null;
                 senderLossList.remove(s);
@@ -305,7 +329,7 @@ public class BoltSender {
      */
     protected void onNAKPacketReceived(NegativeAcknowledgement nak) {
         for (Integer i : nak.getDecodedLossInfo()) {
-            senderLossList.insert(Long.valueOf(i));
+            senderLossList.insert(i);
         }
         session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
         session.getSocket().getReceiver().resetEXPTimer();
@@ -362,7 +386,7 @@ public class BoltSender {
         while (!paused) {
             long iterationStart = Util.getCurrentTime();
             // If the sender's loss list is not empty
-            Long entry = senderLossList.getFirstEntry();
+            Integer entry = senderLossList.getFirstEntry();
             if (entry != null) {
                 handleRetransmit(entry);
             }
@@ -374,11 +398,11 @@ public class BoltSender {
                 if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize()
                         && unAcknowledged < session.getFlowWindowSize()) {
                     // Check for application data
-                    DataPacket dp = flowWindow.consumeData();
+                    final DataPacket dp = flowWindow.consumeData();
                     if (dp != null) {
                         send(dp);
-                        largestSentSequenceNumber = dp.getPacketSequenceNumber();
-                    } else {
+                    }
+                    else {
                         statistics.incNumberOfMissingDataEvents();
                     }
                 }
@@ -414,7 +438,7 @@ public class BoltSender {
      *
      * @param seqNumber
      */
-    protected void handleRetransmit(Long seqNumber) {
+    protected void handleRetransmit(Integer seqNumber) {
         try {
             // Retransmit the packet and remove it from the list.
             byte[] data = sendBuffer.get(seqNumber);
@@ -426,7 +450,8 @@ public class BoltSender {
                 endpoint.doSend(retransmit);
                 statistics.incNumberOfRetransmittedDataPackets();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOG.log(Level.WARNING, "", e);
         }
     }
@@ -436,7 +461,7 @@ public class BoltSender {
      */
     protected void putUnacknowledgedPacketsIntoLossList() {
         synchronized (sendLock) {
-            for (Long l : sendBuffer.keySet()) {
+            for (final Integer l : sendBuffer.keySet()) {
                 senderLossList.insert(l);
             }
         }
@@ -446,20 +471,20 @@ public class BoltSender {
      * The next sequence number for data packets.
      * The initial sequence number is "0".
      */
-    public long getNextSequenceNumber() {
+    public int getNextSequenceNumber() {
         currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
         return currentSequenceNumber;
     }
 
-    public long getCurrentSequenceNumber() {
+    public int getCurrentSequenceNumber() {
         return currentSequenceNumber;
     }
 
-    boolean haveAcknowledgementFor(long sequenceNumber) {
+    boolean haveAcknowledgementFor(int sequenceNumber) {
         return SequenceNumber.compare(sequenceNumber, lastAckSequenceNumber) <= 0;
     }
 
-    boolean isSentOut(long sequenceNumber) {
+    boolean isSentOut(int sequenceNumber) {
         return SequenceNumber.compare(largestSentSequenceNumber, sequenceNumber) >= 0;
     }
 
@@ -472,23 +497,25 @@ public class BoltSender {
      *
      * @throws InterruptedException
      */
-    public void waitForAck(long sequenceNumber) throws InterruptedException {
+    public void waitForAck(int sequenceNumber) throws InterruptedException {
         while (!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)) {
             ackLock.lock();
             try {
                 ackCondition.await(100, TimeUnit.MICROSECONDS);
-            } finally {
+            }
+            finally {
                 ackLock.unlock();
             }
         }
     }
 
-    public void waitForAck(long sequenceNumber, int timeout) throws InterruptedException {
+    public void waitForAck(int sequenceNumber, int timeout) throws InterruptedException {
         while (!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)) {
             ackLock.lock();
             try {
                 ackCondition.await(timeout, TimeUnit.MILLISECONDS);
-            } finally {
+            }
+            finally {
                 ackLock.unlock();
             }
         }
@@ -503,7 +530,8 @@ public class BoltSender {
         ackLock.lock();
         try {
             ackCondition.await(200, TimeUnit.MICROSECONDS);
-        } finally {
+        }
+        finally {
             ackLock.unlock();
         }
     }
@@ -517,4 +545,5 @@ public class BoltSender {
         startLatch = new CountDownLatch(1);
         paused = true;
     }
+
 }

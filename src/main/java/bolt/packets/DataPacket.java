@@ -2,6 +2,9 @@ package bolt.packets;
 
 import bolt.BoltPacket;
 import bolt.BoltSession;
+import bolt.util.SequenceNumber;
+
+import java.util.BitSet;
 
 /**
  * The data packet header structure is as following:
@@ -10,56 +13,55 @@ import bolt.BoltSession;
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |0|                     Packet Sequence Number                  |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |FF |O|                     Message Number                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                          Time Stamp                           |
+ * |0|M|R|                Packet Sequence Number                   |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                    Destination Socket ID                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |F|    Message Chunk Number     |           Message ID          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
- * The data packet header starts with 0. Packet sequence number uses the
- * following 31 bits after the flag bit. UDT uses packet based
- * sequencing, i.e., the sequence number is increased by 1 for each sent
- * data packet in the order of packet sending. Sequence number is
- * wrapped after it is increased to the maximum number (2^31 - 1).
+ * The data packet header starts with 0.
  * <p>
- * The next 32-bit field in the header is for the messaging. The first
- * two bits "FF" flags the position of the packet is a message. "10" is
- * the first packet, "01" is the last one, "11" is the only packet, and
- * "00" is any packets in the middle. The third bit "O" means if the
- * message should be delivered in order (1) or not (0). A message to be
- * delivered in order requires that all previous messages must be either
- * delivered or dropped. The rest 29 bits is the message number, similar
- * to packet sequence number (but independent). A UDT message may
- * contain multiple UDT packets.
+ * M signifies whether the packet is a message.
  * <p>
- * Following are the 32-bit time stamp when the packet is sent and the
- * destination socket ID. The time stamp is a relative value starting
+ * R signifies whether delivery is reliable.
  * <p>
- * from the time when the connection is set up. The time stamp
- * information is not required by UDT or its native control algorithm.
- * It is included only in case that a user defined control algorithm may
- * require the information (See Section 6).
+ * Packet sequence number uses the following 29 bits after the flag bits.
+ * Bolt uses packet-based sequencing, i.e., the sequence number is increased
+ * by 1 for each sent data packet in the order of packet sending. Sequence
+ * number is wrapped after it is increased to the maximum number (2^29 - 1).
  * <p>
+ * Following is the 32-bit Destination Socket ID.
  * The Destination ID is used for UDP multiplexer. Multiple UDT socket
  * can be bound on the same UDP port and this UDT socket ID is used to
  * differentiate the UDT connections.
+ * <p>
+ * The next 32-bit field in the header is for the messaging. The first bit
+ * "F" flags whether the packet is the last message chunk (1), or not (0).
+ * The Message Chunk Number is the position of this packet in the message.
+ * The Message ID uniquely identifies this message from others.
  */
 public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private byte[] data;
-    private long packetSequenceNumber;
-    private long messageNumber;
 
-    //TODO remove timestamp
-    private long timeStamp;
+    private boolean reliable;
+
+    private boolean message;
+
+    private int packetSequenceNumber;
+
+    private boolean finalMessageChunk;
+
+    private int messageChunkNumber;
+
+    private int messageId;
+
     private long destinationID;
 
-    private BoltSession session;
-
     private int dataLength;
+
+    private BoltSession session;
 
     public DataPacket() {
     }
@@ -78,15 +80,24 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     void decode(byte[] encodedData, int length) {
-        packetSequenceNumber = PacketUtil.decode(encodedData, 0);
-        messageNumber = PacketUtil.decode(encodedData, 4);
-        timeStamp = PacketUtil.decode(encodedData, 8);
-        destinationID = PacketUtil.decode(encodedData, 12);
-        dataLength = length - 16;
-        data = new byte[dataLength];
-        System.arraycopy(encodedData, 16, data, 0, dataLength);
-    }
+        message = PacketUtil.isBitSet(encodedData[0], 6);
+        reliable = PacketUtil.isBitSet(encodedData[0], 7);
 
+        packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
+        destinationID = PacketUtil.decodeInt(encodedData, 4);
+
+        // If is message.
+        if (message) {
+            finalMessageChunk = PacketUtil.isBitSet(encodedData[8], 7);
+            messageChunkNumber = PacketUtil.decodeInt(encodedData, 8, 16, 31);
+            messageId = PacketUtil.decodeInt(encodedData, 8, 0, 16);
+        }
+
+        final int headerLength = message ? 12 : 8;
+        dataLength = length - headerLength;
+        data = new byte[dataLength];
+        System.arraycopy(encodedData, headerLength, data, 0, dataLength);
+    }
 
     public byte[] getData() {
         return this.data;
@@ -105,21 +116,21 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         dataLength = length;
     }
 
-    public long getPacketSequenceNumber() {
+    public int getPacketSequenceNumber() {
         return this.packetSequenceNumber;
     }
 
-    public void setPacketSequenceNumber(long sequenceNumber) {
+    public void setPacketSequenceNumber(final int sequenceNumber) {
         this.packetSequenceNumber = sequenceNumber;
     }
 
 
-    public long getMessageNumber() {
-        return this.messageNumber;
+    public int getMessageId() {
+        return this.messageId;
     }
 
-    public void setMessageNumber(long messageNumber) {
-        this.messageNumber = messageNumber;
+    public void setMessageId(int messageId) {
+        this.messageId = messageId;
     }
 
     public long getDestinationID() {
@@ -130,24 +141,29 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.destinationID = destinationID;
     }
 
-    public long getTimeStamp() {
-        return this.timeStamp;
-    }
-
-    public void setTimeStamp(long timeStamp) {
-        this.timeStamp = timeStamp;
-    }
-
     /**
-     * Complete header (16 bytes) + data packet for transmission
+     * Complete header (12 bytes) + data packet for transmission
      */
     public byte[] getEncoded() {
-        byte[] result = new byte[16 + dataLength];
-        System.arraycopy(PacketUtil.encode(packetSequenceNumber), 0, result, 0, 4);
-        System.arraycopy(PacketUtil.encode(messageNumber), 0, result, 4, 4);
-        System.arraycopy(PacketUtil.encode(timeStamp), 0, result, 8, 4);
-        System.arraycopy(PacketUtil.encode(destinationID), 0, result, 12, 4);
-        System.arraycopy(data, 0, result, 16, dataLength);
+        final int headerLength = message ? 12 : 8;
+        byte[] result = new byte[headerLength + dataLength];
+
+        final BitSet flagsAndSeqNum = new BitSet(32);
+        flagsAndSeqNum.set(31, false);
+        flagsAndSeqNum.set(30, message);
+        flagsAndSeqNum.set(29, reliable);
+        for (int i = 0; i < 29; i++) flagsAndSeqNum.set(i, PacketUtil.isBitSet(packetSequenceNumber, i));
+
+        System.arraycopy(flagsAndSeqNum.toByteArray(), 0, result, 0, 4);
+        System.arraycopy(PacketUtil.encode(destinationID), 0, result, 4, 4);
+        if (message) {
+            final BitSet messaging = new BitSet(32);
+            messaging.set(31, finalMessageChunk);
+            for (int i = 0; i < 15; i++) flagsAndSeqNum.set(i + 16, PacketUtil.isBitSet(messageChunkNumber, i));
+            for (int i = 0; i < 16; i++) flagsAndSeqNum.set(i, PacketUtil.isBitSet(messageId, i));
+            System.arraycopy(messaging.toByteArray(), 0, result, 8, 4);
+        }
+        System.arraycopy(data, 0, result, headerLength, dataLength);
         return result;
     }
 
@@ -163,6 +179,22 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return false;
     }
 
+    public boolean isReliable() {
+        return reliable;
+    }
+
+    public boolean isMessage() {
+        return message;
+    }
+
+    public int getMessageChunkNumber() {
+        return messageChunkNumber;
+    }
+
+    public boolean isFinalMessageChunk() {
+        return finalMessageChunk;
+    }
+
     public int getControlPacketType() {
         return -1;
     }
@@ -176,6 +208,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     public int compareTo(BoltPacket other) {
-        return (int) (getPacketSequenceNumber() - other.getPacketSequenceNumber());
+        return (getPacketSequenceNumber() - other.getPacketSequenceNumber());
     }
 }

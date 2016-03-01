@@ -8,8 +8,6 @@ import bolt.util.BoltThreadFactory;
 import java.io.IOException;
 import java.net.*;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.SynchronousQueue;
@@ -23,24 +21,27 @@ import java.util.logging.Logger;
  */
 public class BoltEndPoint {
 
-    private static final Logger LOG = Logger.getLogger(ClientSession.class.getName());
-
     public static final int DATAGRAM_SIZE = 1400;
-
+    private static final Logger LOG = Logger.getLogger(ClientSession.class.getName());
     final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
 
-    /** active sessions keyed by socket ID */
+    /**
+     * Active sessions keyed by socket ID.
+     */
     private final Map<Long, BoltSession> sessions = new ConcurrentHashMap<>();
-    private final Map<Destination, BoltSession> sessionsBeingConnected = Collections.synchronizedMap(new HashMap<>());
-    //if the endpoint is configured for a server socket,
-    //this queue is used to handoff new BoltSessions to the application
-    private final SynchronousQueue<BoltSession> sessionHandoff = new SynchronousQueue<>();
+
+    private final Map<Destination, BoltSession> sessionsBeingConnected = new ConcurrentHashMap<>();
+
+    /**
+     * If the endpoint is configured for a server socket, this queue is used to hand-off
+     * new BoltSessions to the application.
+     */
+    private final SynchronousQueue<BoltSession> sessionHandOff = new SynchronousQueue<>();
 
     private boolean serverSocketMode = false;
 
-    //has the endpoint been stopped?
     private volatile boolean stopped = false;
 
     /**
@@ -50,11 +51,11 @@ public class BoltEndPoint {
      */
     public BoltEndPoint(DatagramSocket socket) {
         this.dgSocket = socket;
-        port = dgSocket.getLocalPort();
+        this.port = dgSocket.getLocalPort();
     }
 
     /**
-     * bind to any local port on the given host address
+     * Bind to any local port on the given host address.
      *
      * @param localAddress
      * @throws SocketException
@@ -67,8 +68,8 @@ public class BoltEndPoint {
     /**
      * Bind to the given address and port
      *
-     * @param localAddress
-     * @param localPort    - the port to bind to. If the port is zero, the system will pick an ephemeral port.
+     * @param localAddress the local address to bind.
+     * @param localPort    the port to bind to. If the port is zero, the system will pick an ephemeral port.
      * @throws SocketException
      * @throws UnknownHostException
      */
@@ -118,15 +119,8 @@ public class BoltEndPoint {
      */
     public void start(boolean serverSocketModeEnabled) {
         serverSocketMode = serverSocketModeEnabled;
-        //start receive thread
-        final Runnable receive = () -> {
-            try {
-                doReceive();
-            } catch (Exception ex) {
-                LOG.log(Level.WARNING, "", ex);
-            }
-        };
-        final Thread t = BoltThreadFactory.get().newThread(receive, "UDPEndpoint", true);
+        // Start receive thread
+        final Thread t = BoltThreadFactory.get().newThread(this::doReceive, "UDPEndpoint", true);
         t.start();
         LOG.info("BoltEndpoint started.");
     }
@@ -172,7 +166,7 @@ public class BoltEndPoint {
     }
 
     /**
-     * wait the given time for a new connection
+     * Wait the given time for a new connection.
      *
      * @param timeout the time to wait
      * @param unit    the {@link TimeUnit}
@@ -180,7 +174,7 @@ public class BoltEndPoint {
      * @throws InterruptedException
      */
     protected BoltSession accept(long timeout, TimeUnit unit) throws InterruptedException {
-        return sessionHandoff.poll(timeout, unit);
+        return sessionHandOff.poll(timeout, unit);
     }
 
     /**
@@ -193,31 +187,36 @@ public class BoltEndPoint {
      *
      * @throws IOException
      */
-    protected void doReceive() throws IOException {
+    protected void doReceive() {
         while (!stopped) {
             try {
                 //will block until a packet is received or timeout has expired
                 dgSocket.receive(dp);
 
-                Destination peer = new Destination(dp.getAddress(), dp.getPort());
-                int l = dp.getLength();
-                BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
+                final Destination peer = new Destination(dp.getAddress(), dp.getPort());
+                final int l = dp.getLength();
+                final BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
 
                 long dest = packet.getDestinationID();
-                BoltSession session = sessions.get(dest);
+                final BoltSession session = sessions.get(dest);
                 if (session != null) {
                     // dispatch to existing session
                     session.received(packet, peer);
-                } else if (packet.isConnectionHandshake()) {
+                }
+                else if (packet.isConnectionHandshake()) {
                     connectionHandshake((ConnectionHandshake) packet, peer);
-                } else {
+                }
+                else {
                     LOG.warning("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
                 }
-            } catch (SocketException ex) {
+            }
+            catch (SocketException ex) {
                 LOG.log(Level.INFO, "SocketException: " + ex.getMessage());
-            } catch (SocketTimeoutException ste) {
+            }
+            catch (SocketTimeoutException ste) {
                 //can safely ignore... we will retry until the endpoint is stopped
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 LOG.log(Level.WARNING, "Got: " + ex.getMessage(), ex);
             }
         }
@@ -247,7 +246,7 @@ public class BoltEndPoint {
             sessions.put(session.getSocketID(), session);
             if (serverSocketMode) {
                 LOG.fine("Pooling new request.");
-                sessionHandoff.put(session);
+                sessionHandOff.put(session);
                 LOG.fine("Request taken for processing.");
             }
         }

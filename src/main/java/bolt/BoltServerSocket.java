@@ -47,7 +47,7 @@ public class BoltServerSocket {
             started = true;
         }
         while (!shutdown) {
-            BoltSession session = endpoint.accept(10000, TimeUnit.MILLISECONDS);
+            final BoltSession session = endpoint.accept(10000, TimeUnit.MILLISECONDS);
             if (session != null) {
                 // Wait for handshake to complete.
                 while (!session.isReady() || session.getSocket() == null) {

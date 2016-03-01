@@ -25,10 +25,10 @@ import java.io.ByteArrayOutputStream;
 public class Acknowledgement extends ControlPacket {
 
     //the ack sequence number
-    private long ackSequenceNumber;
+    private int ackSequenceNumber;
 
     //the packet sequence number to which all the previous packets have been received (excluding)
-    private long ackNumber;
+    private int ackNumber;
 
     //round-trip time in microseconds(RTT)
     private long roundTripTime;
@@ -49,14 +49,14 @@ public class Acknowledgement extends ControlPacket {
         this.controlPacketType = ControlPacketType.ACK.getTypeId();
     }
 
-    public Acknowledgement(long ackSeqNo, byte[] controlInformation) {
+    public Acknowledgement(int ackSeqNo, byte[] controlInformation) {
         this();
         this.ackSequenceNumber = ackSeqNo;
         decodeControlInformation(controlInformation);
     }
 
     void decodeControlInformation(byte[] data) {
-        ackNumber = PacketUtil.decode(data, 0);
+        ackNumber = PacketUtil.decodeInt(data, 0);
         if (data.length > 4) {
             roundTripTime = PacketUtil.decode(data, 4);
             roundTripTimeVariance = PacketUtil.decode(data, 8);
@@ -77,7 +77,7 @@ public class Acknowledgement extends ControlPacket {
         return ackSequenceNumber;
     }
 
-    public void setAckSequenceNumber(long ackSequenceNumber) {
+    public void setAckSequenceNumber(final int ackSequenceNumber) {
         this.ackSequenceNumber = ackSequenceNumber;
     }
 
@@ -87,7 +87,7 @@ public class Acknowledgement extends ControlPacket {
      *
      * @return
      */
-    public long getAckNumber() {
+    public int getAckNumber() {
         return ackNumber;
     }
 
@@ -96,7 +96,7 @@ public class Acknowledgement extends ControlPacket {
      *
      * @param ackNumber
      */
-    public void setAckNumber(long ackNumber) {
+    public void setAckNumber(int ackNumber) {
         this.ackNumber = ackNumber;
     }
 

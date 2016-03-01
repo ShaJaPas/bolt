@@ -1,6 +1,6 @@
 package bolt.util;
 
-import bolt.BoltInputStream.AppData;
+import bolt.packets.DataPacket;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,10 +14,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ReceiveBuffer {
 
-    private final AppData[] buffer;
-    //the lowest sequence number stored in this buffer
-    private final long initialSequenceNumber;
-    //number of chunks
+    private final DataPacket[] buffer;
+    // The lowest sequence number stored in this buffer
+    private final int initialSequenceNumber;
+    // Number of chunks.
     private final AtomicInteger numValidChunks = new AtomicInteger(0);
     //lock and condition for poll() with timeout
     private final Condition notEmpty;
@@ -28,36 +28,37 @@ public class ReceiveBuffer {
     //i.e. the one with the lowest sequence number
     private volatile int readPosition = 0;
     //the highest sequence number already read by the application
-    private long highestReadSequenceNumber;
+    private int highestReadSequenceNumber;
 
-    public ReceiveBuffer(int size, long initialSequenceNumber) {
+    public ReceiveBuffer(final int size, final int initialSequenceNumber) {
         this.size = size;
-        this.buffer = new AppData[size];
+        this.buffer = new DataPacket[size];
         this.initialSequenceNumber = initialSequenceNumber;
         lock = new ReentrantLock(false);
         notEmpty = lock.newCondition();
         highestReadSequenceNumber = SequenceNumber.decrement(initialSequenceNumber);
     }
 
-    public boolean offer(AppData data) {
+    public boolean offer(final DataPacket data) {
         if (numValidChunks.get() == size) {
             return false;
         }
         lock.lock();
         try {
-            long seq = data.getSequenceNumber();
-            //if already have this chunk, discard it
+            final int seq = data.getPacketSequenceNumber();
+            // If already have this chunk, discard it.
             if (SequenceNumber.compare(seq, highestReadSequenceNumber) <= 0) {
                 return true;
             }
-            //else compute insert position
-            int offset = (int) SequenceNumber.seqOffset(initialSequenceNumber, seq);
+            // Else compute insert position.
+            int offset = SequenceNumber.seqOffset(initialSequenceNumber, seq);
             int insert = offset % size;
             buffer[insert] = data;
             numValidChunks.incrementAndGet();
             notEmpty.signal();
             return true;
-        } finally {
+        }
+        finally {
             lock.unlock();
         }
     }
@@ -74,7 +75,7 @@ public class ReceiveBuffer {
      * specified waiting time elapses before an element is available
      * @throws InterruptedException if interrupted while waiting
      */
-    public AppData poll(int timeout, TimeUnit unit) throws InterruptedException {
+    public DataPacket poll(int timeout, TimeUnit unit) throws InterruptedException {
         lock.lockInterruptibly();
         long nanos = unit.toNanos(timeout);
 
@@ -87,32 +88,34 @@ public class ReceiveBuffer {
                     return null;
                 try {
                     nanos = notEmpty.awaitNanos(nanos);
-                } catch (InterruptedException ie) {
+                }
+                catch (InterruptedException ie) {
                     notEmpty.signal(); // propagate to non-interrupted thread
                     throw ie;
                 }
 
             }
-        } finally {
+        }
+        finally {
             lock.unlock();
         }
     }
 
-
     /**
-     * return a data chunk, guaranteed to be in-order.
+     * Return a data chunk, guaranteed to be in-order.
      */
-    public AppData poll() {
+    public DataPacket poll() {
         if (numValidChunks.get() == 0) {
             return null;
         }
-        AppData r = buffer[readPosition];
+        final DataPacket r = buffer[readPosition];
         if (r != null) {
-            long thisSeq = r.getSequenceNumber();
+            int thisSeq = r.getPacketSequenceNumber();
             if (1 == SequenceNumber.seqOffset(highestReadSequenceNumber, thisSeq)) {
                 increment();
                 highestReadSequenceNumber = thisSeq;
-            } else return null;
+            }
+            else return null;
         }
         return r;
     }

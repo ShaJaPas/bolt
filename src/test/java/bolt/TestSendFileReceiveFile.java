@@ -1,12 +1,12 @@
 package bolt;
 
-import org.junit.Test;
 import bolt.util.ReceiveFile;
 import bolt.util.SendFile;
-import bolt.util.BoltThreadFactory;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
 
@@ -39,15 +39,13 @@ public class TestSendFileReceiveFile extends BoltTestBase {
     }
 
     private void runServer() {
-        Runnable r = () -> {
+        CompletableFuture.runAsync(() -> {
             try {
                 serverStarted = true;
                 SendFile.main(new String[]{"65321"});
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-        };
-        Thread t = BoltThreadFactory.get().newThread(r);
-        t.start();
+        });
     }
 }

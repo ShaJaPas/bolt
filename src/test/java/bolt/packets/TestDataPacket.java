@@ -56,8 +56,7 @@ public class TestDataPacket {
         System.out.println("String s1 = " + s1);
         System.out.println("tesPacket1Length = " + testPacket1.getLength());
         System.out.println("sequenceNumber1 = " + testPacket1.getPacketSequenceNumber());
-        System.out.println("messageNumber 1= " + testPacket1.getMessageNumber());
-        System.out.println("timeStamp1 = " + testPacket1.getTimeStamp());
+        System.out.println("messageId 1= " + testPacket1.getMessageId());
         System.out.println("destinationID1 = " + testPacket1.getDestinationID());
         System.out.println("data1 = " + new String(testPacket1.getData()));
 
@@ -67,8 +66,7 @@ public class TestDataPacket {
         // and test
         System.out.println("tesPacket2Length = " + testPacket2.getLength());
         System.out.println("sequenceNumber2 = " + testPacket2.getPacketSequenceNumber());
-        System.out.println("messageNumber2 = " + testPacket2.getMessageNumber());
-        System.out.println("timeStamp2 = " + testPacket2.getTimeStamp());
+        System.out.println("messageNumber2 = " + testPacket2.getMessageId());
         System.out.println("destinationID1 = " + testPacket1.getDestinationID());
         System.out.println("data2 = " + new String(testPacket2.getData()));
 
@@ -79,8 +77,7 @@ public class TestDataPacket {
     public void testEncodeDecode1() {
         DataPacket dp = new DataPacket();
         dp.setPacketSequenceNumber(127);
-        dp.setMessageNumber(268435457);
-        dp.setTimeStamp(128);
+        dp.setMessageId(268435457);
         dp.setDestinationID(255);
         dp.setData("test".getBytes());
 
@@ -88,8 +85,7 @@ public class TestDataPacket {
 
         DataPacket dp2 = new DataPacket(encodedData1);
         assertEquals(127, dp2.getPacketSequenceNumber());
-        assertEquals(268435457, dp2.getMessageNumber());
-        assertEquals(128, dp2.getTimeStamp());
+        assertEquals(268435457, dp2.getMessageId());
         assertEquals(255, dp2.getDestinationID());
         assertEquals("test", new String(dp2.getData()));
     }

@@ -39,10 +39,9 @@ public class PacketFactory {
 
         int pktType = PacketUtil.decodeType(encodedData, 0);
         long additionalInfo = PacketUtil.decode(encodedData, 4);
-        long timeStamp = PacketUtil.decode(encodedData, 8);
-        long destID = PacketUtil.decode(encodedData, 12);
-        byte[] controlInformation = new byte[length - 16];
-        System.arraycopy(encodedData, 16, controlInformation, 0, controlInformation.length);
+        long destID = PacketUtil.decode(encodedData, 8);
+        byte[] controlInformation = new byte[length - 12];
+        System.arraycopy(encodedData, 12, controlInformation, 0, controlInformation.length);
 
         //TYPE 0000:0
         if (ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == pktType) {
@@ -78,7 +77,6 @@ public class PacketFactory {
         }
 
         if (packet != null) {
-            packet.setTimeStamp(timeStamp);
             packet.setDestinationID(destID);
         }
         return packet;

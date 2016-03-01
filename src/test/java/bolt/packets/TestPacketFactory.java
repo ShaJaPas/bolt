@@ -1,8 +1,8 @@
 package bolt.packets;
 
-import org.junit.Test;
 import bolt.BoltPacket;
 import bolt.util.SequenceNumber;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -30,8 +30,7 @@ public class TestPacketFactory {
     @Test
     public void testConnectionHandshake() throws IOException {
         ConnectionHandshake p1 = new ConnectionHandshake();
-        p1.setMessageNumber(9876);
-        p1.setTimeStamp(3456);
+        p1.setMessageId(9876);
         p1.setDestinationID(1);
 
         p1.setConnectionType(1);
@@ -56,8 +55,7 @@ public class TestPacketFactory {
     public void testAcknowledgement() throws IOException {
         Acknowledgement p1 = new Acknowledgement();
         p1.setAckSequenceNumber(1234);
-        p1.setMessageNumber(9876);
-        p1.setTimeStamp(3456);
+        p1.setMessageId(9876);
         p1.setDestinationID(1);
         p1.setBufferSize(128);
         p1.setEstimatedLinkCapacity(16);
@@ -76,8 +74,7 @@ public class TestPacketFactory {
     public void testAcknowledgementOfAcknowledgement() throws IOException {
         Acknowledgment2 p1 = new Acknowledgment2();
         p1.setAckSequenceNumber(1230);
-        p1.setMessageNumber(9871);
-        p1.setTimeStamp(3451);
+        p1.setMessageId(9871);
         p1.setDestinationID(1);
 
         byte[] p1_data = p1.getEncoded();
@@ -91,8 +88,7 @@ public class TestPacketFactory {
     @Test
     public void testNegativeAcknowledgement() throws IOException {
         NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-        p1.setMessageNumber(9872);
-        p1.setTimeStamp(3452);
+        p1.setMessageId(9872);
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -110,16 +106,15 @@ public class TestPacketFactory {
     @Test
     public void testNegativeAcknowledgement2() throws IOException {
         NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-        p1.setMessageNumber(9872);
-        p1.setTimeStamp(3452);
+        p1.setMessageId(9872);
         p1.setDestinationID(2);
         List<Long> loss = new ArrayList<Long>();
-        loss.add(5l);
-        loss.add(6l);
-        loss.add(7l);
-        loss.add(8l);
-        loss.add(9l);
-        loss.add(11l);
+        loss.add(5L);
+        loss.add(6L);
+        loss.add(7L);
+        loss.add(8L);
+        loss.add(9L);
+        loss.add(11L);
 
         p1.addLossInfo(loss);
         byte[] p1_data = p1.getEncoded();
@@ -128,15 +123,14 @@ public class TestPacketFactory {
         NegativeAcknowledgement p2 = (NegativeAcknowledgement) p;
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, (Integer) p2.getDecodedLossInfo().get(0));
+        assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
         assertEquals(6, p2.getDecodedLossInfo().size());
     }
 
     @Test
     public void testNegativeAcknowledgement3() throws IOException {
         NegativeAcknowledgement p1 = new NegativeAcknowledgement();
-        p1.setMessageNumber(9872);
-        p1.setTimeStamp(3452);
+        p1.setMessageId(9872);
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -153,8 +147,7 @@ public class TestPacketFactory {
     @Test
     public void testShutdown() throws IOException {
         Shutdown p1 = new Shutdown();
-        p1.setMessageNumber(9874);
-        p1.setTimeStamp(3453);
+        p1.setMessageId(9874);
         p1.setDestinationID(3);
 
         byte[] p1_data = p1.getEncoded();
@@ -167,8 +160,7 @@ public class TestPacketFactory {
     @Test
     public void testMessageDropRequest() throws Exception {
         MessageDropRequest p1 = new MessageDropRequest();
-        p1.setMessageNumber(9876);
-        p1.setTimeStamp(3456);
+        p1.setMessageId(9876);
         p1.setDestinationID(4);
 
         p1.setMsgFirstSeqNo(2);

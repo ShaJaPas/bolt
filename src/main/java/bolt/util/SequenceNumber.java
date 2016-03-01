@@ -9,9 +9,9 @@ import java.util.Random;
 
 public class SequenceNumber {
 
-    private final static int maxOffset = 0x3FFFFFFF;
 
-    private final static long maxSequenceNo = 0x7FFFFFFF;
+    public final static int MAX_SEQ_NUM = 0x1FFFFFFF; //2^29 - 1
+    private final static int MAX_OFFSET = MAX_SEQ_NUM / 2;
 
     private final static Random rand = new Random();
 
@@ -22,17 +22,16 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    public static long compare(long seq1, long seq2) {
-        return (Math.abs(seq1 - seq2) < maxOffset) ? (seq1 - seq2) : (seq2 - seq1);
+    public static int compare(int seq1, int seq2) {
+        return (Math.abs(seq1 - seq2) < MAX_OFFSET) ? (seq1 - seq2) : (seq2 - seq1);
     }
 
     /**
      * length from the first to the second sequence number, including both
      */
-    public static long length(long seq1, long seq2) {
-        return (seq1 <= seq2) ? (seq2 - seq1 + 1) : (seq2 - seq1 + maxSequenceNo + 2);
+    public static int length(int seq1, int seq2) {
+        return (seq1 <= seq2) ? (seq2 - seq1 + 1) : (seq2 - seq1 + MAX_SEQ_NUM + 2);
     }
-
 
     /**
      * compute the offset from seq2 to seq1
@@ -40,14 +39,14 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    public static long seqOffset(long seq1, long seq2) {
-        if (Math.abs(seq1 - seq2) < maxOffset)
+    public static int seqOffset(int seq1, int seq2) {
+        if (Math.abs(seq1 - seq2) < MAX_OFFSET)
             return seq2 - seq1;
 
         if (seq1 < seq2)
-            return seq2 - seq1 - maxSequenceNo - 1;
+            return seq2 - seq1 - MAX_SEQ_NUM - 1;
 
-        return seq2 - seq1 + maxSequenceNo + 1;
+        return seq2 - seq1 + MAX_SEQ_NUM + 1;
     }
 
     /**
@@ -55,8 +54,8 @@ public class SequenceNumber {
      *
      * @param seq
      */
-    public static long increment(long seq) {
-        return (seq == maxSequenceNo) ? 0 : seq + 1;
+    public static int increment(int seq) {
+        return (seq == MAX_SEQ_NUM) ? 0 : seq + 1;
     }
 
     /**
@@ -64,15 +63,15 @@ public class SequenceNumber {
      *
      * @param seq
      */
-    public static long decrement(long seq) {
-        return (seq == 0) ? maxSequenceNo : seq - 1;
+    public static int decrement(int seq) {
+        return (seq == 0) ? MAX_SEQ_NUM : seq - 1;
     }
 
     /**
-     * generates a random number between 1 and 0x3FFFFFFF (inclusive)
+     * generates a random number between 1 and {@value MAX_OFFSET} (inclusive)
      */
-    public static long random() {
-        return 1 + rand.nextInt(maxOffset);
+    public static int random() {
+        return 1 + rand.nextInt(MAX_OFFSET);
     }
 
 }

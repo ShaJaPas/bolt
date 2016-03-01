@@ -8,13 +8,14 @@ import bolt.util.TestUtil;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.util.concurrent.CompletableFuture;
 
 public class TestEchoServerMultiClient {
 
     @Test
     public void testTwoClients() throws Exception {
         EchoServer es = new EchoServer(65321);
-        es.start();
+        CompletableFuture.runAsync(es);
         Thread.sleep(1000);
 
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);

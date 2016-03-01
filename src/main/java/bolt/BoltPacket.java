@@ -4,13 +4,9 @@ package bolt;
 public interface BoltPacket extends Comparable<BoltPacket> {
 
 
-    long getMessageNumber();
+    int getMessageId();
 
-    void setMessageNumber(long messageNumber);
-
-    long getTimeStamp();
-
-    void setTimeStamp(long timeStamp);
+    void setMessageId(int messageNumber);
 
     long getDestinationID();
 
@@ -34,6 +30,6 @@ public interface BoltPacket extends Comparable<BoltPacket> {
 
     BoltSession getSession();
 
-    long getPacketSequenceNumber();
+    int getPacketSequenceNumber();
 
 }

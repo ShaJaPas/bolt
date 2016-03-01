@@ -38,7 +38,9 @@ public class ClientSession extends BoltSession {
     public void connect() throws InterruptedException, IOException {
         int n = 0;
         while (getState() != READY) {
-            if (getState() == INVALID) throw new IOException("Can't connect!");
+            if (getState() == INVALID) {
+                throw new IOException("Can't connect!");
+            }
             if (getState().seqNo() <= HANDSHAKING.seqNo()) {
                 setState(HANDSHAKING);
                 sendInitialHandShake();

@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class SenderLossList {
 
-    private final ConcurrentSkipListSet<Long> backingList;
+    private final ConcurrentSkipListSet<Integer> backingList;
 
     /**
      * Create a new sender lost list.
@@ -18,18 +18,18 @@ public class SenderLossList {
         backingList = new ConcurrentSkipListSet<>();
     }
 
-    public void insert(final Long obj) {
+    public void insert(final Integer obj) {
         backingList.add(obj);
     }
 
-    public void remove(Long obj) {
+    public void remove(Integer obj) {
         backingList.remove(obj);
     }
 
     /**
      * Retrieves the loss list entry with the lowest sequence number, or null if loss list is empty.
      */
-    public Long getFirstEntry() {
+    public Integer getFirstEntry() {
         return backingList.pollFirst();
     }
 

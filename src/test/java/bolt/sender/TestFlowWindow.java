@@ -155,7 +155,7 @@ public class TestFlowWindow {
 				while( (p=fw.consumeData())==null){
 					Thread.sleep(1);
 				}
-				assertEquals(i,p.getMessageNumber());
+				assertEquals(i,p.getMessageId());
 			}	
 		}catch(Throwable ex){
 			ex.printStackTrace();
@@ -176,7 +176,7 @@ public class TestFlowWindow {
 					p=fw.getForProducer();
 					if(p!=null){
 						p.setData(("test"+i).getBytes());
-						p.setMessageNumber(i);
+						p.setMessageId(i);
 						fw.produce();
 					}
 				}while(p==null);

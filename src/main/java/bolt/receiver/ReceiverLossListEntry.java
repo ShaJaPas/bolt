@@ -7,7 +7,7 @@ import bolt.util.Util;
  */
 public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> {
 
-    private final long sequenceNumber;
+    private final int sequenceNumber;
     private long lastFeedbackTime;
     private long k = 2;
 
@@ -16,7 +16,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      *
      * @param sequenceNumber
      */
-    public ReceiverLossListEntry(long sequenceNumber) {
+    public ReceiverLossListEntry(final int sequenceNumber) {
         if (sequenceNumber <= 0) {
             throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
         }
@@ -33,7 +33,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
         lastFeedbackTime = Util.getCurrentTime();
     }
 
-    public long getSequenceNumber() {
+    public int getSequenceNumber() {
         return sequenceNumber;
     }
 

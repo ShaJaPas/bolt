@@ -15,8 +15,6 @@ import bolt.BoltSession;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     |                    Additional Info                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                            Time Stamp                         |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                    Destination Socket ID                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                                                               |
@@ -100,10 +98,7 @@ public abstract class ControlPacket implements BoltPacket {
 
     protected int controlPacketType;
 
-    protected long messageNumber;
-
-    // TODO can remove
-    protected long timeStamp;
+    protected int messageId;
 
     protected long destinationID;
 
@@ -119,23 +114,13 @@ public abstract class ControlPacket implements BoltPacket {
         return controlPacketType;
     }
 
-    public long getMessageNumber() {
-        return messageNumber;
+    public int getMessageId() {
+        return messageId;
     }
 
-    public void setMessageNumber(long messageNumber) {
-        this.messageNumber = messageNumber;
+    public void setMessageId(int messageId) {
+        this.messageId = messageId;
     }
-
-
-    public long getTimeStamp() {
-        return timeStamp;
-    }
-
-    public void setTimeStamp(long timeStamp) {
-        this.timeStamp = timeStamp;
-    }
-
 
     public long getDestinationID() {
         return destinationID;
@@ -155,8 +140,7 @@ public abstract class ControlPacket implements BoltPacket {
         byte[] res = new byte[16];
         System.arraycopy(PacketUtil.encodeControlPacketType(controlPacketType), 0, res, 0, 4);
         System.arraycopy(PacketUtil.encode(getAdditionalInfo()), 0, res, 4, 4);
-        System.arraycopy(PacketUtil.encode(timeStamp), 0, res, 8, 4);
-        System.arraycopy(PacketUtil.encode(destinationID), 0, res, 12, 4);
+        System.arraycopy(PacketUtil.encode(destinationID), 0, res, 8, 4);
         return res;
     }
 
@@ -205,8 +189,6 @@ public abstract class ControlPacket implements BoltPacket {
             return false;
         if (destinationID != other.destinationID)
             return false;
-        if (timeStamp != other.timeStamp)
-            return false;
         return true;
     }
 
@@ -230,7 +212,7 @@ public abstract class ControlPacket implements BoltPacket {
         this.session = session;
     }
 
-    public long getPacketSequenceNumber() {
+    public int getPacketSequenceNumber() {
         return -1;
     }
 

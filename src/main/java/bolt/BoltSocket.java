@@ -1,9 +1,13 @@
 package bolt;
 
+import bolt.packets.DataPacket;
+import bolt.util.ReceiveBuffer;
+
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -13,14 +17,12 @@ import java.util.concurrent.TimeUnit;
 public class BoltSocket {
 
     //endpoint
-    private final BoltEndPoint endpoint;
     private final BoltSession session;
     private volatile boolean active;
     //processing received data
     private final BoltReceiver receiver;
     private final BoltSender sender;
-    private BoltInputStream inputStream;
-    private BoltOutputStream outputStream;
+    private final ReceiveBuffer receiveBuffer;
 
     /**
      * @param endpoint
@@ -28,10 +30,12 @@ public class BoltSocket {
      * @throws SocketException,UnknownHostException
      */
     public BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
-        this.endpoint = endpoint;
         this.session = session;
         this.receiver = new BoltReceiver(session, endpoint);
         this.sender = new BoltSender(session, endpoint);
+
+        final int capacity = 2 * session.getFlowWindowSize();
+        this.receiveBuffer = new ReceiveBuffer(capacity, session.getInitialSequenceNumber());
     }
 
     public BoltReceiver getReceiver() {
@@ -46,28 +50,14 @@ public class BoltSocket {
         return active;
     }
 
-    /**
-     * get the input stream for reading from this socket
-     *
-     * @return
-     */
-    public synchronized BoltInputStream getInputStream() throws IOException {
-        if (inputStream == null) {
-            inputStream = new BoltInputStream(this);
-        }
-        return inputStream;
-    }
 
     /**
-     * get the output stream for writing to this socket
+     * New application data.
      *
-     * @return
+     * @param packet
      */
-    public synchronized BoltOutputStream getOutputStream() {
-        if (outputStream == null) {
-            outputStream = new BoltOutputStream(this);
-        }
-        return outputStream;
+    protected boolean haveNewData(final DataPacket packet) throws IOException {
+        return receiveBuffer.offer(packet);
     }
 
     public final BoltSession getSession() {
@@ -81,7 +71,6 @@ public class BoltSocket {
      */
     protected void doWrite(byte[] data) throws IOException {
         doWrite(data, 0, data.length);
-
     }
 
     /**
@@ -129,7 +118,7 @@ public class BoltSocket {
      */
     protected void flush() throws InterruptedException, IllegalStateException {
         if (!active) return;
-        final long seqNo = sender.getCurrentSequenceNumber();
+        final int seqNo = sender.getCurrentSequenceNumber();
         if (seqNo < 0) throw new IllegalStateException();
         while (active && !sender.isSentOut(seqNo)) {
             Thread.sleep(5);
@@ -158,9 +147,61 @@ public class BoltSocket {
      * @throws IOException
      */
     public void close() throws IOException {
-        if (inputStream != null) inputStream.close();
-        if (outputStream != null) outputStream.close();
         active = false;
     }
+
+    public ReceiveBuffer getReceiveBuffer() {
+        return receiveBuffer;
+    }
+
+    /**
+     * Used for storing application data and the associated
+     * sequence number in the queue in ascending order.
+     */
+    public static class AppData implements Comparable<AppData> {
+        final int sequenceNumber;
+        final byte[] data;
+
+        public AppData(int sequenceNumber, byte[] data) {
+            this.sequenceNumber = sequenceNumber;
+            this.data = data;
+        }
+
+        public byte[] getData() {
+            return data;
+        }
+
+        public int compareTo(AppData o) {
+            return (int) (sequenceNumber - o.sequenceNumber);
+        }
+
+        public String toString() {
+            return sequenceNumber + "[" + data.length + "]";
+        }
+
+        public int getSequenceNumber() {
+            return sequenceNumber;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sequenceNumber);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            AppData other = (AppData) obj;
+            return Objects.equals(sequenceNumber, other.sequenceNumber);
+        }
+
+
+    }
+
 
 }
