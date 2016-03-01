@@ -1,11 +1,9 @@
 package bolt.xcoder;
 
-import java.util.Collection;
-
 /**
  * Created by keen on 27/02/16.
  */
-public interface XCoder<T> {
+public interface XCoder<D, E> {
 
     /**
      * Decodes an arbitrary-length array of bytes into its original
@@ -14,7 +12,7 @@ public interface XCoder<T> {
      * @param data array of bytes to decode.
      * @return the original, decoded object.
      */
-    T decode(byte[] data);
+    D decode(E data);
 
     /**
      * Encodes an object into a collection of byte chunks.
@@ -25,6 +23,6 @@ public interface XCoder<T> {
      * @param object the object to encode.
      * @return a list of byte chunks.
      */
-    Collection<byte[]> encode(T object);
+    E encode(D object);
 
 }

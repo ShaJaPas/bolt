@@ -4,7 +4,7 @@ import bolt.packets.DataPacket;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
 import bolt.statistic.BoltStatistics;
-import bolt.util.MessageAssembler;
+import bolt.util.MessageAssembleBuffer;
 import bolt.xcoder.Client;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
@@ -24,10 +24,10 @@ public class BoltClient implements Client {
 
     private static final Logger LOGGER = Logger.getLogger(BoltClient.class.getName());
 
-    private final BoltEndPoint clientEndpoint;
-    private final XCoderRepository xCoderRepository;
-    private final MessageAssembler messageAssembler;
-    private ClientSession clientSession;
+    private final BoltEndPoint          clientEndpoint;
+    private final XCoderRepository      xCoderRepository;
+    private final MessageAssembleBuffer messageAssembleBuffer;
+    private       ClientSession         clientSession;
 
 
     public BoltClient(InetAddress address, int localPort) throws SocketException, UnknownHostException {
@@ -60,13 +60,13 @@ public class BoltClient implements Client {
                     if (packet != null) {
                         Object decoded = null;
                         // If message, add part to assembly.
-                        if(packet.isMessage()) {
-                            decoded = messageAssembler.addChunk(packet.getData(), packet.getMessageChunkNumber(),
+                        if(packet.isMessage()) { // TODO move this into the xCoderRepository?
+                            decoded = messageAssembleBuffer.addChunk(packet.getData(), packet.getMessageChunkNumber(),
                                     packet.isFinalMessageChunk());
                         }
                         // If not, decode and send.
                         else {
-                            decoded = xCoderRepository.decode(packet.getData());
+                            decoded = xCoderRepository.decode(packet);
                         }
 
                         if (decoded != null) {
@@ -84,9 +84,11 @@ public class BoltClient implements Client {
     }
 
     @Override
-    public void send(final Object obj, final long destId, final boolean reliable) {
-        final Collection<byte[]> data = xCoderRepository.encode(obj);
-        send(data, reliable);
+    public void send(final Object obj, final long destId) throws IOException {
+        final Collection<DataPacket> data = xCoderRepository.encode(obj);
+        for (final DataPacket dp : data) {
+            send(dp);
+        }
     }
 
     /**
@@ -116,11 +118,15 @@ public class BoltClient implements Client {
     }
 
     /**
-     * sends the given data asynchronously
+     * Sends the given data asynchronously.
      *
-     * @param data - the data to send
+     * @param dataPacket the data and headers to send.
      * @throws IOException
      */
+    public void send(final DataPacket dataPacket) throws IOException {
+        clientSession.getSocket().doWrite(dataPacket);
+    }
+
     public void send(byte[] data) throws IOException {
         clientSession.getSocket().doWrite(data);
     }

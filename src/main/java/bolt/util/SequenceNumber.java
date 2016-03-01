@@ -59,6 +59,15 @@ public class SequenceNumber {
     }
 
     /**
+     * increment by one
+     *
+     * @param seq
+     */
+    public static int increment(int seq, int max) {
+        return (seq == max) ? 0 : seq + 1;
+    }
+
+    /**
      * decrement by one
      *
      * @param seq

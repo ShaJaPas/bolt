@@ -221,7 +221,7 @@ public class BoltSender {
      * @throws IOException
      * @throws InterruptedException
      */
-    protected void sendPacket(byte[] data, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    protected void sendPacket(final DataPacket p, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
         DataPacket packet;
         do {
@@ -232,10 +232,17 @@ public class BoltSender {
         }
         while (packet == null);
         try {
-            packet.setPacketSequenceNumber(reliable ? getNextSequenceNumber() : 0);
+            packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
-            packet.setData(data);
+            packet.setData(p.getData());
+            packet.setMessage(p.isMessage());
+            packet.setReliable(p.isReliable());
+            if (p.isMessage()) {
+                packet.setFinalMessageChunk(p.isFinalMessageChunk());
+                packet.setMessageChunkNumber(p.getMessageChunkNumber());
+                packet.setMessageId(p.getMessageId());
+            }
         }
         finally {
             flowWindow.produce();

@@ -15,7 +15,7 @@ import java.util.BitSet;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |0|M|R|                Packet Sequence Number                   |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Destination Socket ID                      |
+ * |     Destination Socket ID     |            Class ID           | TODO make dest_sock_id 16 bit and add 16 bit classId
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |F|    Message Chunk Number     |           Message ID          |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -57,7 +57,9 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private int messageId;
 
-    private long destinationID;
+    private int destinationID;
+
+    private int classID;
 
     private int dataLength;
 
@@ -79,12 +81,13 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         decode(encodedData, length);
     }
 
-    void decode(byte[] encodedData, int length) {
+    void decode(final byte[] encodedData, final int length) {
         message = PacketUtil.isBitSet(encodedData[0], 6);
         reliable = PacketUtil.isBitSet(encodedData[0], 7);
 
         packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
-        destinationID = PacketUtil.decodeInt(encodedData, 4);
+        destinationID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
+        classID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
 
         // If is message.
         if (message) {
@@ -137,7 +140,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return this.destinationID;
     }
 
-    public void setDestinationID(long destinationID) {
+    public void setDestinationID(int destinationID) {
         this.destinationID = destinationID;
     }
 
@@ -155,7 +158,8 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         for (int i = 0; i < 29; i++) flagsAndSeqNum.set(i, PacketUtil.isBitSet(packetSequenceNumber, i));
 
         System.arraycopy(flagsAndSeqNum.toByteArray(), 0, result, 0, 4);
-        System.arraycopy(PacketUtil.encode(destinationID), 0, result, 4, 4);
+        System.arraycopy(PacketUtil.encode(destinationID), 0, result, 4, 2);
+        System.arraycopy(PacketUtil.encode(classID), 0, result, 6, 2);
         if (message) {
             final BitSet messaging = new BitSet(32);
             messaging.set(31, finalMessageChunk);
@@ -165,6 +169,16 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         }
         System.arraycopy(data, 0, result, headerLength, dataLength);
         return result;
+    }
+
+    public int getClassID()
+    {
+        return classID;
+    }
+
+    public void setClassID(int classID)
+    {
+        this.classID = classID;
     }
 
     public boolean isControlPacket() {
@@ -205,6 +219,26 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public void setSession(BoltSession session) {
         this.session = session;
+    }
+
+    public void setReliable(boolean reliable)
+    {
+        this.reliable = reliable;
+    }
+
+    public void setMessage(boolean message)
+    {
+        this.message = message;
+    }
+
+    public void setFinalMessageChunk(boolean finalMessageChunk)
+    {
+        this.finalMessageChunk = finalMessageChunk;
+    }
+
+    public void setMessageChunkNumber(int messageChunkNumber)
+    {
+        this.messageChunkNumber = messageChunkNumber;
     }
 
     public int compareTo(BoltPacket other) {

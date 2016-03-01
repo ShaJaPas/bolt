@@ -10,7 +10,7 @@ public interface BoltPacket extends Comparable<BoltPacket> {
 
     long getDestinationID();
 
-    void setDestinationID(long destinationID);
+    void setDestinationID(int destinationID);
 
     boolean isControlPacket();
 

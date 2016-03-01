@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -71,6 +70,14 @@ public class BoltSocket {
      */
     protected void doWrite(byte[] data) throws IOException {
         doWrite(data, 0, data.length);
+    }
+
+    protected void doWrite(final DataPacket dataPacket) throws IOException {
+        try {
+            sender.sendPacket(dataPacket, 10, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ie) {
+            throw new IOException(ie);
+        }
     }
 
     /**
@@ -152,55 +159,6 @@ public class BoltSocket {
 
     public ReceiveBuffer getReceiveBuffer() {
         return receiveBuffer;
-    }
-
-    /**
-     * Used for storing application data and the associated
-     * sequence number in the queue in ascending order.
-     */
-    public static class AppData implements Comparable<AppData> {
-        final int sequenceNumber;
-        final byte[] data;
-
-        public AppData(int sequenceNumber, byte[] data) {
-            this.sequenceNumber = sequenceNumber;
-            this.data = data;
-        }
-
-        public byte[] getData() {
-            return data;
-        }
-
-        public int compareTo(AppData o) {
-            return (int) (sequenceNumber - o.sequenceNumber);
-        }
-
-        public String toString() {
-            return sequenceNumber + "[" + data.length + "]";
-        }
-
-        public int getSequenceNumber() {
-            return sequenceNumber;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(sequenceNumber);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            AppData other = (AppData) obj;
-            return Objects.equals(sequenceNumber, other.sequenceNumber);
-        }
-
-
     }
 
 
