@@ -26,7 +26,6 @@ public class BoltClient implements Client {
 
     private final BoltEndPoint          clientEndpoint;
     private final XCoderRepository      xCoderRepository;
-    private final MessageAssembleBuffer messageAssembleBuffer;
     private       ClientSession         clientSession;
 
 
@@ -58,21 +57,10 @@ public class BoltClient implements Client {
                     final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
                     if (packet != null) {
-                        Object decoded = null;
-                        // If message, add part to assembly.
-                        if(packet.isMessage()) { // TODO move this into the xCoderRepository?
-                            decoded = messageAssembleBuffer.addChunk(packet.getData(), packet.getMessageChunkNumber(),
-                                    packet.isFinalMessageChunk());
-                        }
-                        // If not, decode and send.
-                        else {
-                            decoded = xCoderRepository.decode(packet);
-                        }
-
+                        final Object decoded =  xCoderRepository.decode(packet);
                         if (decoded != null) {
                             subscriber.onNext(decoded);
                         }
-
                     }
                 }
             }

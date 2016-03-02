@@ -1,7 +1,6 @@
 package bolt.performance;
 
 import bolt.BoltClient;
-import bolt.BoltInputStream;
 import bolt.BoltServerSocket;
 import bolt.BoltSocket;
 import org.junit.Test;

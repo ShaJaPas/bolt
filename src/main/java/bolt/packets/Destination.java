@@ -1,6 +1,7 @@
 package bolt.packets;
 
 import java.net.InetAddress;
+import java.util.Objects;
 
 public class Destination {
 
@@ -9,7 +10,7 @@ public class Destination {
     private final InetAddress address;
 
     /** Bolt socket ID of the peer */
-    private long socketID;
+    private int socketID;
 
     public Destination(InetAddress address, int port) {
         this.address = address;
@@ -24,11 +25,11 @@ public class Destination {
         return port;
     }
 
-    public long getSocketID() {
+    public int getSocketID() {
         return socketID;
     }
 
-    public void setSocketID(long socketID) {
+    public void setSocketID(int socketID) {
         this.socketID = socketID;
     }
 
@@ -37,34 +38,22 @@ public class Destination {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((address == null) ? 0 : address.hashCode());
-        result = prime * result + port;
-        result = prime * result + (int) (socketID ^ (socketID >>> 32));
-        return result;
+    public boolean equals(Object o)
+    {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        final Destination that = (Destination) o;
+        return port == that.port &&
+                socketID == that.socketID &&
+                Objects.equals(address, that.address);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Destination other = (Destination) obj;
-        if (address == null) {
-            if (other.address != null)
-                return false;
-        } else if (!address.equals(other.address))
-            return false;
-        if (port != other.port)
-            return false;
-        if (socketID != other.socketID)
-            return false;
-        return true;
+    public int hashCode()
+    {
+        return Objects.hash(port, address, socketID);
     }
 
 

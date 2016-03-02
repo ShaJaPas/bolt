@@ -1,9 +1,20 @@
 package bolt;
 
-import bolt.packets.*;
+import bolt.packets.Acknowledgement;
+import bolt.packets.Acknowledgment2;
+import bolt.packets.ControlPacket;
 import bolt.packets.ControlPacket.ControlPacketType;
+import bolt.packets.DataPacket;
+import bolt.packets.KeepAlive;
+import bolt.packets.MessageDropRequest;
+import bolt.packets.NegativeAcknowledgement;
 import bolt.packets.Shutdown;
-import bolt.receiver.*;
+import bolt.receiver.AckHistoryEntry;
+import bolt.receiver.AckHistoryWindow;
+import bolt.receiver.PacketHistoryWindow;
+import bolt.receiver.PacketPairWindow;
+import bolt.receiver.ReceiverLossList;
+import bolt.receiver.ReceiverLossListEntry;
 import bolt.statistic.BoltStatistics;
 import bolt.statistic.MeanValue;
 import bolt.util.BoltThreadFactory;
@@ -376,7 +387,7 @@ public class BoltReceiver {
      * in an NAK packet.
      */
     protected void processNAKEvent() throws IOException {
-        final List<Long> seqNumbers = receiverLossList.getFilteredSequenceNumbers(roundTripTime, true);
+        final List<Integer> seqNumbers = receiverLossList.getFilteredSequenceNumbers(roundTripTime, true);
         sendNAK(seqNumbers);
     }
 
@@ -515,7 +526,7 @@ public class BoltReceiver {
         statistics.incNumberOfNAKSent();
     }
 
-    protected void sendNAK(List<Long> sequenceNumbers) throws IOException {
+    protected void sendNAK(List<Integer> sequenceNumbers) throws IOException {
         if (sequenceNumbers.isEmpty()) return;
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(sequenceNumbers);

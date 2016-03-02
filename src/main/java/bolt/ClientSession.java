@@ -99,7 +99,7 @@ public class ClientSession extends BoltSession {
             if (hs.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
                 try {
                     //TODO validate parameters sent by peer
-                    long peerSocketID = hs.getSocketID();
+                    int peerSocketID = hs.getSocketID();
                     sessionCookie = hs.getCookie();
                     destination.setSocketID(peerSocketID);
                     setState(HANDSHAKING2);
@@ -132,11 +132,6 @@ public class ClientSession extends BoltSession {
      * Initial handshake for connect.
      */
     protected void sendInitialHandShake() throws IOException {
-//        long initialSequenceNo = SequenceNumber.random();
-//        setInitialSequenceNumber(initialSequenceNo);
-//        handshake.setInitialSeqNo(initialSequenceNo);
-        //TODO CIAN: REMOVED
-
         final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), getInitialSequenceNumber(),
                 flowWindowSize, mySocketID, endPoint.getLocalAddress());
         handshake.setSession(this);

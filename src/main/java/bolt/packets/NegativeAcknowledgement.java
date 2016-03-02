@@ -105,7 +105,7 @@ public class NegativeAcknowledgement extends ControlPacket {
      *
      * @param sequenceNumbers - a list of sequence numbers
      */
-    public void addLossInfo(List<Long> sequenceNumbers) {
+    public void addLossInfo(List<Integer> sequenceNumbers) {
         int index = 0;
         do {
             long start = sequenceNumbers.get(index);

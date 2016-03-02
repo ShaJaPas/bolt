@@ -253,7 +253,7 @@ public class BoltEndPoint {
         else {
             throw new IOException("dest ID sent by client does not match");
         }
-        Long peerSocketID = packet.getSocketID();
+        Integer peerSocketID = packet.getSocketID();
         peer.setSocketID(peerSocketID);
         session.received(packet, peer);
     }

@@ -136,12 +136,12 @@ public class ServerSession extends BoltSession {
      * Response after the initial connection handshake received:
      * compute cookie
      */
-    protected void ackInitialHandshake(ConnectionHandshake handshake) throws IOException {
+    protected void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
         // Compare the packet size and choose minimum.
-        long clientBufferSize = handshake.getPacketSize();
-        long myBufferSize = getDatagramSize();
-        long bufferSize = Math.min(clientBufferSize, myBufferSize);
-        long initialSequenceNumber = handshake.getInitialSeqNo();
+        final long clientBufferSize = handshake.getPacketSize();
+        final long myBufferSize = getDatagramSize();
+        final long bufferSize = Math.min(clientBufferSize, myBufferSize);
+        final int initialSequenceNumber = handshake.getInitialSeqNo();
         setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
         sessionCookie = SequenceNumber.random();
@@ -161,7 +161,7 @@ public class ServerSession extends BoltSession {
             long clientBufferSize = handshake.getPacketSize();
             long myBufferSize = getDatagramSize();
             long bufferSize = Math.min(clientBufferSize, myBufferSize);
-            long initialSequenceNumber = handshake.getInitialSeqNo();
+            int initialSequenceNumber = handshake.getInitialSeqNo();
             setInitialSequenceNumber(initialSequenceNumber);
             setDatagramSize((int) bufferSize);
 

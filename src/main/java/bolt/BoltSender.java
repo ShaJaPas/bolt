@@ -185,7 +185,8 @@ public class BoltSender {
         statistics.incNumberOfSentDataPackets();
     }
 
-    protected void sendPacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    //TODO has no classId, should consider removing this method.
+    protected void sendReliablePacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
         DataPacket packet;
         do {
@@ -197,7 +198,8 @@ public class BoltSender {
         while (packet == null);//TODO check timeout...
 
         try {
-            packet.setPacketSequenceNumber(reliable ? getNextSequenceNumber() : 0);
+            packet.setReliable(true);
+            packet.setPacketSequenceNumber(getNextSequenceNumber());
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
             int len = Math.min(bb.remaining(), chunkSize);
@@ -213,7 +215,7 @@ public class BoltSender {
 
     /**
      * Writes a data packet, waiting at most for the specified time.
-     * If this is not possible due to a full send queue
+     * If this is not possible due to a full send queue.
      *
      * @param timeout
      * @param units
@@ -235,6 +237,7 @@ public class BoltSender {
             packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
+
             packet.setData(p.getData());
             packet.setMessage(p.isMessage());
             packet.setReliable(p.isReliable());

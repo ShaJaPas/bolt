@@ -6,6 +6,7 @@ import bolt.util.SequenceNumber;
 
 import java.net.DatagramPacket;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
@@ -129,8 +130,8 @@ public abstract class BoltSession {
      *
      * @see CongestionControl
      */
-    private static final Logger LOG = Logger.getLogger(BoltSession.class.getName());
-    private final static AtomicLong NEXT_SOCKET_ID = new AtomicLong(20 + new Random().nextInt(5000));
+    private static final Logger        LOG            = Logger.getLogger(BoltSession.class.getName());
+    private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
 
     protected final BoltStatistics statistics;
     protected final CongestionControl cc;
@@ -138,7 +139,7 @@ public abstract class BoltSession {
      * remote Bolt entity (address and socket ID)
      */
     protected final Destination destination;
-    protected final long mySocketID;
+    protected final int mySocketID;
     protected volatile boolean active;
     protected volatile BoltSocket socket;
     protected int receiveBufferSize = 64 * 32768;

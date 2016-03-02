@@ -35,7 +35,7 @@ public class ConnectionHandshake extends ControlPacket
     public static final long CONNECTION_SERVER_ACK      = -1L;
     private             long boltVersion                = 4;
     private             long socketType                 = SOCKET_TYPE_DGRAM; //stream or dgram
-    private             long initialSeqNo               = 0;
+    private             int  initialSeqNo               = 0;
     private long packetSize;
     private long maxFlowWndSize;
     private long connectionType = CONNECTION_TYPE_REGULAR;//regular or rendezvous mode
@@ -43,7 +43,7 @@ public class ConnectionHandshake extends ControlPacket
     /**
      * Tell peer what the socket ID on this side is.
      */
-    private long socketID;
+    private int socketID;
 
     private long cookie = 0;
 
@@ -61,8 +61,8 @@ public class ConnectionHandshake extends ControlPacket
         decode(controlInformation);
     }
 
-    public ConnectionHandshake(long packetSize, long boltVersion, long initialSeqNo, long connectionType, long maxFlowWndSize,
-            long socketID, long destinationID, long cookie, InetAddress address)
+    private ConnectionHandshake(long packetSize, long boltVersion, int initialSeqNo, long connectionType, long maxFlowWndSize,
+            int socketID, long destinationID, long cookie, InetAddress address)
     {
         this();
         this.packetSize = packetSize;
@@ -76,20 +76,20 @@ public class ConnectionHandshake extends ControlPacket
         this.address = address;
     }
 
-    public static ConnectionHandshake ofClientInitial(long packetSize, long initialSeqNo, long maxFlowWndSize,
-            long socketID, InetAddress address) {
+    public static ConnectionHandshake ofClientInitial(long packetSize, int initialSeqNo, long maxFlowWndSize,
+            int socketID, InetAddress address) {
         return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
                 0, 0, address);
     }
 
-    public static ConnectionHandshake ofClientSecond(long packetSize, long initialSeqNo, long maxFlowWndSize,
-            long socketID, long destinationID, long cookie, InetAddress address) {
+    public static ConnectionHandshake ofClientSecond(long packetSize, int initialSeqNo, long maxFlowWndSize,
+            int socketID, long destinationID, long cookie, InetAddress address) {
         return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }
 
-    public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, long initialSeqNo, long maxFlowWndSize,
-            long socketID, long destinationID, long cookie, InetAddress address) {
+    public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
+            int socketID, long destinationID, long cookie, InetAddress address) {
         return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }
@@ -104,11 +104,11 @@ public class ConnectionHandshake extends ControlPacket
     {
         boltVersion = PacketUtil.decode(data, 0);
         socketType = PacketUtil.decode(data, 4);
-        initialSeqNo = PacketUtil.decode(data, 8);
+        initialSeqNo = PacketUtil.decodeInt(data, 8);
         packetSize = PacketUtil.decode(data, 12);
         maxFlowWndSize = PacketUtil.decode(data, 16);
         connectionType = PacketUtil.decode(data, 20);
-        socketID = PacketUtil.decode(data, 24);
+        socketID = PacketUtil.decodeInt(data, 24);
         cookie = PacketUtil.decode(data, 28);
         //TODO ipv6 check
         address = PacketUtil.decodeInetAddress(data, 32, false);
@@ -134,12 +134,12 @@ public class ConnectionHandshake extends ControlPacket
         this.socketType = socketType;
     }
 
-    public long getInitialSeqNo()
+    public int getInitialSeqNo()
     {
         return initialSeqNo;
     }
 
-    public void setInitialSeqNo(long initialSeqNo)
+    public void setInitialSeqNo(int initialSeqNo)
     {
         this.initialSeqNo = initialSeqNo;
     }
@@ -174,12 +174,12 @@ public class ConnectionHandshake extends ControlPacket
         this.connectionType = connectionType;
     }
 
-    public long getSocketID()
+    public int getSocketID()
     {
         return socketID;
     }
 
-    public void setSocketID(long socketID)
+    public void setSocketID(int socketID)
     {
         this.socketID = socketID;
     }

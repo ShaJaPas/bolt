@@ -38,8 +38,8 @@ public class PacketFactory {
         ControlPacket packet = null;
 
         int pktType = PacketUtil.decodeType(encodedData, 0);
-        long additionalInfo = PacketUtil.decode(encodedData, 4);
-        long destID = PacketUtil.decode(encodedData, 8);
+        int additionalInfo = PacketUtil.decodeInt(encodedData, 4);
+        int destID = PacketUtil.decodeInt(encodedData, 8);
         byte[] controlInformation = new byte[length - 12];
         System.arraycopy(encodedData, 12, controlInformation, 0, controlInformation.length);
 

@@ -32,7 +32,7 @@ public class ReceiverLossList {
         }
     }
 
-    public void remove(long seqNo) {
+    public void remove(int seqNo) {
         backingList.remove(new ReceiverLossListEntry(seqNo));
     }
 
@@ -65,9 +65,9 @@ public class ReceiverLossList {
      *                   be reset (using {@link ReceiverLossListEntry#feedback()} )
      * @return
      */
-    public List<Long> getFilteredSequenceNumbers(long RTT, boolean doFeedback) {
-        List<Long> result = new ArrayList<>();
-        ReceiverLossListEntry[] sorted = backingList.toArray(new ReceiverLossListEntry[0]);
+    public List<Integer> getFilteredSequenceNumbers(long RTT, boolean doFeedback) {
+        final List<Integer> result = new ArrayList<>();
+        final ReceiverLossListEntry[] sorted = backingList.toArray(new ReceiverLossListEntry[0]);
         Arrays.sort(sorted);
         for (ReceiverLossListEntry e : sorted) {
             if ((Util.getCurrentTime() - e.getLastFeedbackTime()) > e.getK() * RTT) {

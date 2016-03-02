@@ -8,7 +8,6 @@ public class DummyControlPacket extends ControlPacket{
 	
 	@Override
 	public byte[]encodeControlInformation(){
-		//TODO Auto-generate method sub
 		return null;
 	}
 }
