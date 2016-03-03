@@ -57,7 +57,8 @@ public class BoltClient implements Client {
                     final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
                     if (packet != null) {
-                        final Object decoded =  xCoderRepository.decode(packet);
+                        // TODO what about classless data.
+                        final Object decoded = xCoderRepository.decode(packet);
                         if (decoded != null) {
                             subscriber.onNext(decoded);
                         }
@@ -87,8 +88,8 @@ public class BoltClient implements Client {
      * @param port
      * @throws UnknownHostException
      */
-    private void connectBlocking(InetAddress address, int port) throws InterruptedException, UnknownHostException, IOException {
-        Destination destination = new Destination(address, port);
+    private void connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
+        final Destination destination = new Destination(address, port);
         //create client session...
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
@@ -101,17 +102,13 @@ public class BoltClient implements Client {
         LOGGER.info("The BoltClient is connected");
     }
 
-    public void connect(final String host, final int port) throws InterruptedException, UnknownHostException, IOException {
-        connectBlocking(InetAddress.getByName(host), port);
-    }
-
     /**
      * Sends the given data asynchronously.
      *
      * @param dataPacket the data and headers to send.
      * @throws IOException
      */
-    public void send(final DataPacket dataPacket) throws IOException {
+    private void send(final DataPacket dataPacket) throws IOException {
         clientSession.getSocket().doWrite(dataPacket);
     }
 

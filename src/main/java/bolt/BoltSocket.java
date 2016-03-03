@@ -111,7 +111,7 @@ public class BoltSocket {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         while (bb.remaining() > 0) {
             try {
-                sender.sendReliablePacket(bb, timeout, units);
+                sender.sendRawReliablePacket(bb, timeout, units);
             } catch (Exception ex) {
                 ex.printStackTrace();
             }

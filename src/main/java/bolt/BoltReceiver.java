@@ -223,7 +223,7 @@ public class BoltReceiver {
     /**
      * Packets are written by the endpoint.
      */
-    protected void receive(BoltPacket p) throws IOException {
+    protected void receive(final BoltPacket p) throws IOException {
         if (storeStatistics) dgReceiveInterval.end();
         if (!p.isControlPacket() && LOG.isLoggable(Level.FINE)) {
             LOG.fine("++ " + p + " queuesize=" + handOffQueue.size());
@@ -277,7 +277,7 @@ public class BoltReceiver {
             processEXPEvent();
         }
         // Perform time-bounded UDP receive
-        BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
+        final BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
         if (packet != null) {
             // Reset exp count to 1
             expCount = 1;
@@ -446,7 +446,7 @@ public class BoltReceiver {
         }
     }
 
-    protected void onDataPacketReceived(DataPacket dp) throws IOException {
+    protected void onDataPacketReceived(final DataPacket dp) throws IOException {
         int currentSequenceNumber = dp.getPacketSequenceNumber();
 
         //for TESTING : check whether to drop this packet
@@ -477,28 +477,26 @@ public class BoltReceiver {
         // Store current time
         lastDataPacketArrivalTime = currentDataPacketArrivalTime;
 
-
-        //(6).number of detected lossed packet
-        /*(6.a).if the number of the current data packet is greater than LSRN+1,
-            put all the sequence numbers between (but excluding) these two values
-			into the receiver's loss list and send them to the sender in an NAK packet*/
+        // 6) Number of detected lossed packet
         if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber + 1) > 0) {
+            // 6.a) If the number of the current data packet is greater than LSRN+1,
+            // put all the sequence numbers between (but excluding) these two values
+            // into the receiver's loss list and send them to the sender in an NAK packet
             sendNAK(currentSequenceNumber);
-        } else if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) < 0) {
-                /*(6.b).if the sequence number is less than LRSN,remove it from
-                 * the receiver's loss list
-				 */
+        }
+        else if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) < 0) {
+            // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
             receiverLossList.remove(currentSequenceNumber);
         }
 
         statistics.incNumberOfReceivedDataPackets();
 
-        //(7).Update the LRSN
+        // 7) Update the LRSN
         if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) > 0) {
             largestReceivedSeqNumber = currentSequenceNumber;
         }
 
-        //(8) need to send an ACK? Some cc algorithms use this
+        // 8) Need to send an ACK? Some cc algorithms use this.
         if (ackInterval > 0) {
             if (n % ackInterval == 0) processACKEvent(false);
         }

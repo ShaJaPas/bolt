@@ -57,7 +57,7 @@ public class TestBoltServerSocket extends BoltTestBase {
     protected void doTest() throws Exception {
         if (!running) runServer();
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect("localhost", 65321);
+        client.connect(InetAddress.getByName("localhost"), 65321);
         int N = num_packets * 32768;
         byte[] data = new byte[N];
         new Random().nextBytes(data);

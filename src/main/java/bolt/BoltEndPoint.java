@@ -111,7 +111,7 @@ public class BoltEndPoint {
     }
 
     /**
-     * start the endpoint. If the serverSocketModeEnabled flag is true,
+     * Start the endpoint. If the serverSocketModeEnabled flag is true,
      * a new connection can be handed off to an application. The application needs to
      * call #accept() to get the socket
      *
@@ -178,6 +178,15 @@ public class BoltEndPoint {
     }
 
     /**
+     * Returns a new connection, if available.
+     *
+     * @return a new {@link BoltSession}, or null if none available.
+     */
+    protected BoltSession accept() {
+        return sessionHandOff.poll();
+    }
+
+    /**
      * Single receive, run in the receiverThread, see {@link #start()}.
      * <ul>
      * <li>Receives UDP packets from the network.
@@ -235,12 +244,8 @@ public class BoltEndPoint {
         final Destination p = new Destination(peer.getAddress(), peer.getPort());
         BoltSession session = sessionsBeingConnected.get(peer);
         long destID = packet.getDestinationID();
-        if (session != null && session.getSocketID() == destID) {
-            // Confirmation handshake
-            sessionsBeingConnected.remove(p);
-            addSession(destID, session);
-        }
-        else if (session == null) {
+        // New session
+        if (session == null) {
             session = new ServerSession(peer, this);
             sessionsBeingConnected.put(p, session);
             sessions.put(session.getSocketID(), session);
@@ -249,6 +254,11 @@ public class BoltEndPoint {
                 sessionHandOff.put(session);
                 LOG.fine("Request taken for processing.");
             }
+        }
+        // Confirmation handshake
+        else if (session.getSocketID() == destID) {
+            sessionsBeingConnected.remove(p);
+            addSession(destID, session);
         }
         else {
             throw new IOException("dest ID sent by client does not match");

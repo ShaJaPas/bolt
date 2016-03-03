@@ -56,7 +56,7 @@ public class TestBoltLargeData extends BoltTestBase {
 
         if (!running) runServer();
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect("localhost", 65321);
+        client.connect(InetAddress.getByName("localhost"), 65321);
 
         long N = num_packets * size;
 

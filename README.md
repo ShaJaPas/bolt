@@ -7,3 +7,4 @@
 - [ ] Simulated packet-loss
 - [ ] Simulated latency
 - [ ] Simulated jitter
+- [ ] Client disconnect (remove sessions, generate event)

@@ -18,7 +18,7 @@ public class BoltServerSocket {
     private volatile boolean shutdown = false;
 
     /**
-     * create a Bolt ServerSocket
+     * Create a Bolt ServerSocket.
      *
      * @param localAddress
      * @param port the local port. If 0, an ephemeral port will be chosen

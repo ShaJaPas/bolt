@@ -34,7 +34,7 @@ public class BulkPackTest {
     private void runClient() throws Exception {
 
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect("localhost", 65321);
+        client.connect(InetAddress.getByName("localhost"), 65321);
 
         long N = PACKET_COUNT * SIZE;
 

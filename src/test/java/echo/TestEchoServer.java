@@ -18,7 +18,7 @@ public class TestEchoServer {
         CompletableFuture.runAsync(es);
         Thread.sleep(1000);
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect("localhost", 65321);
+        client.connect(InetAddress.getByName("localhost"), 65321);
         PrintWriter pw = new PrintWriter(new OutputStreamWriter(client.getOutputStream(), "UTF-8"));
         pw.println("test");
         pw.flush();

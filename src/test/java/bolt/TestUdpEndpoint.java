@@ -22,7 +22,7 @@ public class TestUdpEndpoint extends BoltTestBase {
         BoltEndPoint server = new BoltEndPoint(InetAddress.getByName("localhost"), 65322);
         server.start();
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12346);
-        client.connect("localhost", 65322);
+        client.connect(InetAddress.getByName("localhost"), 65322);
 
         //test a large message (resulting in multiple data packets)
         int num_packets = 100;

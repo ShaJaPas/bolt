@@ -244,4 +244,9 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     public int compareTo(BoltPacket other) {
         return (getPacketSequenceNumber() - other.getPacketSequenceNumber());
     }
+
+    public boolean isClassful() {
+        return classID > 0;
+    }
+
 }

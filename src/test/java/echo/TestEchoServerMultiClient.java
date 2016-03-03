@@ -19,11 +19,11 @@ public class TestEchoServerMultiClient {
         Thread.sleep(1000);
 
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect("localhost", 65321);
+        client.connect(InetAddress.getByName("localhost"), 65321);
         doClientCommunication(client);
 
         BoltClient client2 = new BoltClient(InetAddress.getByName("localhost"), 12346);
-        client2.connect("localhost", 65321);
+        client2.connect(InetAddress.getByName("localhost"), 65321);
         doClientCommunication(client2);
 
         es.stop();

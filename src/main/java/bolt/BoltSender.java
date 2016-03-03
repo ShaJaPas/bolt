@@ -186,7 +186,7 @@ public class BoltSender {
     }
 
     //TODO has no classId, should consider removing this method.
-    protected void sendReliablePacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    protected void sendRawReliablePacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
         DataPacket packet;
         do {
@@ -201,6 +201,8 @@ public class BoltSender {
             packet.setReliable(true);
             packet.setPacketSequenceNumber(getNextSequenceNumber());
             packet.setSession(session);
+            packet.setMessage(false);
+            packet.setClassID(0);
             packet.setDestinationID(session.getDestination().getSocketID());
             int len = Math.min(bb.remaining(), chunkSize);
             byte[] data = packet.getData();
