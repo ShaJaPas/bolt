@@ -6,9 +6,9 @@ import bolt.sender.SenderLossList;
 import bolt.statistic.BoltStatistics;
 import bolt.statistic.MeanThroughput;
 import bolt.statistic.MeanValue;
-import bolt.util.BoltThreadFactory;
 import bolt.util.SequenceNumber;
 import bolt.util.Util;
+import rx.Observable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -107,7 +107,6 @@ public class BoltSender {
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
         this.storeStatistics = Boolean.getBoolean("bolt.sender.storeStatistics");
         initMetrics();
-        doStart();
     }
 
     private void initMetrics() {
@@ -132,28 +131,27 @@ public class BoltSender {
     /**
      * Starts the sender algorithm
      */
-    private void doStart() {
-        final Runnable r = () -> {
+    public Observable<?> doStart() {
+        return Observable.create(subscriber -> {
             try {
-                while (!stopped) {
+                String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
+                Thread.currentThread().setName("Bolt-Sender-" + s + Util.THREAD_INDEX.incrementAndGet());
+
+                while (!stopped && !subscriber.isUnsubscribed()) {
                     // Wait until explicitly (re)started.
                     startLatch.await();
                     paused = false;
                     senderAlgorithm();
                 }
             }
-            catch (InterruptedException ie) {
-                ie.printStackTrace();
-            }
-            catch (IOException ex) {
-                ex.printStackTrace();
+            catch (IOException | InterruptedException ex) {
                 LOG.log(Level.SEVERE, "", ex);
+                subscriber.onError(ex);
             }
             LOG.info("STOPPING SENDER for " + session);
-        };
-        String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-        final Thread senderThread = BoltThreadFactory.get().newThread(r, "Sender-" + s, false);
-        senderThread.start();
+            subscriber.onCompleted();
+            stop();
+        });
     }
 
     /**

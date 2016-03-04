@@ -1,17 +1,18 @@
 package bolt;
 
+import bolt.event.ConnectionReadyEvent;
 import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.packets.PacketFactory;
-import bolt.util.BoltThreadFactory;
+import rx.Observable;
+import rx.Subscriber;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.*;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,15 +35,9 @@ public class BoltEndPoint {
 
     private final Map<Destination, BoltSession> sessionsBeingConnected = new ConcurrentHashMap<>();
 
-    /**
-     * If the endpoint is configured for a server socket, this queue is used to hand-off
-     * new BoltSessions to the application.
-     */
-    private final SynchronousQueue<BoltSession> sessionHandOff = new SynchronousQueue<>();
-
-    private boolean serverSocketMode = false;
-
-    private volatile boolean stopped = false;
+//    private boolean serverSocketMode = false;
+//
+//    private volatile boolean stopped = false;
 
     /**
      * create an endpoint on the given socket
@@ -111,26 +106,14 @@ public class BoltEndPoint {
     }
 
     /**
-     * Start the endpoint. If the serverSocketModeEnabled flag is true,
-     * a new connection can be handed off to an application. The application needs to
-     * call #accept() to get the socket
-     *
-     * @param serverSocketModeEnabled
+     * Start the endpoint.
      */
-    public void start(boolean serverSocketModeEnabled) {
-        serverSocketMode = serverSocketModeEnabled;
-        // Start receive thread
-        final Thread t = BoltThreadFactory.get().newThread(this::doReceive, "UDPEndpoint", true);
-        t.start();
-        LOG.info("BoltEndpoint started.");
-    }
-
-    public void start() {
-        start(false);
+    public Observable<?> start() {
+        return Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io());
     }
 
     public void stop() {
-        stopped = true;
+//        stopped = true;
         dgSocket.close();
     }
 
@@ -166,27 +149,6 @@ public class BoltEndPoint {
     }
 
     /**
-     * Wait the given time for a new connection.
-     *
-     * @param timeout the time to wait
-     * @param unit    the {@link TimeUnit}
-     * @return a new {@link BoltSession}
-     * @throws InterruptedException
-     */
-    protected BoltSession accept(long timeout, TimeUnit unit) throws InterruptedException {
-        return sessionHandOff.poll(timeout, unit);
-    }
-
-    /**
-     * Returns a new connection, if available.
-     *
-     * @return a new {@link BoltSession}, or null if none available.
-     */
-    protected BoltSession accept() {
-        return sessionHandOff.poll();
-    }
-
-    /**
      * Single receive, run in the receiverThread, see {@link #start()}.
      * <ul>
      * <li>Receives UDP packets from the network.
@@ -196,10 +158,11 @@ public class BoltEndPoint {
      *
      * @throws IOException
      */
-    protected void doReceive() {
-        while (!stopped) {
+    protected void doReceive(final Subscriber<? super Object> subscriber) {
+        LOG.info("BoltEndpoint started.");
+        while (!subscriber.isUnsubscribed()) {
             try {
-                //will block until a packet is received or timeout has expired
+                // Will block until a packet is received or timeout has expired.
                 dgSocket.receive(dp);
 
                 final Destination peer = new Destination(dp.getAddress(), dp.getPort());
@@ -208,64 +171,66 @@ public class BoltEndPoint {
 
                 long dest = packet.getDestinationID();
                 final BoltSession session = sessions.get(dest);
-                if (session != null) {
-                    // dispatch to existing session
-                    session.received(packet, peer);
+
+                if (packet.isConnectionHandshake()) {
+                    final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
+                    if (result.isReady()) subscriber.onNext(new ConnectionReadyEvent(result));
                 }
-                else if (packet.isConnectionHandshake()) {
-                    connectionHandshake((ConnectionHandshake) packet, peer);
+                else if (session != null) {
+                    // Dispatch to existing session.
+                    session.received(packet, peer);
                 }
                 else {
                     LOG.warning("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
                 }
             }
-            catch (SocketException ex) {
+            catch (SocketException | SocketTimeoutException ex) {
+                // For timeout, can safely ignore... will retry until the endpoint is stopped.
                 LOG.log(Level.INFO, "SocketException: " + ex.getMessage());
-            }
-            catch (SocketTimeoutException ste) {
-                //can safely ignore... we will retry until the endpoint is stopped
             }
             catch (Exception ex) {
                 LOG.log(Level.WARNING, "Got: " + ex.getMessage(), ex);
             }
         }
+        stop();
     }
 
     /**
-     * called when a "connection handshake" packet was received and no
-     * matching session yet exists
+     * Called when a "connection handshake" packet was received and no
+     * matching session yet exists.
      *
      * @param packet
      * @param peer
      * @throws IOException
      * @throws InterruptedException
      */
-    protected synchronized void connectionHandshake(ConnectionHandshake packet, Destination peer) throws IOException, InterruptedException {
-        final Destination p = new Destination(peer.getAddress(), peer.getPort());
-        BoltSession session = sessionsBeingConnected.get(peer);
-        long destID = packet.getDestinationID();
-        // New session
+    protected synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
+                                                           final ConnectionHandshake packet, final Destination peer,
+                                                           final BoltSession existingSession) throws IOException, InterruptedException {
+        BoltSession session = existingSession;
         if (session == null) {
-            session = new ServerSession(peer, this);
-            sessionsBeingConnected.put(p, session);
-            sessions.put(session.getSocketID(), session);
-            if (serverSocketMode) {
-                LOG.fine("Pooling new request.");
-                sessionHandOff.put(session);
-                LOG.fine("Request taken for processing.");
+            final Destination p = new Destination(peer.getAddress(), peer.getPort());
+            session = sessionsBeingConnected.get(peer);
+            final long destID = packet.getDestinationID();
+            // New session
+            if (session == null) {
+                session = new ServerSession(peer, this);
+                sessionsBeingConnected.put(p, session);
+                sessions.put(session.getSocketID(), session);
             }
+            // Confirmation handshake
+            else if (session.getSocketID() == destID) {
+                sessionsBeingConnected.remove(p);
+                addSession(destID, session);
+            }
+            else {
+                throw new IOException("dest ID sent by client does not match");
+            }
+            Integer peerSocketID = packet.getSocketID();
+            peer.setSocketID(peerSocketID);
         }
-        // Confirmation handshake
-        else if (session.getSocketID() == destID) {
-            sessionsBeingConnected.remove(p);
-            addSession(destID, session);
-        }
-        else {
-            throw new IOException("dest ID sent by client does not match");
-        }
-        Integer peerSocketID = packet.getSocketID();
-        peer.setSocketID(peerSocketID);
-        session.received(packet, peer);
+        session.receiveHandshake(subscriber, packet, peer);
+        return session;
     }
 
     protected void doSend(BoltPacket packet) throws IOException {

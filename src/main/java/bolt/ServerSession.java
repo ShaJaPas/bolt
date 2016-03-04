@@ -5,6 +5,7 @@ import bolt.packets.Destination;
 import bolt.packets.KeepAlive;
 import bolt.packets.Shutdown;
 import bolt.util.SequenceNumber;
+import rx.Subscriber;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -15,7 +16,7 @@ import java.util.logging.Logger;
 import static bolt.BoltSession.SessionState.*;
 
 /**
- * server side session in client-server mode
+ * Server side session in client-server mode.
  */
 public class ServerSession extends BoltSession {
 
@@ -25,30 +26,68 @@ public class ServerSession extends BoltSession {
 
     private ConnectionHandshake finalConnectionHandshake;
 
-    public ServerSession(Destination peer, BoltEndPoint endPoint) throws SocketException, UnknownHostException {
+    public ServerSession(final Destination peer, final BoltEndPoint endPoint) throws SocketException, UnknownHostException {
         super("ServerSession localPort=" + endPoint.getLocalPort() + " peer=" + peer.getAddress() + ":" + peer.getPort(), peer);
         this.endPoint = endPoint;
         LOG.info("Created " + toString() + " talking to " + peer.getAddress() + ":" + peer.getPort());
     }
 
+    /**
+     * Reply to a connection handshake message.
+     *
+     * @param subscriber
+     * @param handshake incoming connection handshake from the client.
+     * @param peer
+     */
+    @Override
+    public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
+                                    final Destination peer) {
+        LOG.info("Received " + handshake + " in state <" + getState() + ">");
+        if (getState() == READY) {
+            // Just send confirmation packet again.
+            try {
+                sendFinalHandShake(handshake);
+            }
+            catch (IOException io) {
+            }
+        }
+
+        else if (getState().seqNo() < READY.seqNo()) {
+            destination.setSocketID(handshake.getSocketID());
+
+            if (getState().seqNo() < HANDSHAKING.seqNo()) {
+                setState(HANDSHAKING);
+            }
+
+            try {
+                boolean handShakeComplete = handleSecondHandShake(handshake);
+                if (handShakeComplete) {
+                    LOG.info("Client/Server handshake complete!");
+                    setState(READY);
+                    socket = new BoltSocket(endPoint, this);
+                    socket.start().subscribe(subscriber);
+                    cc.init();
+                }
+            }
+            catch (IOException ex) {
+                // Session invalid.
+                LOG.log(Level.WARNING, "Error processing ConnectionHandshake", ex);
+                setState(INVALID);
+            }
+        }
+        return isReady();
+    }
+
     @Override
     public void received(final BoltPacket packet, final Destination peer) {
 
-        if (packet.isConnectionHandshake()) {
-            handleHandShake((ConnectionHandshake) packet);
-        }
-
-        else if (packet instanceof KeepAlive) {
+        if (packet instanceof KeepAlive) {
             socket.getReceiver().resetEXPTimer();
             active = true;
         }
 
         else if (packet instanceof Shutdown) {
-            try {
-                socket.getReceiver().stop();
-            } catch (IOException ex) {
-                LOG.log(Level.WARNING, "", ex);
-            }
+            socket.getReceiver().stop();
             setState(SHUTDOWN);
             active = false;
             LOG.info("Connection shutdown initiated by peer.");
@@ -59,52 +98,14 @@ public class ServerSession extends BoltSession {
             try {
                 if (packet.forSender()) {
                     socket.getSender().receive(packet);
-                } else {
+                }
+                else {
                     socket.getReceiver().receive(packet);
                 }
-            } catch (Exception ex) {
-                //session invalid
+            }
+            catch (Exception ex) {
+                // Session invalid
                 LOG.log(Level.SEVERE, "", ex);
-                setState(INVALID);
-            }
-        }
-
-    }
-
-    /**
-     * Reply to a connection handshake message.
-     *
-     * @param connectionHandshake incoming connection handshake from the client.
-     */
-    protected void handleHandShake(ConnectionHandshake connectionHandshake) {
-        LOG.info("Received " + connectionHandshake + " in state <" + getState() + ">");
-        if (getState() == READY) {
-            // Just send confirmation packet again.
-            try {
-                sendFinalHandShake(connectionHandshake);
-            }
-            catch (IOException io) {
-            }
-        }
-
-        else if (getState().seqNo() < READY.seqNo()) {
-            destination.setSocketID(connectionHandshake.getSocketID());
-
-            if (getState().seqNo() < HANDSHAKING.seqNo()) {
-                setState(HANDSHAKING);
-            }
-
-            try {
-                boolean handShakeComplete = handleSecondHandShake(connectionHandshake);
-                if (handShakeComplete) {
-                    LOG.info("Client/Server handshake complete!");
-                    setState(READY);
-                    socket = new BoltSocket(endPoint, this);
-                    cc.init();
-                }
-            } catch (IOException ex) {
-                // Session invalid.
-                LOG.log(Level.WARNING, "Error processing ConnectionHandshake", ex);
                 setState(INVALID);
             }
         }

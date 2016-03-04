@@ -23,7 +23,7 @@ public class PacketHistoryWindow extends CircularArray<Long> {
     }
 
     /**
-     * compute the packet arrival speed
+     * Compute the packet arrival speed
      * (see specification section 6.2, page 12)
      *
      * @return the current value
@@ -38,10 +38,10 @@ public class PacketHistoryWindow extends CircularArray<Long> {
         int pos = position - 1;
         if (pos < 0) pos = num;
         do {
-            long upper = circularArray.get(pos);
+            long upper = getEntry(pos);
             pos--;
             if (pos < 0) pos = num;
-            long lower = circularArray.get(pos);
+            long lower = getEntry(pos);
             long interval = upper - lower;
             intervals[count] = interval;
             total += interval;

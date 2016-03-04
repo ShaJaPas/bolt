@@ -4,8 +4,7 @@ import bolt.packets.DataPacket;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
 import bolt.statistic.BoltStatistics;
-import bolt.util.MessageAssembleBuffer;
-import bolt.xcoder.Client;
+import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
 
@@ -29,21 +28,18 @@ public class BoltClient implements Client {
     private       ClientSession         clientSession;
 
 
-    public BoltClient(InetAddress address, int localPort) throws SocketException, UnknownHostException {
-        this.clientEndpoint = new BoltEndPoint(address, localPort);
-        this.xCoderRepository = new XCoderRepository();
-        LOGGER.info("Created client endpoint on port " + localPort);
+    public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
+        this(new BoltEndPoint(address, localPort));
     }
 
-    public BoltClient(InetAddress address) throws SocketException, UnknownHostException {
-        this.clientEndpoint = new BoltEndPoint(address);
-        this.xCoderRepository = new XCoderRepository();
-        LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
+    public BoltClient(final InetAddress address) throws SocketException, UnknownHostException {
+        this(new BoltEndPoint(address));
     }
 
-    public BoltClient(BoltEndPoint endpoint) throws SocketException, UnknownHostException {
+    public BoltClient(final BoltEndPoint endpoint) throws SocketException, UnknownHostException {
         this.clientEndpoint = endpoint;
-        this.xCoderRepository = new XCoderRepository();
+        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
 
 
@@ -52,12 +48,11 @@ public class BoltClient implements Client {
 
         return Observable.create(subscriber -> {
             try {
-                connectBlocking(address, port);
+                connectBlocking(address, port).subscribe(subscriber);
                 while (!subscriber.isUnsubscribed()) {
                     final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
                     if (packet != null) {
-                        // TODO what about classless data.
                         final Object decoded = xCoderRepository.decode(packet);
                         if (decoded != null) {
                             subscriber.onNext(decoded);
@@ -69,6 +64,7 @@ public class BoltClient implements Client {
                 subscriber.onError(ex);
             }
             subscriber.onCompleted();
+            shutdown();
         });
     }
 
@@ -88,18 +84,19 @@ public class BoltClient implements Client {
      * @param port
      * @throws UnknownHostException
      */
-    private void connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
+    private Observable<?> connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
         final Destination destination = new Destination(address, port);
         //create client session...
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
-        clientEndpoint.start();
+        final Observable<?> endpointEvents = clientEndpoint.start();
         clientSession.connect();
         //wait for handshake
         while (!clientSession.isReady()) { //TODO #connect already blocks waiting for ready, why twice?
             Thread.sleep(50);
         }
         LOGGER.info("The BoltClient is connected");
+        return endpointEvents;
     }
 
     /**
@@ -137,8 +134,7 @@ public class BoltClient implements Client {
         clientSession.getSocket().flush();
     }
 
-    public void shutdown() throws IOException {
-
+    public void shutdown() {
         if (clientSession.isReady() && clientSession.isActive()) {
             Shutdown shutdown = new Shutdown();
             shutdown.setDestinationID(clientSession.getDestination().getSocketID());

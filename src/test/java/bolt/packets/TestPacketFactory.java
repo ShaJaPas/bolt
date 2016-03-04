@@ -6,8 +6,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -108,13 +109,7 @@ public class TestPacketFactory {
         NegativeAcknowledgement p1 = new NegativeAcknowledgement();
         p1.setMessageId(9872);
         p1.setDestinationID(2);
-        List<Long> loss = new ArrayList<Long>();
-        loss.add(5L);
-        loss.add(6L);
-        loss.add(7L);
-        loss.add(8L);
-        loss.add(9L);
-        loss.add(11L);
+        List<Integer> loss = IntStream.range(5, 12).boxed().collect(Collectors.toList());
 
         p1.addLossInfo(loss);
         byte[] p1_data = p1.getEncoded();

@@ -10,17 +10,24 @@ import java.util.Objects;
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class PacketXCoder<T> implements XCoder<T, Collection<DataPacket>>
+public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 {
 
     private final int maxPacketSize = 1400;
 
     private final ObjectXCoder<T> objectXCoder;
 
-    public PacketXCoder(final ObjectXCoder<T> objectXCoder)
+    private final boolean reliable;
+
+    public PackageXCoder(final ObjectXCoder<T> objectXCoder)
     {
+        this(objectXCoder, true);
+    }
+
+    public PackageXCoder(final ObjectXCoder<T> objectXCoder, final boolean reliable) {
         Objects.requireNonNull(objectXCoder);
         this.objectXCoder = objectXCoder;
+        this.reliable = reliable;
     }
 
     /**
@@ -64,7 +71,7 @@ public class PacketXCoder<T> implements XCoder<T, Collection<DataPacket>>
 
             final DataPacket packet = new DataPacket();
             packet.setData(packetData);
-            packet.setReliable(objectXCoder.isReliable());
+            packet.setReliable(reliable);
             packet.setClassID(objectXCoder.getClassId());
             packet.setMessage(message);
             if (message) {
@@ -77,7 +84,7 @@ public class PacketXCoder<T> implements XCoder<T, Collection<DataPacket>>
     }
 
     protected final boolean isMessage(final byte[] packetData) {
-        return objectXCoder.isReliable() && (packetData.length > maxPacketSize);
+        return reliable && (packetData.length > maxPacketSize);
     }
 
     public void setClassId(final int classId) {

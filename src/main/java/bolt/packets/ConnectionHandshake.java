@@ -9,8 +9,9 @@ import java.net.InetAddress;
 /**
  * Protocol Connection Handshake
  * <p>
- * Additional Info: Undefined       <br>
- * Control Info:                    <br>
+ * Additional Info: Undefined
+ * <p>
+ * Control Info:
  * <ol>
  * <li> 32 bits: UDT version
  * <li> 32 bits: Socket Type (STREAM or DGRAM)

@@ -2,6 +2,8 @@ package bolt;
 
 import bolt.packets.DataPacket;
 import bolt.util.ReceiveBuffer;
+import rx.Observable;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -35,6 +37,10 @@ public class BoltSocket {
 
         final int capacity = 2 * session.getFlowWindowSize();
         this.receiveBuffer = new ReceiveBuffer(capacity, session.getInitialSequenceNumber());
+    }
+
+    public Observable<?> start() {
+        return Observable.merge(receiver.start().subscribeOn(Schedulers.io()), sender.doStart().subscribeOn(Schedulers.io()));
     }
 
     public BoltReceiver getReceiver() {

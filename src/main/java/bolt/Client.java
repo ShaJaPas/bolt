@@ -1,4 +1,4 @@
-package bolt.xcoder;
+package bolt;
 
 import rx.Observable;
 

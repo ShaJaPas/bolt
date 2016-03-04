@@ -1,7 +1,6 @@
 package bolt;
 
 import bolt.packets.DataPacket;
-import bolt.xcoder.Server;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
 import rx.Subscriber;
@@ -10,7 +9,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by omahoc9 on 3/3/16.
@@ -34,11 +32,10 @@ public class BoltServer implements Server
             try
             {
                 this.serverEndpoint = new BoltEndPoint(address, port);
-                this.serverEndpoint.start(true);
+                this.serverEndpoint.start().subscribe(subscriber);
+
                 while (!subscriber.isUnsubscribed()) {
                     pollReceivedData(subscriber);
-
-                    pollNewSessions(subscriber);
                 }
             }
             catch (Exception ex) {
@@ -47,18 +44,6 @@ public class BoltServer implements Server
             subscriber.onCompleted();
             shutdown();
         }).share();
-    }
-
-    private void pollNewSessions(Subscriber<? super Object> subscriber) {
-        final BoltSession session = serverEndpoint.accept();
-        if (session != null) {
-            CompletableFuture.runAsync()
-            // Wait for handshake to complete. TODO what if it doesn't?
-            while (!session.isReady() || session.getSocket() == null) {
-                Thread.sleep(100);
-            }
-            return session.getSocket();
-        }
     }
 
     private void pollReceivedData(Subscriber<? super Object> subscriber)
@@ -92,21 +77,6 @@ public class BoltServer implements Server
         if (this.serverEndpoint != null) {
             this.serverEndpoint.stop();
             this.serverEndpoint = null;
-        }
-    }
-
-    public static class ClientConnected {
-
-        private final long destId;
-
-        public ClientConnected(long destId)
-        {
-            this.destId = destId;
-        }
-
-        public long getDestId()
-        {
-            return destId;
         }
     }
 

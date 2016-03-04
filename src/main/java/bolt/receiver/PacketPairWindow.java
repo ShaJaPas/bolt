@@ -27,10 +27,10 @@ public class PacketPairWindow extends CircularArray<Long> {
      * @return time interval in microseconds
      */
     public double computeMedianTimeInterval() {
-        int num = haveOverflow ? max : Math.min(max, position);
+        int num = size();
         double median = 0;
         for (int i = 0; i < num; i++) {
-            median += circularArray.get(i).doubleValue();
+            median += getEntry(i).doubleValue();
         }
         median = median / num;
 
@@ -40,7 +40,7 @@ public class PacketPairWindow extends CircularArray<Long> {
         double total = 0;
         int count = 0;
         for (int i = 0; i < num; i++) {
-            double val = circularArray.get(i).doubleValue();
+            double val = getEntry(i).doubleValue();
             if (val < upper && val > lower) {
                 total += val;
                 count++;

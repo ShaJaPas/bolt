@@ -5,12 +5,14 @@ import bolt.BoltEndPoint;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * helper methods
  */
 public class Util {
 
+    public static final AtomicInteger THREAD_INDEX = new AtomicInteger(0);
     private static final long SYN = 10000;
     private static final double SYN_D = 10000.0;
 

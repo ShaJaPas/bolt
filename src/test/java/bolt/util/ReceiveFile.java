@@ -1,8 +1,6 @@
 package bolt.util;
 
 import bolt.BoltClient;
-import bolt.BoltInputStream;
-import bolt.BoltOutputStream;
 import bolt.BoltReceiver;
 
 import java.io.BufferedOutputStream;
@@ -73,8 +71,6 @@ public class ReceiveFile extends Application {
             InetAddress myHost = localIP != null ? InetAddress.getByName(localIP) : InetAddress.getLocalHost();
             BoltClient client = localPort != -1 ? new BoltClient(myHost, localPort) : new BoltClient(myHost);
             client.connect(InetAddress.getByName(serverHost), serverPort);
-            BoltInputStream in = client.getInputStream();
-            BoltOutputStream out = client.getOutputStream();
 
             System.out.println("[ReceiveFile] Requesting file " + remoteFile);
             byte[] fName = remoteFile.getBytes();

@@ -1,6 +1,7 @@
-package bolt.util;
+package bolt.xcoder;
 
 import bolt.packets.DataPacket;
+import bolt.util.SequenceNumber;
 
 import java.util.ArrayList;
 import java.util.Collection;

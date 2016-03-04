@@ -3,6 +3,7 @@ package bolt;
 import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
+import rx.Subscriber;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -34,7 +35,6 @@ public class ClientSession extends BoltSession {
      * @throws InterruptedException
      * @throws IOException
      */
-
     public void connect() throws InterruptedException, IOException {
         int n = 0;
         while (getState() != READY) {
@@ -60,14 +60,46 @@ public class ClientSession extends BoltSession {
     }
 
     @Override
-    public void received(BoltPacket packet, Destination peer) {
-
-        if (packet.isConnectionHandshake()) {
-            ConnectionHandshake hs = (ConnectionHandshake) packet;
-            handleConnectionHandshake(hs, peer);
-            return;
+    public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
+                                    final Destination peer) {
+        if (getState() == HANDSHAKING) {
+            LOG.info("Received initial handshake response from " + peer + "\n" + handshake);
+            if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
+                try {
+                    //TODO validate parameters sent by peer
+                    int peerSocketID = handshake.getSocketID();
+                    sessionCookie = handshake.getCookie();
+                    destination.setSocketID(peerSocketID);
+                    setState(HANDSHAKING2);
+                }
+                catch (Exception ex) {
+                    LOG.log(Level.WARNING, "Error creating socket", ex);
+                    setState(INVALID);
+                }
+            }
+            else {
+                LOG.info("Unexpected type of handshake packet received");
+                setState(INVALID);
+            }
         }
+        else if (getState() == HANDSHAKING2) {
+            try {
+                LOG.info("Received confirmation handshake response from " + peer + "\n" + handshake);
+                //TODO validate parameters sent by peer
+                setState(READY);
+                socket = new BoltSocket(endPoint, this);
+                socket.start().subscribe(subscriber);
+            }
+            catch (Exception ex) {
+                LOG.log(Level.WARNING, "Error creating socket", ex);
+                setState(INVALID);
+            }
+        }
+        return isReady();
+    }
 
+    @Override
+    public void received(BoltPacket packet, Destination peer) {
         if (getState() == READY) {
 
             if (packet instanceof Shutdown) {
@@ -87,42 +119,6 @@ public class ClientSession extends BoltSession {
             catch (Exception ex) {
                 // Session is invalid.
                 LOG.log(Level.SEVERE, "Error in " + toString(), ex);
-                setState(INVALID);
-            }
-        }
-    }
-
-    protected void handleConnectionHandshake(ConnectionHandshake hs, Destination peer) {
-
-        if (getState() == HANDSHAKING) {
-            LOG.info("Received initial handshake response from " + peer + "\n" + hs);
-            if (hs.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
-                try {
-                    //TODO validate parameters sent by peer
-                    int peerSocketID = hs.getSocketID();
-                    sessionCookie = hs.getCookie();
-                    destination.setSocketID(peerSocketID);
-                    setState(HANDSHAKING2);
-                }
-                catch (Exception ex) {
-                    LOG.log(Level.WARNING, "Error creating socket", ex);
-                    setState(INVALID);
-                }
-            }
-            else {
-                LOG.info("Unexpected type of handshake packet received");
-                setState(INVALID);
-            }
-        }
-        else if (getState() == HANDSHAKING2) {
-            try {
-                LOG.info("Received confirmation handshake response from " + peer + "\n" + hs);
-                //TODO validate parameters sent by peer
-                setState(READY);
-                socket = new BoltSocket(endPoint, this);
-            }
-            catch (Exception ex) {
-                LOG.log(Level.WARNING, "Error creating socket", ex);
                 setState(INVALID);
             }
         }

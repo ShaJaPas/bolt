@@ -1,13 +1,14 @@
 package bolt;
 
+import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.statistic.BoltStatistics;
 import bolt.util.SequenceNumber;
+import rx.Subscriber;
 
 import java.net.DatagramPacket;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
@@ -161,7 +162,7 @@ public abstract class BoltSession {
     // Cache dgPacket (peer stays the same always)
     private DatagramPacket dgPacket;
 
-    public BoltSession(String description, Destination destination) {
+    public BoltSession(final String description, final Destination destination) {
         this.statistics = new BoltStatistics(description);
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
         this.destination = destination;
@@ -172,6 +173,7 @@ public abstract class BoltSession {
 
     public abstract void received(BoltPacket packet, Destination peer);
 
+    public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
 
     public BoltSocket getSocket() {
         return socket;
