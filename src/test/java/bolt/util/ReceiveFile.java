@@ -67,7 +67,6 @@ public class ReceiveFile extends Application {
         configure();
         verbose = true;
         try {
-            BoltReceiver.connectionExpiryDisabled = true;
             InetAddress myHost = localIP != null ? InetAddress.getByName(localIP) : InetAddress.getLocalHost();
             BoltClient client = localPort != -1 ? new BoltClient(myHost, localPort) : new BoltClient(myHost);
             client.connect(InetAddress.getByName(serverHost), serverPort);

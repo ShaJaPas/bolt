@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * BoltSocket is analogous to a normal java.net.Socket, it provides input and
  * output streams for the application.
+ * TODO consider if this class is even necessary anymore with In/Out streams.
  */
 public class BoltSocket {
 

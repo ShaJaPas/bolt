@@ -155,8 +155,6 @@ public class BoltEndPoint {
      * <li>Converts them to Bolt packets.
      * <li>dispatches the Bolt packets according to their destination ID.
      * </ul>
-     *
-     * @throws IOException
      */
     protected void doReceive(final Subscriber<? super Object> subscriber) {
         LOG.info("BoltEndpoint started.");

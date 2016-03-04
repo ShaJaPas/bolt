@@ -1,6 +1,10 @@
 package bolt.util;
 
-import bolt.*;
+import bolt.BoltServer;
+import bolt.BoltSocket;
+import bolt.event.ConnectionReadyEvent;
+import bolt.xcoder.MessageAssembleBuffer;
+import bolt.xcoder.XCoderRepository;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -85,14 +89,12 @@ public class SendFile extends Application {
     public void run() {
         configure();
         try {
-            BoltReceiver.connectionExpiryDisabled = true;
-            InetAddress myHost = localIP != null ? InetAddress.getByName(localIP) : InetAddress.getLoopbackAddress();
-            BoltServerSocket server = new BoltServerSocket(myHost, serverPort);
-            while (true) {
-                BoltSocket socket = server.accept();
-                Thread.sleep(1000);
+            final InetAddress myHost = localIP != null ? InetAddress.getByName(localIP) : InetAddress.getLoopbackAddress();
+            final BoltServer server = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
+            server.bind(myHost, serverPort).ofType(ConnectionReadyEvent.class).subscribe(x -> {
+                BoltSocket socket = x.getSessionReady().getSocket();
                 threadPool.execute(new RequestRunner(socket));
-            }
+            });
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -108,7 +110,7 @@ public class SendFile extends Application {
 
         private final boolean memMapped;
 
-        public RequestRunner(BoltSocket socket) {
+        public RequestRunner(final BoltSocket socket) {
             this.socket = socket;
             format.setMaximumFractionDigits(3);
             memMapped = false;//true;

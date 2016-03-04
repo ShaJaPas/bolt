@@ -38,11 +38,7 @@ public class BoltReceiver {
      * Milliseconds to timeout a new session that stays idle
      */
     private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
-    /**
-     * If set to true connections will not expire, but will only be
-     * closed by a Shutdown message
-     */
-    public static boolean connectionExpiryDisabled = false;
+
     //every nth packet will be discarded... for testing only of course
     public static int dropRate = 0;
     private final BoltEndPoint endpoint;

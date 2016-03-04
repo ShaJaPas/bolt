@@ -1,15 +1,18 @@
 package bolt.performance;
 
 import bolt.BoltClient;
-import bolt.BoltServerSocket;
-import bolt.BoltSocket;
+import bolt.BoltServer;
+import bolt.event.ConnectionReadyEvent;
+import bolt.xcoder.MessageAssembleBuffer;
+import bolt.xcoder.XCoderRepository;
 import org.junit.Test;
+import rx.schedulers.Schedulers;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
@@ -33,47 +36,44 @@ public class BulkPackTest {
 
     private void runClient() throws Exception {
 
-        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect(InetAddress.getByName("localhost"), 65321);
+        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
+        client.connect(InetAddress.getByName("localhost"), 65321)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .take(1)
+                .ofType(ConnectionReadyEvent.class)
+                .toBlocking()
+                .subscribe(x -> {
 
-        long N = PACKET_COUNT * SIZE;
+                    try {
+                        byte[] data = new byte[SIZE];
+                        new Random().nextBytes(data);
 
-        byte[] data = new byte[SIZE];
-        new Random().nextBytes(data);
-
-        Thread.sleep(100);
-
-        for (int i = 0; i < PACKET_COUNT; i++) {
-            client.send(data);
-//            client.flush();
-            if (i % 10000 == 0) System.out.println(i);
-        }
-        client.flush();
-        client.shutdown();
+                        for (int i = 0; i < PACKET_COUNT; i++)
+                        {
+                            client.send(data);
+                            //            client.flush();
+                            if (i % 10000 == 0)
+                                System.out.println(i);
+                        }
+                        client.flush();
+                        client.shutdown();
+                    }
+                    catch (IOException | TimeoutException | InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                });
     }
 
     private void runServer() throws Exception {
-        final BoltServerSocket sock = new BoltServerSocket(InetAddress.getByName("localhost"), 65321);
+        final BoltServer sock = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                final BoltSocket s = sock.accept();
-                assertNotNull(s);
-                BoltInputStream is = s.getInputStream();
-                byte[] buf = new byte[4096];
-                int c = 0;
-                while (true) {
-                    c = is.read(buf);
-                    if (c < 0) break;
-                }
-                System.out.println("Server thread exiting, last received bytes: " + c);
-                sock.shutDown();
-                System.out.println(s.getSession().getStatistics());
-            } catch (Exception e) {
-                e.printStackTrace();
-                fail();
-            }
-        });
+        sock.bind(InetAddress.getByName("localhost"), 65321)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .ofType(byte[].class)
+                .subscribe(x -> System.out.println("Received byte count of " + x.length),
+                        ex -> { ex.printStackTrace(); fail();});
     }
 
 }

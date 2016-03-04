@@ -1,8 +1,12 @@
 package bolt.performance;
 
 import bolt.*;
+import bolt.event.ConnectionReadyEvent;
 import bolt.util.TestUtil;
+import bolt.xcoder.MessageAssembleBuffer;
+import bolt.xcoder.XCoderRepository;
 import org.junit.Test;
+import rx.schedulers.Schedulers;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -109,48 +113,54 @@ public class TestBoltLargeData extends BoltTestBase {
     }
 
     private void runServer() throws Exception {
-
-        final BoltServerSocket serverSocket = new BoltServerSocket(InetAddress.getByName("localhost"), 65321);
-
-        Runnable serverProcess = () -> {
-
-            try {
-                MessageDigest md5 = MessageDigest.getInstance("MD5");
-                long start = System.currentTimeMillis();
-                BoltSocket s = serverSocket.accept();
-                serverStarted = true;
-                assertNotNull(s);
-                BoltInputStream is = s.getInputStream();
-                byte[] buf = new byte[READ_BUFFERSIZE];
-                int c = 0;
-                while (true) {
-                    if (checkTimeout(start)) break;
-                    c = is.read(buf);
-                    if (c < 0) break;
-                    else {
-                        md5.update(buf, 0, c);
-                        total += c;
-                    }
-                }
-                System.out.println("Server thread exiting, last received bytes: " + c);
-                serverRunning = false;
-                md5_received = TestUtil.hexString(md5);
-                serverSocket.shutDown();
-                System.out.println(s.getSession().getStatistics());
-            } catch (Exception e) {
-                e.printStackTrace();
-                fail();
-                serverRunning = false;
-            }
-        };
-        Thread t = new Thread(serverProcess);
-        t.start();
-    }
-
-
-    private boolean checkTimeout(long start) {
-        boolean to = System.currentTimeMillis() - start > TIMEOUT;
-        if (to) System.out.println("TIMEOUT");
-        return to;
+        final long start = System.currentTimeMillis();
+        final MessageDigest md5 = MessageDigest.getInstance("MD5");
+        final BoltServer serverSocket = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
+        serverSocket.bind(InetAddress.getByName("localhost"), 65321)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .ofType(byte[].class)
+                .subscribe(x -> {
+                    md5.update(x, 0, x.length);
+                    total += x.length;
+                });
+        serverRunning = false; //TODO rewrite runServer method correctly.
+        md5_received = TestUtil.hexString(md5);
+//
+//        Runnable serverProcess = () -> {
+//
+//            try {
+//                BoltSocket s = serverSocket.accept();
+//                serverStarted = true;
+//                assertNotNull(s);
+//                BoltInputStream is = s.getInputStream();
+//                byte[] buf = new byte[READ_BUFFERSIZE];
+//                int c = 0;
+//                while (true) {
+//                    if (checkTimeout(start)) break;
+//                    c = is.read(buf);
+//                    if (c < 0) break;
+//                    else {
+//                        md5.update(buf, 0, c);
+//                    }
+//                }
+//                System.out.println("Server thread exiting, last received bytes: " + c);
+//                serverSocket.shutDown();
+//                System.out.println(s.getSession().getStatistics());
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                fail();
+//                serverRunning = false;
+//            }
+//        };
+//        Thread t = new Thread(serverProcess);
+//        t.start();
+//    }
+//
+//
+//    private boolean checkTimeout(long start) {
+//        boolean to = System.currentTimeMillis() - start > TIMEOUT;
+//        if (to) System.out.println("TIMEOUT");
+//        return to;
     }
 }
