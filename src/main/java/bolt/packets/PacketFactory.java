@@ -43,35 +43,27 @@ public class PacketFactory {
         byte[] controlInformation = new byte[length - 12];
         System.arraycopy(encodedData, 12, controlInformation, 0, controlInformation.length);
 
-        //TYPE 0000:0
         if (ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == pktType) {
             packet = new ConnectionHandshake(controlInformation);
         }
-        //TYPE 0001:1
         else if (ControlPacketType.KEEP_ALIVE.getTypeId() == pktType) {
             packet = new KeepAlive();
         }
-        //TYPE 0010:2
         else if (ControlPacketType.ACK.getTypeId() == pktType) {
             packet = new Acknowledgement(additionalInfo, controlInformation);
         }
-        //TYPE 0011:3
         else if (ControlPacketType.NAK.getTypeId() == pktType) {
             packet = new NegativeAcknowledgement(controlInformation);
         }
-        //TYPE 0101:5
         else if (ControlPacketType.SHUTDOWN.getTypeId() == pktType) {
             packet = new Shutdown();
         }
-        //TYPE 0110:6
         else if (ControlPacketType.ACK2.getTypeId() == pktType) {
             packet = new Acknowledgment2(additionalInfo, controlInformation);
         }
-        //TYPE 0111:7
         else if (ControlPacketType.MESSAGE_DROP_REQUEST.getTypeId() == pktType) {
             packet = new MessageDropRequest(controlInformation);
         }
-        //TYPE 1111:15
         else if (ControlPacketType.USER_DEFINED.getTypeId() == pktType) {
             packet = new UserDefined(controlInformation);
         }

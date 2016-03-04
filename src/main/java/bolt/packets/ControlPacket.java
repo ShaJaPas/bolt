@@ -217,28 +217,19 @@ public abstract class ControlPacket implements BoltPacket {
     }
 
     public int compareTo(BoltPacket other) {
-        return (int) (getPacketSequenceNumber() - other.getPacketSequenceNumber());
+        return (getPacketSequenceNumber() - other.getPacketSequenceNumber());
     }
 
-    //TODO trim fat
     public enum ControlPacketType {
 
         CONNECTION_HANDSHAKE(0),
         KEEP_ALIVE(1),
         ACK(2),
         NAK(3),
-        UNUNSED_1(4),
-        SHUTDOWN(5),
-        ACK2(6),
-        MESSAGE_DROP_REQUEST(7),
-        UNUNSED_2(8),
-        UNUNSED_3(9),
-        UNUNSED_4(10),
-        UNUNSED_5(11),
-        UNUNSED_6(12),
-        UNUNSED_7(13),
-        UNUNSED_8(14),
-        USER_DEFINED(15),;
+        SHUTDOWN(4),
+        ACK2(5),
+        MESSAGE_DROP_REQUEST(6),
+        USER_DEFINED(7),;
 
         private final int typeId;
 
