@@ -38,7 +38,7 @@ public class EchoServer {
                     .subscribeOn(Schedulers.io())
                     .observeOn(Schedulers.computation())
                     .ofType(RoutedData.class)
-                    .take(1)
+//                    .take(1)
                     .subscribe(x -> pool.execute(new Request(server, x)));
             started = true;
             return s;
@@ -60,7 +60,12 @@ public class EchoServer {
 
         public void run() {
             try {
-                System.out.println(received.getPayload().toString());
+                if (received.getPayload().getClass().equals(byte[].class)) {
+                    System.out.println(new String((byte[]) received.getPayload()));
+                }
+                else {
+                    System.out.println(received.getPayload().toString());
+                }
 
                 server.send(received.getPayload(), received.getSourceId());
             }

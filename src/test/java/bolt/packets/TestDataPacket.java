@@ -2,13 +2,35 @@ package bolt.packets;
 
 import org.junit.Test;
 
+import java.util.Random;
+import java.util.stream.IntStream;
+
 import static org.junit.Assert.assertEquals;
 
 public class TestDataPacket {
 
+
+    private DataPacket createRandomPacket() {
+        final Random r = new Random();
+        final byte[] encodedData = new byte[100 + r.nextInt(1300)];
+        r.nextBytes(encodedData);
+
+        return new DataPacket(encodedData);
+    }
+
+    @Test
+    public void testDecodeAndEncodeAreSymmetric() {
+        IntStream.range(0, 1000).parallel().forEach(__ -> {
+            final DataPacket src = createRandomPacket();
+            final DataPacket cpy = new DataPacket(src.getEncoded());
+
+            assertEquals(src, cpy);
+        });
+    }
+
     @Test
     public void testSequenceNumber1() {
-        DataPacket p = new DataPacket();
+        DataPacket p = createRandomPacket();
         p.setPacketSequenceNumber(1);
         p.setData(new byte[0]);
         byte[] x = p.getEncoded();
@@ -21,13 +43,14 @@ public class TestDataPacket {
 
     @Test
     public void testEncoded() {
-        DataPacket p = new DataPacket();
+        DataPacket p = createRandomPacket();
+        p.setMessage(false);
         p.setPacketSequenceNumber(1);
         byte[] data = "test".getBytes();
         p.setData(data);
         byte[] encoded = p.getEncoded();
         byte[] encData = new byte[data.length];
-        System.arraycopy(encoded, 16, encData, 0, data.length);
+        System.arraycopy(encoded, 8, encData, 0, data.length);
         String s = new String(encData);
         assertEquals("test", s);
         System.out.println("String s = " + s);
@@ -36,7 +59,8 @@ public class TestDataPacket {
 
     @Test
     public void testDecode1() {
-        DataPacket testPacket1 = new DataPacket();
+        DataPacket testPacket1 = createRandomPacket();
+        testPacket1.setMessage(false);
         testPacket1.setPacketSequenceNumber(127);
         testPacket1.setDestinationID(1);
         byte[] data1 = "Hallo".getBytes();
@@ -45,7 +69,7 @@ public class TestDataPacket {
         //get the encoded data
         byte[] encodedData = testPacket1.getEncoded();
 
-        int headerLength = 16;
+        int headerLength = 8;
         assertEquals(data1.length + headerLength, encodedData.length);
 
         byte[] payload = new byte[data1.length];
@@ -53,39 +77,27 @@ public class TestDataPacket {
         String s1 = new String(payload);
         assertEquals("Hallo", s1);
 
-        System.out.println("String s1 = " + s1);
-        System.out.println("tesPacket1Length = " + testPacket1.getLength());
-        System.out.println("sequenceNumber1 = " + testPacket1.getPacketSequenceNumber());
-        System.out.println("messageId 1= " + testPacket1.getMessageId());
-        System.out.println("destinationID1 = " + testPacket1.getDestinationID());
-        System.out.println("data1 = " + new String(testPacket1.getData()));
-
-
         //create a new DataPacket from the encoded data
         DataPacket testPacket2 = new DataPacket(encodedData);
-        // and test
-        System.out.println("tesPacket2Length = " + testPacket2.getLength());
-        System.out.println("sequenceNumber2 = " + testPacket2.getPacketSequenceNumber());
-        System.out.println("messageNumber2 = " + testPacket2.getMessageId());
-        System.out.println("destinationID1 = " + testPacket1.getDestinationID());
-        System.out.println("data2 = " + new String(testPacket2.getData()));
 
         assertEquals(127, testPacket2.getPacketSequenceNumber());
     }
 
     @Test
     public void testEncodeDecode1() {
-        DataPacket dp = new DataPacket();
+        final DataPacket dp = createRandomPacket();
         dp.setPacketSequenceNumber(127);
-        dp.setMessageId(268435457);
+        dp.setMessage(true);
+        dp.setMessageId(35457);
         dp.setDestinationID(255);
         dp.setData("test".getBytes());
 
         byte[] encodedData1 = dp.getEncoded();
 
-        DataPacket dp2 = new DataPacket(encodedData1);
+        final DataPacket dp2 = new DataPacket(encodedData1);
+        assertEquals(true, dp2.isMessage());
         assertEquals(127, dp2.getPacketSequenceNumber());
-        assertEquals(268435457, dp2.getMessageId());
+        assertEquals(35457, dp2.getMessageId());
         assertEquals(255, dp2.getDestinationID());
         assertEquals("test", new String(dp2.getData()));
     }

@@ -56,7 +56,8 @@ public class BoltServer implements Server
                 if (packet != null) {
                     final Object decoded = xCoderRepository.decode(packet);
                     if (decoded != null) {
-                        subscriber.onNext(new RoutedData(session.getDestination().getSocketID(), decoded));
+                        subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
+//                        subscriber.onNext(new RoutedData(getDestination().getSocketID(), decoded));
                     }
                 }
             }
@@ -66,7 +67,7 @@ public class BoltServer implements Server
     @Override
     public void send(final Object obj, final long destId) throws IOException
     {
-        final BoltSession session = Optional.of(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
+        final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
         if (session != null) {
             final Collection<DataPacket> data = xCoderRepository.encode(obj);
             for (final DataPacket dp : data) {

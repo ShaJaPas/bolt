@@ -4,7 +4,8 @@ import bolt.BoltPacket;
 import bolt.BoltSession;
 import bolt.util.SequenceNumber;
 
-import java.util.BitSet;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * The data packet header structure is as following:
@@ -86,8 +87,8 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         reliable = PacketUtil.isBitSet(encodedData[0], 5);
 
         packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
-        destinationID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
-        classID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
+        destinationID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
+        classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
         // If is message.
         if (message) {
@@ -160,11 +161,11 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         System.arraycopy(PacketUtil.encode(destinationID), 2, result, 4, 2);
         System.arraycopy(PacketUtil.encode(classID), 2, result, 6, 2);
         if (message) {
-            final BitSet messaging = new BitSet(32);
-            messaging.set(31, finalMessageChunk);
-            for (int i = 0; i < 15; i++) messaging.set(i + 16, PacketUtil.isBitSet(messageChunkNumber, i));
-            for (int i = 0; i < 16; i++) messaging.set(i, PacketUtil.isBitSet(messageId, i));
-            System.arraycopy(messaging.toByteArray(), 0, result, 8, 4);
+            final byte[] messageBits = new byte[4];
+            messageBits[0] = PacketUtil.setBit(messageBits[0], 7, finalMessageChunk);
+            PacketUtil.encodeMapToBytes(messageChunkNumber, messageBits, 15, 15);
+            PacketUtil.encodeMapToBytes(messageId, messageBits, 31, 16);
+            System.arraycopy(messageBits, 0, result, 8, 4);
         }
         System.arraycopy(data, 0, result, headerLength, dataLength);
         return result;
@@ -248,4 +249,39 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return classID > 0;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DataPacket that = (DataPacket) o;
+        return reliable == that.reliable &&
+                message == that.message &&
+                packetSequenceNumber == that.packetSequenceNumber &&
+                finalMessageChunk == that.finalMessageChunk &&
+                messageChunkNumber == that.messageChunkNumber &&
+                messageId == that.messageId &&
+                destinationID == that.destinationID &&
+                classID == that.classID &&
+                Arrays.equals(data, that.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(data, reliable, message, packetSequenceNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, classID);
+    }
+
+    @Override
+    public String toString() {
+        return "DataPacket{" +
+                "classID=" + classID +
+                ", data=" + Arrays.toString(data) +
+                ", reliable=" + reliable +
+                ", message=" + message +
+                ", packetSequenceNumber=" + packetSequenceNumber +
+                ", finalMessageChunk=" + finalMessageChunk +
+                ", messageChunkNumber=" + messageChunkNumber +
+                ", messageId=" + messageId +
+                ", destinationID=" + destinationID +
+                '}';
+    }
 }

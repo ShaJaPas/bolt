@@ -54,6 +54,23 @@ public class PacketUtil {
                 : b & ~(1 << bitIndex)); // set bit to 0
     }
 
+    /**
+     * @param value value to encode.
+     * @param data byte array to encode into.
+     * @param startBit first bit in data to set, as an offset from the right-most bit.
+     * @param numBitsToSet number of bits to map.
+     */
+    public static byte[] encodeMapToBytes(int value, byte[] data, int startBit, int numBitsToSet) {
+        for (int i = 0; i < numBitsToSet; i++) {
+            final int bitIndex = startBit - i;
+            final int byteIndex = (bitIndex / 8);
+            final int bitInByteIndex = 7 - (bitIndex % 8);
+            final boolean bitSet = isBitSet(value, i);
+            data[byteIndex] = setBit(data[byteIndex], bitInByteIndex, bitSet);
+        }
+        return data;
+    }
+
     public static int decodeInt(byte[] data, int start) {
         return (data[start] & 0xFF) << 24
                 | (data[start + 1] & 0xFF) << 16

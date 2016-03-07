@@ -139,7 +139,7 @@ public class BoltSender {
 
                 while (!stopped && !subscriber.isUnsubscribed()) {
                     // Wait until explicitly (re)started.
-                    startLatch.await();
+//                    startLatch.await();
                     paused = false;
                     senderAlgorithm();
                 }

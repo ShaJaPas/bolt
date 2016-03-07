@@ -8,8 +8,6 @@ import bolt.statistic.BoltStatistics;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
-import rx.Subscriber;
-import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -51,8 +49,7 @@ public class BoltClient implements Client {
 
         return Observable.create(subscriber -> {
             try {
-                connectBlocking(address, port, subscriber);
-//                connectBlocking(address, port).subscribe(subscriber);
+                connectBlocking(address, port).subscribe(subscriber::onNext, subscriber::onError);
                 while (!subscriber.isUnsubscribed()) {
                     if (clientSession != null && clientSession.getSocket() != null) {
                         final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
@@ -60,7 +57,8 @@ public class BoltClient implements Client {
                         if (packet != null) {
                             final Object decoded = xCoderRepository.decode(packet);
                             if (decoded != null) {
-                                subscriber.onNext(new RoutedData(clientSession.getDestination().getSocketID(), decoded));
+                                subscriber.onNext(new RoutedData(clientSession.getSocketID(), decoded));
+//                                subscriber.onNext(new RoutedData(clientSession.getDestination().getSocketID(), decoded));
                             }
                         }
                     }
@@ -90,25 +88,18 @@ public class BoltClient implements Client {
      * Establishes a connection to the given server.
      * Starts the sender thread.
      *
-     * @param address
-     * @param port
+     * @param address address of remote host.
+     * @param port port of remote host.
      * @throws UnknownHostException
      */
-    private Observable<?> connectBlocking(final InetAddress address, final int port, final Subscriber<? super Object> subscriber) throws InterruptedException, UnknownHostException, IOException {
+    private Observable<?> connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
         final Destination destination = new Destination(address, port);
-        //create client session...
+        // Create client session
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
-        clientEndpoint.start().subscribe(subscriber);
-//        final Observable<?> endpointEvents = clientEndpoint.start();
-        clientSession.connect().subscribe(subscriber::onNext, subscriber::onError);
-        //wait for handshake
-//        while (!clientSession.isReady()) { //TODO #connect already blocks waiting for ready, why twice?
-//            Thread.sleep(50);
-//        }
-        LOGGER.info("The BoltClient is connected");
-//        return endpointEvents;
-        return null;
+
+        LOGGER.info("The BoltClient is connecting");
+        return Observable.merge(clientEndpoint.start(), clientSession.connect());
     }
 
     /**
