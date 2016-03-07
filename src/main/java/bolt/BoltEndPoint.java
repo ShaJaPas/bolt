@@ -135,7 +135,7 @@ public class BoltEndPoint {
         return dgSocket;
     }
 
-    public void addSession(Long destinationID, BoltSession session) {
+    public void addSession(final Long destinationID, final BoltSession session) {
         LOG.info("Storing session <" + destinationID + ">");
         sessions.put(destinationID, session);
     }

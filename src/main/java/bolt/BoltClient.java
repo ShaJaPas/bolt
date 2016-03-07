@@ -3,10 +3,13 @@ package bolt;
 import bolt.packets.DataPacket;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
+import bolt.receiver.RoutedData;
 import bolt.statistic.BoltStatistics;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
+import rx.Subscriber;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -23,9 +26,9 @@ public class BoltClient implements Client {
 
     private static final Logger LOGGER = Logger.getLogger(BoltClient.class.getName());
 
-    private final BoltEndPoint          clientEndpoint;
-    private final XCoderRepository      xCoderRepository;
-    private       ClientSession         clientSession;
+    private final BoltEndPoint clientEndpoint;
+    private final XCoderRepository xCoderRepository;
+    private ClientSession clientSession;
 
 
     public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
@@ -48,14 +51,17 @@ public class BoltClient implements Client {
 
         return Observable.create(subscriber -> {
             try {
-                connectBlocking(address, port).subscribe(subscriber);
+                connectBlocking(address, port, subscriber);
+//                connectBlocking(address, port).subscribe(subscriber);
                 while (!subscriber.isUnsubscribed()) {
-                    final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
+                    if (clientSession != null && clientSession.getSocket() != null) {
+                        final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
-                    if (packet != null) {
-                        final Object decoded = xCoderRepository.decode(packet);
-                        if (decoded != null) {
-                            subscriber.onNext(decoded);
+                        if (packet != null) {
+                            final Object decoded = xCoderRepository.decode(packet);
+                            if (decoded != null) {
+                                subscriber.onNext(new RoutedData(clientSession.getDestination().getSocketID(), decoded));
+                            }
                         }
                     }
                 }
@@ -70,6 +76,10 @@ public class BoltClient implements Client {
 
     @Override
     public void send(final Object obj, final long destId) throws IOException {
+        send(obj);
+    }
+
+    public void send(final Object obj) throws IOException {
         final Collection<DataPacket> data = xCoderRepository.encode(obj);
         for (final DataPacket dp : data) {
             send(dp);
@@ -84,19 +94,21 @@ public class BoltClient implements Client {
      * @param port
      * @throws UnknownHostException
      */
-    private Observable<?> connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
+    private Observable<?> connectBlocking(final InetAddress address, final int port, final Subscriber<? super Object> subscriber) throws InterruptedException, UnknownHostException, IOException {
         final Destination destination = new Destination(address, port);
         //create client session...
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
-        final Observable<?> endpointEvents = clientEndpoint.start();
-        clientSession.connect();
+        clientEndpoint.start().subscribe(subscriber);
+//        final Observable<?> endpointEvents = clientEndpoint.start();
+        clientSession.connect().subscribe(subscriber::onNext, subscriber::onError);
         //wait for handshake
-        while (!clientSession.isReady()) { //TODO #connect already blocks waiting for ready, why twice?
-            Thread.sleep(50);
-        }
+//        while (!clientSession.isReady()) { //TODO #connect already blocks waiting for ready, why twice?
+//            Thread.sleep(50);
+//        }
         LOGGER.info("The BoltClient is connected");
-        return endpointEvents;
+//        return endpointEvents;
+        return null;
     }
 
     /**
@@ -105,12 +117,17 @@ public class BoltClient implements Client {
      * @param dataPacket the data and headers to send.
      * @throws IOException
      */
-    private void send(final DataPacket dataPacket) throws IOException {
+    public void send(final DataPacket dataPacket) throws IOException {
         clientSession.getSocket().doWrite(dataPacket);
     }
 
-    public void send(byte[] data) throws IOException {
-        clientSession.getSocket().doWrite(data);
+    public void send(byte[] data) throws BoltException {
+        try {
+            clientSession.getSocket().doWrite(data);
+        }
+        catch (IOException e) {
+            throw new BoltException(e);
+        }
     }
 
     /**

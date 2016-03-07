@@ -1,6 +1,7 @@
 package bolt;
 
 import bolt.packets.DataPacket;
+import bolt.receiver.RoutedData;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
 import rx.Subscriber;
@@ -49,13 +50,14 @@ public class BoltServer implements Server
     private void pollReceivedData(Subscriber<? super Object> subscriber)
     {
         for (BoltSession session : serverEndpoint.getSessions()) {
-            final DataPacket packet = session.getSocket().getReceiveBuffer().poll();
+            if (session.getSocket() != null) {
+                final DataPacket packet = session.getSocket().getReceiveBuffer().poll();
 
-            if (packet != null) {
-                // TODO what about classless data.
-                final Object decoded = xCoderRepository.decode(packet);
-                if (decoded != null) {
-                    subscriber.onNext(decoded);
+                if (packet != null) {
+                    final Object decoded = xCoderRepository.decode(packet);
+                    if (decoded != null) {
+                        subscriber.onNext(new RoutedData(session.getDestination().getSocketID(), decoded));
+                    }
                 }
             }
         }

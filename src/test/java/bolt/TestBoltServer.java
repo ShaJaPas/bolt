@@ -1,26 +1,30 @@
 package bolt;
 
-import org.junit.Test;
 import bolt.util.TestUtil;
+import bolt.xcoder.MessageAssembleBuffer;
+import bolt.xcoder.XCoderRepository;
+import org.junit.Test;
+import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
-public class TestBoltServerSocket extends BoltTestBase {
-
-    boolean running = false;
+public class TestBoltServer extends BoltTestBase {
 
     public int BUFSIZE = 1024;
-
+    boolean running = false;
     int num_packets = 32;
 
     int TIMEOUT = 20000;
+    long total = 0;
+    volatile boolean serverRunning = true;
+    volatile String md5_received = null;
 
     @Test
     public void testWithoutLoss() throws Exception {
@@ -70,7 +74,8 @@ public class TestBoltServerSocket extends BoltTestBase {
 
         if (serverRunning) {
             client.sendBlocking(data);
-        } else throw new IllegalStateException();
+        }
+        else throw new IllegalStateException();
 
         long end = System.currentTimeMillis();
         System.out.println("Shutdown client.");
@@ -90,54 +95,27 @@ public class TestBoltServerSocket extends BoltTestBase {
         assertEquals(md5_sent, md5_received);
     }
 
-    long total = 0;
-
-    volatile boolean serverRunning = true;
-
-    volatile String md5_received = null;
-
     private void runServer() throws Exception {
         final MessageDigest md5 = MessageDigest.getInstance("MD5");
+        final BoltServer server = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
 
-        final BoltServerSocket serverSocket = new BoltServerSocket(InetAddress.getByName("localhost"), 65321);
-
-        Runnable serverProcess = () -> {
-            try {
-                System.out.println("Starting server.");
-                long start = System.currentTimeMillis();
-                BoltSocket s = serverSocket.accept();
-                assertNotNull(s);
-                BoltInputStream is = s.getInputStream();
-                //is.setBlocking(false);
-                byte[] buf = new byte[16384];
-                while (true) {
-                    if (checkTimeout(start)) break;
-                    int c = is.read(buf);
-                    if (c < 0) break;
-                    else {
-                        md5.update(buf, 0, c);
-                        total += c;
-                        Thread.yield();
-                    }
-                }
-                System.out.println("Server thread exiting.");
-                serverRunning = false;
-                md5_received = TestUtil.hexString(md5);
-                serverSocket.shutDown();
-                System.out.println(s.getSession().getStatistics());
-            } catch (Exception e) {
-                e.printStackTrace();
-                serverRunning = false;
-            }
-        };
-        Thread t = new Thread(serverProcess);
-        t.start();
+        server.bind(InetAddress.getByName("localhost"), 65321)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .ofType(byte[].class)
+                .timeout(1, TimeUnit.SECONDS)
+                .subscribe(x -> {
+                            md5.update(x, 0, x.length);
+                            total += x.length;
+                        },
+                        ex -> {
+                            System.out.println(ex.toString());
+                            serverRunning = false;
+                        },
+                        () -> {
+                            serverRunning = false;
+                            md5_received = TestUtil.hexString(md5);
+                        });
     }
 
-
-    private boolean checkTimeout(long start) {
-        boolean to = System.currentTimeMillis() - start > TIMEOUT;
-        if (to) System.out.println("TIMEOUT");
-        return to;
-    }
 }

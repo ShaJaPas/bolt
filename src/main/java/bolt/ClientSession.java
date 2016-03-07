@@ -3,7 +3,9 @@ package bolt;
 import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
+import rx.Observable;
 import rx.Subscriber;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -35,28 +37,35 @@ public class ClientSession extends BoltSession {
      * @throws InterruptedException
      * @throws IOException
      */
-    public void connect() throws InterruptedException, IOException {
-        int n = 0;
-        while (getState() != READY) {
-            if (getState() == INVALID) {
-                throw new IOException("Can't connect!");
-            }
-            if (getState().seqNo() <= HANDSHAKING.seqNo()) {
-                setState(HANDSHAKING);
-                sendInitialHandShake();
-            }
-            else if (getState() == HANDSHAKING2) {
-                sendSecondHandshake();
-            }
+    public Observable<?> connect() throws InterruptedException, IOException {
+        return Observable.create(subscriber -> {
+            int n = 0;
+            while (getState() != READY && !subscriber.isUnsubscribed()) {
+                try {
+                    if (getState() == INVALID) {
+                        throw new IOException("Can't connect!");
+                    }
+                    if (getState().seqNo() <= HANDSHAKING.seqNo()) {
+                        setState(HANDSHAKING);
+                        sendInitialHandShake();
+                    }
+                    else if (getState() == HANDSHAKING2) {
+                        sendSecondHandshake();
+                    }
 
-            if (getState() == INVALID) throw new IOException("Can't connect!");
-            if (n++ > 10) throw new IOException("Could not connect to server within the timeout.");
+                    if (getState() == INVALID) throw new IOException("Can't connect!");
+                    if (n++ > 10) throw new IOException("Could not connect to server within the timeout.");
 
-            Thread.sleep(500);
-        }
-        Thread.sleep(1000);
-        cc.init();
-        LOG.info("Connected, " + n + " handshake packets sent");
+                    Thread.sleep(500);
+                }
+                catch (IOException | InterruptedException ex) {
+                    subscriber.onError(ex);
+                }
+            }
+            cc.init();
+            LOG.info("Connected, " + n + " handshake packets sent");
+            subscriber.onCompleted();
+        }).subscribeOn(Schedulers.io());
     }
 
     @Override

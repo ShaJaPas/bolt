@@ -1,79 +1,70 @@
 package echo;
 
-import bolt.BoltInputStream;
-import bolt.BoltOutputStream;
-import bolt.BoltServerSocket;
-import bolt.BoltSocket;
+import bolt.BoltServer;
+import bolt.receiver.RoutedData;
+import bolt.xcoder.MessageAssembleBuffer;
+import bolt.xcoder.XCoderRepository;
+import rx.Subscription;
+import rx.schedulers.Schedulers;
 
-import java.io.*;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class EchoServer implements Runnable {
+public class EchoServer {
 
     final ExecutorService pool = Executors.newFixedThreadPool(2);
 
-    final BoltServerSocket server;
+    final BoltServer server;
+
+    private final int port;
 
     volatile boolean started = false;
     volatile boolean stopped = false;
 
-    public EchoServer(int port) throws Exception {
-        server = new BoltServerSocket(InetAddress.getByName("localhost"), port);
+    public EchoServer(final int port) throws Exception {
+        this.port = port;
+        server = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
     }
 
     public void stop() {
         stopped = true;
     }
 
-    public void run() {
+    public synchronized Subscription start() {
         try {
+            Subscription s = server.bind(InetAddress.getByName("localhost"), port)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.computation())
+                    .ofType(RoutedData.class)
+                    .take(1)
+                    .subscribe(x -> pool.execute(new Request(server, x)));
             started = true;
-            while (!stopped) {
-                final BoltSocket socket = server.accept();
-                pool.execute(new Request(socket));
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+            return s;
+        }
+        catch (UnknownHostException e) {
+            throw new RuntimeException(e);
         }
     }
-
-    static String readLine(InputStream r) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        while (true) {
-            int c = r.read();
-            if (c < 0 && bos.size() == 0) return null;
-            if (c < 0 || c == 10) break;
-            else bos.write(c);
-        }
-        return bos.toString();
-    }
-
 
     public static class Request implements Runnable {
 
-        final BoltSocket socket;
+        private final BoltServer server;
+        private final RoutedData received;
 
-        public Request(BoltSocket socket) {
-            this.socket = socket;
+        public Request(BoltServer server, RoutedData received) {
+            this.server = server;
+            this.received = received;
         }
 
         public void run() {
             try {
-                System.out.println("Processing request from <" + socket.getSession().getDestination() + ">");
-                BoltInputStream in = socket.getInputStream();
-                BoltOutputStream out = socket.getOutputStream();
-                PrintWriter writer = new PrintWriter(new OutputStreamWriter(out));
-                String line = readLine(in);
-                if (line != null) {
-                    System.out.println("ECHO: " + line);
-                    //echo back the line
-                    writer.println(line);
-                    writer.flush();
-                }
-                System.out.println("Request from <" + socket.getSession().getDestination() + "> finished.");
-            } catch (Exception ex) {
+                System.out.println(received.getPayload().toString());
+
+                server.send(received.getPayload(), received.getSourceId());
+            }
+            catch (Exception ex) {
                 ex.printStackTrace();
             }
         }

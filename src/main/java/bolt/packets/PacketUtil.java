@@ -48,6 +48,12 @@ public class PacketUtil {
         return ((data >> position) & 1) == 1;
     }
 
+    public static byte setBit(byte b, int bitIndex, boolean isSet) {
+        return (byte) (isSet
+                ? b | (1 << bitIndex)   // set bit to 1
+                : b & ~(1 << bitIndex)); // set bit to 0
+    }
+
     public static int decodeInt(byte[] data, int start) {
         return (data[start] & 0xFF) << 24
                 | (data[start + 1] & 0xFF) << 16

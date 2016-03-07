@@ -1,6 +1,5 @@
 package bolt;
 
-import org.junit.Test;
 import bolt.packets.DataPacket;
 import bolt.packets.KeepAlive;
 import bolt.receiver.AckHistoryEntry;
@@ -9,6 +8,7 @@ import bolt.receiver.PacketHistoryWindow;
 import bolt.receiver.PacketPairWindow;
 import bolt.sender.SenderLossList;
 import bolt.util.CircularArray;
+import org.junit.Test;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -78,15 +78,15 @@ public class TestList {
     }
 
     public void testSenderLossList1() {
-        Long A = 7l;
-        Long B = 8l;
-        Long C = 1l;
+        Integer A = 7;
+        Integer B = 8;
+        Integer C = 1;
         SenderLossList l = new SenderLossList();
         l.insert(A);
         l.insert(B);
         l.insert(C);
         assertEquals(3, l.size());
-        Long oldest = l.getFirstEntry();
+        Integer oldest = l.getFirstEntry();
         assertEquals(C, oldest);
         oldest = l.getFirstEntry();
         assertEquals(A, oldest);

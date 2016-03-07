@@ -24,9 +24,10 @@ public class AckHistoryWindow extends CircularArray<AckHistoryEntry> {
     }
 
     public AckHistoryEntry getEntry(long ackNumber) {
-        for (AckHistoryEntry obj : getArray()) {
-            if (obj.getAckNumber() == ackNumber) {
-                return obj;
+        for (Object obj : getArray()) {
+            AckHistoryEntry e = (AckHistoryEntry) obj;
+            if (e.getAckNumber() == ackNumber) {
+                return e;
             }
         }
         return null;

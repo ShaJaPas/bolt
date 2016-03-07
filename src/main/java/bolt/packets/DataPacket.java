@@ -83,7 +83,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     void decode(final byte[] encodedData, final int length) {
         message = PacketUtil.isBitSet(encodedData[0], 6);
-        reliable = PacketUtil.isBitSet(encodedData[0], 7);
+        reliable = PacketUtil.isBitSet(encodedData[0], 5);
 
         packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
         destinationID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
@@ -151,20 +151,19 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         final int headerLength = message ? 12 : 8;
         byte[] result = new byte[headerLength + dataLength];
 
-        final BitSet flagsAndSeqNum = new BitSet(32);
-        flagsAndSeqNum.set(31, false);
-        flagsAndSeqNum.set(30, message);
-        flagsAndSeqNum.set(29, reliable);
-        for (int i = 0; i < 29; i++) flagsAndSeqNum.set(i, PacketUtil.isBitSet(packetSequenceNumber, i));
+        byte[] flagsAndSeqNum = PacketUtil.encodeInt(packetSequenceNumber);
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 7, false);
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 6, message);
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 5, reliable);
 
-        System.arraycopy(flagsAndSeqNum.toByteArray(), 0, result, 0, 4);
-        System.arraycopy(PacketUtil.encode(destinationID), 0, result, 4, 2);
-        System.arraycopy(PacketUtil.encode(classID), 0, result, 6, 2);
+        System.arraycopy(flagsAndSeqNum, 0, result, 0, 4);
+        System.arraycopy(PacketUtil.encode(destinationID), 2, result, 4, 2);
+        System.arraycopy(PacketUtil.encode(classID), 2, result, 6, 2);
         if (message) {
             final BitSet messaging = new BitSet(32);
             messaging.set(31, finalMessageChunk);
-            for (int i = 0; i < 15; i++) flagsAndSeqNum.set(i + 16, PacketUtil.isBitSet(messageChunkNumber, i));
-            for (int i = 0; i < 16; i++) flagsAndSeqNum.set(i, PacketUtil.isBitSet(messageId, i));
+            for (int i = 0; i < 15; i++) messaging.set(i + 16, PacketUtil.isBitSet(messageChunkNumber, i));
+            for (int i = 0; i < 16; i++) messaging.set(i, PacketUtil.isBitSet(messageId, i));
             System.arraycopy(messaging.toByteArray(), 0, result, 8, 4);
         }
         System.arraycopy(data, 0, result, headerLength, dataLength);

@@ -46,9 +46,8 @@ public class CircularArray<T> {
         return circularArray.toString();
     }
 
-    @SuppressWarnings("unchecked")
-    protected T[] getArray() {
-        return (T[]) circularArray;
+    protected Object[] getArray() {
+        return circularArray;
     }
 
     @SuppressWarnings("unchecked")
