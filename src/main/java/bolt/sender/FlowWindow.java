@@ -3,6 +3,7 @@ package bolt.sender;
 import bolt.packets.DataPacket;
 
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 /**
  * Holds a fixed number of {@link DataPacket} instances which are sent out.<br/>
@@ -23,7 +24,6 @@ public class FlowWindow {
      * Valid entries that can be read.
      */
     private volatile int validEntries = 0;
-    private volatile boolean isCheckout = false;
 
     /**
      * Index where the next data packet will be written to.
@@ -51,68 +51,45 @@ public class FlowWindow {
         lock = new ReentrantLock(true);
     }
 
-    /**
-     * Get a data packet for updating with new data.
-     *
-     * @return data packet to update, or null if flow window is full.
-     */
-    public DataPacket getForProducer() {
-        // Do quick check before locking.
-        if (isFull) {
-            return null;
-        }
+    public boolean tryProduce(final Consumer<DataPacket> packetUpdater) {
+        // Do quick check before locking for performance.
+        if (isFull) return false;
         lock.lock();
         try {
-            if (isFull) {
-                return null;
-            }
-            if (isCheckout) throw new IllegalStateException();
-            isCheckout = true;
-            return packets[writePos];
-        } finally {
-            lock.unlock();
-        }
-    }
+            if (isFull) return false;
 
-    /**
-     * Notify the flow window that the data packet obtained by {@link this#getForProducer()}
-     * has been filled with data and is ready for sending out.
-     */
-    public void produce() {
-        lock.lock();
-        try {
-            if (!isCheckout) throw new IllegalStateException();
-            isCheckout = false;
-            writePos++;
-            if (writePos == length) writePos = 0;
-            validEntries++;
-            isFull = validEntries == length - 1;
+            final DataPacket toProduce = packets[writePos];
+            packetUpdater.accept(toProduce);
+
+            if (++writePos == length) writePos = 0;
+            ++validEntries;
+            ++produced;
             isEmpty = false;
-            produced++;
-        } finally {
+            isFull = (validEntries == length - 1);
+        }
+        finally {
             lock.unlock();
         }
+        return true;
     }
 
     public DataPacket consumeData() {
         // Do quick check before locking.
-        if (isEmpty) {
-            return null;
-        }
+        if (isEmpty) return null;
+
         lock.lock();
         try {
-            if (isEmpty) {
-                return null;
-            }
-            readPos++;
-            DataPacket p = packets[readPos];
+            if (isEmpty) return null;
+
+            DataPacket p = packets[++readPos];
             if (readPos == length - 1) readPos = -1;
-            validEntries--;
+            --validEntries;
             isEmpty = validEntries == 0;
             isFull = false;
-            consumed++;
+            ++consumed;
             return p;
-        } finally {
+        }
+        finally {
             lock.unlock();
         }
     }

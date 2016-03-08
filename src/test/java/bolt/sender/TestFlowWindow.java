@@ -1,193 +1,142 @@
 package bolt.sender;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.TimeoutException;
-
+import bolt.packets.DataPacket;
 import org.junit.Test;
 
-import bolt.packets.DataPacket;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
+
+import static org.junit.Assert.*;
 
 public class TestFlowWindow {
 
-	@Test
-	public void testFillWindow()throws InterruptedException, TimeoutException{
-		FlowWindow fw=new FlowWindow(3, 128);
-		DataPacket p1=fw.getForProducer();
-		assertNotNull(p1);
-		fw.produce();
-		DataPacket p2=fw.getForProducer();
-		assertNotNull(p2);
-		fw.produce();
-		assertFalse(p1==p2);
-		DataPacket p3=fw.getForProducer();
-		assertNotNull(p3);
-		assertFalse(p1==p3);
-		assertFalse(p2==p3);
-		fw.produce();
-		assertTrue(fw.isFull());
+    volatile boolean read = true;
+    volatile boolean write = true;
+    int N = 100000;
+    private volatile boolean fail = false;
 
-		DataPacket no=fw.getForProducer();
-		assertNull("Window should be full",no);
-		assertTrue(fw.isFull());
+    @Test
+    public void testFillWindow() throws InterruptedException, TimeoutException {
+        FlowWindow fw = new FlowWindow(3, 128);
 
-		DataPacket c1=fw.consumeData();
-		//must be p1
-		assertTrue(c1==p1);
-		DataPacket c2=fw.consumeData();
-		//must be p2
-		assertTrue(c2==p2);
-		DataPacket c3=fw.consumeData();
-		//must be p3
-		assertTrue(c3==p3);
-		assertTrue(fw.isEmpty());
-	}
+        assertTrue(fw.tryProduce(p -> p.setClassID(1)));
+        assertTrue(fw.tryProduce(p -> p.setClassID(2)));
+        assertTrue(fw.tryProduce(p -> p.setClassID(3)));
+        assertTrue(fw.isFull());
 
-	@Test
-	public void testOverflow()throws InterruptedException, TimeoutException{
-		FlowWindow fw=new FlowWindow(3, 64);
-		DataPacket p1=fw.getForProducer();
-		assertNotNull(p1);
-		fw.produce();
-		DataPacket p2=fw.getForProducer();
-		assertNotNull(p2);
-		fw.produce();
-		assertFalse(p1==p2);
-		DataPacket p3=fw.getForProducer();
-		assertNotNull(p3);
-		assertFalse(p1==p3);
-		assertFalse(p2==p3);
-		fw.produce();
-		assertTrue(fw.isFull());
+        assertFalse("Window should be full", fw.tryProduce(p -> p.setClassID(4)));
+        assertTrue(fw.isFull());
 
-		//read one
-		DataPacket c1=fw.consumeData();
-		//must be p1
-		assertTrue(c1==p1);
-		assertFalse(fw.isFull());
+        assertEquals(1, fw.consumeData().getClassID());
+        assertEquals(2, fw.consumeData().getClassID());
+        assertEquals(3, fw.consumeData().getClassID());
 
-		//now a slot for writing should be free again
-		DataPacket p4=fw.getForProducer();
-		assertNotNull(p4);
-		fw.produce();
-		fw.consumeData();
-		
-		DataPacket p5=fw.getForProducer();
-		assertNotNull(p5);
-		fw.produce();
-		
-		//which is again p1
-		assertTrue(p5==p1);
+        assertTrue(fw.isEmpty());
+    }
 
-	}
+    @Test
+    public void testOverflow() throws InterruptedException, TimeoutException {
+        FlowWindow fw = new FlowWindow(3, 64);
 
-	private volatile boolean fail=false;
+        assertTrue(fw.tryProduce(p -> p.setClassID(1)));
+        assertTrue(fw.tryProduce(p -> p.setClassID(2)));
+        assertTrue(fw.tryProduce(p -> p.setClassID(3)));
+        assertTrue(fw.isFull());
 
-	@Test
-	public void testConcurrentReadWrite_20()throws InterruptedException{
-		final FlowWindow fw=new FlowWindow(20, 64);
-		Thread reader=new Thread(new Runnable(){
-			public void run(){
-				doRead(fw);
-			}
-		});
-		reader.setName("reader");
-		Thread writer=new Thread(new Runnable(){
-			public void run(){
-				doWrite(fw);
-			}
-		});
-		writer.setName("writer");
+        // Read one
+        assertEquals(1, fw.consumeData().getClassID());
+        assertFalse(fw.isFull());
 
-		writer.start();
-		reader.start();
+        // Now a slot for writing should be free again
+        assertTrue(fw.tryProduce(p -> p.setClassID(4)));
+        fw.consumeData();
 
-		int c=0;
-		while(read && write && c<10){
-			Thread.sleep(1000);
-			c++;
-		}
-		assertFalse("An error occured in reader or writer",fail);
+        assertTrue(fw.tryProduce(p -> {}));
 
-	}
+        assertEquals(3, fw.consumeData().getClassID());
+        assertEquals(4, fw.consumeData().getClassID());
+        // Which is again 1
+        assertEquals(1, fw.consumeData().getClassID());
 
-	@Test
-	public void testConcurrentReadWrite_2()throws InterruptedException{
-		final FlowWindow fw=new FlowWindow(2, 64);
-		Thread reader=new Thread(new Runnable(){
-			public void run(){
-				doRead(fw);
-			}
-		});
-		reader.setName("reader");
-		Thread writer=new Thread(new Runnable(){
-			public void run(){
-				doWrite(fw);
-			}
-		});
-		writer.setName("writer");
+    }
 
-		writer.start();
-		reader.start();
+    @Test
+    public void testConcurrentReadWrite_20() throws InterruptedException {
+        final FlowWindow fw = new FlowWindow(20, 64);
+        Thread reader = new Thread(() -> {
+            doRead(fw);
+        });
+        reader.setName("reader");
+        Thread writer = new Thread(() -> {
+            doWrite(fw);
+        });
+        writer.setName("writer");
 
-		int c=0;
-		while(read && write && c<10){
-			Thread.sleep(1000);
-			c++;
-		}
-		assertFalse("An error occured in reader or writer",fail);
+        writer.start();
+        reader.start();
 
-	}
-	
-	volatile boolean read=true;
-	volatile boolean write=true;
-	int N=100000;
+        int c = 0;
+        while (read && write && c < 10) {
+            Thread.sleep(1000);
+            c++;
+        }
+        assertFalse("An error occured in reader or writer", fail);
+    }
 
-	private void doRead(final FlowWindow fw){
-		System.out.println("Starting reader...");
-		try{
-			for(int i=0;i<N;i++){
-				DataPacket p=null;
-				while( (p=fw.consumeData())==null){
-					Thread.sleep(1);
-				}
-				assertEquals(i,p.getMessageId());
-			}	
-		}catch(Throwable ex){
-			ex.printStackTrace();
-			System.out.println(fw);
-			fail=true;
-		}
-		System.out.println("Exiting reader...");
-		read=false;
-	}
+    @Test
+    public void testConcurrentReadWrite_2() throws InterruptedException {
+        final FlowWindow fw = new FlowWindow(2, 64);
 
-	private void doWrite(final FlowWindow fw){
-		System.out.println("Starting writer...");
-		DataPacket p=null;
-		try{
-			for(int i=0;i<N;i++){
-				p=null;
-				do{
-					p=fw.getForProducer();
-					if(p!=null){
-						p.setData(("test"+i).getBytes());
-						p.setMessageId(i);
-						fw.produce();
-					}
-				}while(p==null);
-			}	
-		}catch(Exception ex){
-			ex.printStackTrace();
-			System.out.println("ERROR****");
-			fail=true;
-		}
-		System.out.println("Exiting writer...");
-		write=false;
-	}
+        CompletableFuture.runAsync(() -> doRead(fw));
+        CompletableFuture.runAsync(() -> doWrite(fw));
+
+        int c = 0;
+        while (read && write && c < 500) {
+            Thread.sleep(20);
+            c++;
+        }
+        assertFalse("An error occurred in reader or writer", fail);
+    }
+
+    private void doRead(final FlowWindow fw) {
+        System.out.println("Starting reader...");
+        try {
+            for (int i = 0; i < N; i++) {
+                DataPacket p;
+                while ((p = fw.consumeData()) == null) {
+                    Thread.sleep(1);
+                }
+                assertEquals(i, p.getMessageId());
+            }
+        }
+        catch (Throwable ex) {
+            ex.printStackTrace();
+            System.out.println(fw);
+            fail = true;
+        }
+        System.out.println("Exiting reader...");
+        read = false;
+    }
+
+    private void doWrite(final FlowWindow fw) {
+        System.out.println("Starting writer...");
+        try {
+            for (int i = 0; i < N; i++) {
+                final int idx = i;
+                boolean complete = false;
+                while (!complete) complete = fw.tryProduce(p -> {
+                    p.setData(("test" + idx).getBytes());
+                    p.setMessageId(idx);
+                });
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            System.out.println("ERROR****");
+            fail = true;
+        }
+        System.out.println("Exiting writer...");
+        write = false;
+    }
 
 }

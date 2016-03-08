@@ -124,6 +124,10 @@ public class ReceiveBuffer {
         return size;
     }
 
+    public int getNumChunks() {
+        return numValidChunks.get();
+    }
+
     void increment() {
         buffer[readPosition] = null;
         readPosition++;

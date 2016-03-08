@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -137,11 +139,12 @@ public class BoltSender {
                 String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
                 Thread.currentThread().setName("Bolt-Sender-" + s + Util.THREAD_INDEX.incrementAndGet());
 
-                while (!stopped && !subscriber.isUnsubscribed()) {
+                Supplier<Boolean> stopped = () -> this.stopped || subscriber.isUnsubscribed();
+                while (!stopped.get()) {
                     // Wait until explicitly (re)started.
 //                    startLatch.await();
                     paused = false;
-                    senderAlgorithm();
+                    senderAlgorithm(stopped);
                 }
             }
             catch (IOException | InterruptedException ex) {
@@ -186,16 +189,8 @@ public class BoltSender {
     //TODO has no classId, should consider removing this method.
     protected void sendRawReliablePacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
-        DataPacket packet;
-        do {
-            packet = flowWindow.getForProducer();
-            if (packet == null) {
-                Thread.sleep(5);
-            }
-        }
-        while (packet == null);//TODO check timeout...
 
-        try {
+        final Consumer<DataPacket> valueSetter = packet -> {
             packet.setReliable(true);
             packet.setPacketSequenceNumber(getNextSequenceNumber());
             packet.setSession(session);
@@ -206,11 +201,13 @@ public class BoltSender {
             byte[] data = packet.getData();
             bb.get(data, 0, len);
             packet.setLength(len);
-        }
-        finally {
-            flowWindow.produce();
-        }
+        };
 
+        boolean complete = false;
+        while (!complete) {
+            complete = flowWindow.tryProduce(valueSetter);
+            if (!complete) Thread.sleep(3);
+        }
     }
 
     /**
@@ -225,15 +222,9 @@ public class BoltSender {
      */
     protected void sendPacket(final DataPacket p, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
-        DataPacket packet;
-        do {
-            packet = flowWindow.getForProducer();
-            if (packet == null) {
-                Thread.sleep(10);
-            }
-        }
-        while (packet == null);
-        try {
+
+        // TODO move as some kind of copy method
+        final Consumer<DataPacket> valueSetter = packet -> {
             packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
             packet.setSession(session);
             packet.setDestinationID(session.getDestination().getSocketID());
@@ -246,10 +237,39 @@ public class BoltSender {
                 packet.setMessageChunkNumber(p.getMessageChunkNumber());
                 packet.setMessageId(p.getMessageId());
             }
+        };
+
+        boolean complete = false;
+        while (!complete) {
+            complete = flowWindow.tryProduce(valueSetter);
+            if (!complete) Thread.sleep(3);
         }
-        finally {
-            flowWindow.produce();
-        }
+//
+//        DataPacket packet;
+//        do {
+//            packet = flowWindow.getForProducer();
+//            if (packet == null) {
+//                Thread.sleep(10);
+//            }
+//        }
+//        while (packet == null);
+//        try {
+//            packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
+//            packet.setSession(session);
+//            packet.setDestinationID(session.getDestination().getSocketID());
+//
+//            packet.setData(p.getData());
+//            packet.setMessage(p.isMessage());
+//            packet.setReliable(p.isReliable());
+//            if (p.isMessage()) {
+//                packet.setFinalMessageChunk(p.isFinalMessageChunk());
+//                packet.setMessageChunkNumber(p.getMessageChunkNumber());
+//                packet.setMessageId(p.getMessageId());
+//            }
+//        }
+//        finally {
+//            flowWindow.produce();
+//        }
     }
 
     /**
@@ -392,7 +412,7 @@ public class BoltSender {
      * @throws InterruptedException if the thread is interrupted wating for an ACK.
      * @throws IOException          on failure to send the DataPacket.
      */
-    public void senderAlgorithm() throws InterruptedException, IOException {
+    public void senderAlgorithm(final Supplier<Boolean> stopped) throws InterruptedException, IOException {
         while (!paused) {
             long iterationStart = Util.getCurrentTime();
             // If the sender's loss list is not empty
@@ -437,7 +457,7 @@ public class BoltSender {
                         x++;
                     }
                     passed = Util.getCurrentTime() - iterationStart;
-                    if (stopped) return;
+                    if (stopped.get()) return;
                 }
             }
         }

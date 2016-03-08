@@ -77,10 +77,15 @@ public class BoltClient implements Client {
         send(obj);
     }
 
-    public void send(final Object obj) throws IOException {
+    public void send(final Object obj) throws BoltException {
         final Collection<DataPacket> data = xCoderRepository.encode(obj);
         for (final DataPacket dp : data) {
-            send(dp);
+            try {
+                send(dp);
+            }
+            catch (IOException ex) {
+                throw new BoltException(ex);
+            }
         }
     }
 

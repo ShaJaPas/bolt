@@ -36,6 +36,7 @@ public class TestList {
         System.out.println(c);
     }
 
+    @Test
     public void testPacketHistoryWindow() {
 
         PacketHistoryWindow packetHistoryWindow = new PacketHistoryWindow(16);
@@ -47,7 +48,7 @@ public class TestList {
         assertEquals(200, packetHistoryWindow.getPacketArrivalSpeed());
     }
 
-
+    @Test
     public void testPacketPairWindow() {
         long[] values = {2, 4, 6};
         PacketPairWindow p = new PacketPairWindow(16);
@@ -64,6 +65,7 @@ public class TestList {
         assertEquals(12.0d, p1.computeMedianTimeInterval(), 0.001d);
     }
 
+    @Test
     public void testAckHistoryWindow() {
         AckHistoryEntry ackSeqNrA = new AckHistoryEntry(0, 1, 1263465050);
         AckHistoryEntry ackSeqNrB = new AckHistoryEntry(1, 2, 1263465054);
@@ -77,6 +79,7 @@ public class TestList {
         assertEquals(1263465050, entryA.getSentTime());
     }
 
+    @Test
     public void testSenderLossList1() {
         Integer A = 7;
         Integer B = 8;
@@ -94,6 +97,7 @@ public class TestList {
         assertEquals(B, oldest);
     }
 
+    @Test
     public void testReceiverInputQueue() {
         BlockingQueue<BoltPacket> q = new PriorityBlockingQueue<BoltPacket>(5);
         BoltPacket control = new KeepAlive();

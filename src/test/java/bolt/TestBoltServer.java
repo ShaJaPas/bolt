@@ -35,7 +35,7 @@ public class TestBoltServer extends BoltTestBase {
         doTest();
     }
 
-    //set an artificial loss rate
+    // Set an artificial loss rate.
     @Test
     public void testWithLoss() throws Exception {
         BoltReceiver.dropRate = 3;
@@ -46,7 +46,7 @@ public class TestBoltServer extends BoltTestBase {
         doTest();
     }
 
-    //send even more data
+    // Send even more data.
     @Test
     public void testLargeDataSet() throws Exception {
         BoltReceiver.dropRate = 0;

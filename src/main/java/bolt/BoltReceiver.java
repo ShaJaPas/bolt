@@ -270,33 +270,34 @@ public class BoltReceiver {
             processEXPEvent();
         }
         // Perform time-bounded UDP receive
+        BoltPacket packet = null;
         try {
-            final BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
-            if (packet != null) {
-                // Reset exp count to 1
-                expCount = 1;
-                // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
-                boolean needEXPReset = false;
-                if (packet.isControlPacket()) {
-                    ControlPacket cp = (ControlPacket) packet;
-                    int cpType = cp.getControlPacketType();
-                    if (cpType == ControlPacketType.ACK.getTypeId() || cpType == ControlPacketType.NAK.getTypeId()) {
-                        needEXPReset = true;
-                    }
+            packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
+        }
+        catch (InterruptedException e) {
+            LOG.info("Polling of hand-off queue was interrupted.");
+        }
+        if (packet != null) {
+            // Reset exp count to 1
+            expCount = 1;
+            // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
+            boolean needEXPReset = false;
+            if (packet.isControlPacket()) {
+                ControlPacket cp = (ControlPacket) packet;
+                int cpType = cp.getControlPacketType();
+                if (cpType == ControlPacketType.ACK.getTypeId() || cpType == ControlPacketType.NAK.getTypeId()) {
+                    needEXPReset = true;
                 }
-
-                if (needEXPReset) {
-                    nextEXP = Util.getCurrentTime() + expTimerInterval;
-                }
-                if (storeStatistics) processTime.begin();
-
-                processPacket(packet);
-
-                if (storeStatistics) processTime.end();
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace(); // TODO should this interrupt be caught?
-            System.err.println(e.toString());
+
+            if (needEXPReset) {
+                nextEXP = Util.getCurrentTime() + expTimerInterval;
+            }
+            if (storeStatistics) processTime.begin();
+
+            processPacket(packet);
+
+            if (storeStatistics) processTime.end();
         }
     }
 
