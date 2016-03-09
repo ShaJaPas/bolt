@@ -8,3 +8,4 @@
 - [ ] Simulated latency
 - [ ] Simulated jitter
 - [ ] Client disconnect (remove sessions, generate event)
+- [ ] Performance testing

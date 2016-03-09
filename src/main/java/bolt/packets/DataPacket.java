@@ -137,7 +137,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.messageId = messageId;
     }
 
-    public long getDestinationID() {
+    public int getDestinationID() {
         return this.destinationID;
     }
 
@@ -171,13 +171,25 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return result;
     }
 
-    public int getClassID()
-    {
+    public void copyFrom(final DataPacket src) {
+        setClassID(src.getClassID());
+        setPacketSequenceNumber(src.getPacketSequenceNumber());
+        setSession(src.getSession());
+        setDestinationID(src.getDestinationID());
+
+        setData(src.getData());
+        setMessage(src.isMessage());
+        setReliable(src.isReliable());
+        setFinalMessageChunk(src.isFinalMessageChunk());
+        setMessageChunkNumber(src.getMessageChunkNumber());
+        setMessageId(src.getMessageId());
+    }
+
+    public int getClassID() {
         return classID;
     }
 
-    public void setClassID(int classID)
-    {
+    public void setClassID(int classID) {
         this.classID = classID;
     }
 
@@ -197,16 +209,32 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return reliable;
     }
 
+    public void setReliable(boolean reliable) {
+        this.reliable = reliable;
+    }
+
     public boolean isMessage() {
         return message;
+    }
+
+    public void setMessage(boolean message) {
+        this.message = message;
     }
 
     public int getMessageChunkNumber() {
         return messageChunkNumber;
     }
 
+    public void setMessageChunkNumber(int messageChunkNumber) {
+        this.messageChunkNumber = messageChunkNumber;
+    }
+
     public boolean isFinalMessageChunk() {
         return finalMessageChunk;
+    }
+
+    public void setFinalMessageChunk(boolean finalMessageChunk) {
+        this.finalMessageChunk = finalMessageChunk;
     }
 
     public int getControlPacketType() {
@@ -219,26 +247,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public void setSession(BoltSession session) {
         this.session = session;
-    }
-
-    public void setReliable(boolean reliable)
-    {
-        this.reliable = reliable;
-    }
-
-    public void setMessage(boolean message)
-    {
-        this.message = message;
-    }
-
-    public void setFinalMessageChunk(boolean finalMessageChunk)
-    {
-        this.finalMessageChunk = finalMessageChunk;
-    }
-
-    public void setMessageChunkNumber(int messageChunkNumber)
-    {
-        this.messageChunkNumber = messageChunkNumber;
     }
 
     public int compareTo(BoltPacket other) {

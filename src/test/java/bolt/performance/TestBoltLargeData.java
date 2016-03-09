@@ -1,7 +1,9 @@
 package bolt.performance;
 
-import bolt.*;
-import bolt.event.ConnectionReadyEvent;
+import bolt.BoltClient;
+import bolt.BoltReceiver;
+import bolt.BoltServer;
+import bolt.BoltTestBase;
 import bolt.util.TestUtil;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
@@ -17,10 +19,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestBoltLargeData extends BoltTestBase {
 
+    public static final int SERVER_PORT = 65318;
     private final NumberFormat format = NumberFormat.getNumberInstance();
     boolean running = false;
     //how many
@@ -33,10 +37,6 @@ public class TestBoltLargeData extends BoltTestBase {
     volatile boolean serverRunning = true;
     volatile boolean serverStarted = false;
     volatile String md5_received = null;
-
-    public static void main(String[] args) throws Exception {
-        new TestBoltLargeData().test1();
-    }
 
     @Test
     public void test1() throws Exception {
@@ -60,7 +60,7 @@ public class TestBoltLargeData extends BoltTestBase {
 
         if (!running) runServer();
         BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        client.connect(InetAddress.getByName("localhost"), 65321);
+        client.connect(InetAddress.getByName("localhost"), SERVER_PORT);
 
         long N = num_packets * size;
 
@@ -116,7 +116,7 @@ public class TestBoltLargeData extends BoltTestBase {
         final long start = System.currentTimeMillis();
         final MessageDigest md5 = MessageDigest.getInstance("MD5");
         final BoltServer serverSocket = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
-        serverSocket.bind(InetAddress.getByName("localhost"), 65321)
+        serverSocket.bind(InetAddress.getByName("localhost"), SERVER_PORT)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
                 .ofType(byte[].class)

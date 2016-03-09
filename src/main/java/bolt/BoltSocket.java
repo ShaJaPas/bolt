@@ -70,15 +70,6 @@ public class BoltSocket {
         return session;
     }
 
-    /**
-     * write single block of data without waiting for any acknowledgement
-     *
-     * @param data
-     */
-    protected void doWrite(byte[] data) throws IOException {
-        doWrite(data, 0, data.length);
-    }
-
     protected void doWrite(final DataPacket dataPacket) throws IOException {
         try {
             sender.sendPacket(dataPacket, 10, TimeUnit.MILLISECONDS);
@@ -87,43 +78,9 @@ public class BoltSocket {
         }
     }
 
-    /**
-     * write the given data
-     *
-     * @param data   - the data array
-     * @param offset - the offset into the array
-     * @param length - the number of bytes to write
-     * @throws IOException
-     */
-    protected void doWrite(byte[] data, int offset, int length) throws IOException {
-        try {
-            doWrite(data, offset, length, 10, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException ie) {
-            throw new IOException(ie);
-        }
-    }
-
-    /**
-     * write the given data, waiting at most for the specified time if the queue is full
-     *
-     * @param data
-     * @param offset
-     * @param length
-     * @param timeout
-     * @param units
-     * @throws IOException          - if data cannot be sent
-     * @throws InterruptedException
-     */
-    protected void doWrite(byte[] data, int offset, int length, int timeout, TimeUnit units) throws IOException, InterruptedException {
-        ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        while (bb.remaining() > 0) {
-            try {
-                sender.sendRawReliablePacket(bb, timeout, units);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-        if (length > 0) active = true;
+    protected void doWriteBlocking(final DataPacket dataPacket) throws IOException, InterruptedException {
+        doWrite(dataPacket);
+        flush();
     }
 
     /**
@@ -145,14 +102,6 @@ public class BoltSocket {
         }
         //TODO need to check if we can pause the sender...
 //        sender.pause();
-    }
-
-    /**
-     * Writes and wait for ack.
-     */
-    protected void doWriteBlocking(byte[] data) throws IOException, InterruptedException {
-        doWrite(data);
-        flush();
     }
 
     /**

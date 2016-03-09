@@ -14,7 +14,7 @@ import java.util.Random;
 public class TCPTest {
 
     int BUFSIZE = 1024;
-    int num_packets = 10 * 1000;
+    int num_packets = 100 * 1000;
 
     @Test
     public void test1() throws Exception {
@@ -42,24 +42,22 @@ public class TCPTest {
     volatile boolean serverRunning = true;
 
     private void runServer() throws Exception {
-        //server socket
+        // Server socket
         final ServerSocket serverSocket = new ServerSocket(65321);
-        Runnable serverProcess = new Runnable() {
-            public void run() {
-                try {
-                    Socket s = serverSocket.accept();
-                    InputStream is = s.getInputStream();
-                    byte[] buf = new byte[16384];
-                    while (true) {
-                        int c = is.read(buf);
-                        if (c < 0) break;
-                        total += c;
-                    }
-                    serverRunning = false;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    serverRunning = false;
+        Runnable serverProcess = () -> {
+            try {
+                Socket s = serverSocket.accept();
+                InputStream is = s.getInputStream();
+                byte[] buf = new byte[16384];
+                while (true) {
+                    int c = is.read(buf);
+                    if (c < 0) break;
+                    total += c;
                 }
+                serverRunning = false;
+            } catch (Exception e) {
+                e.printStackTrace();
+                serverRunning = false;
             }
         };
         Thread t = new Thread(serverProcess);

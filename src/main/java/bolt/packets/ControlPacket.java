@@ -100,7 +100,7 @@ public abstract class ControlPacket implements BoltPacket {
 
     protected int messageId;
 
-    protected long destinationID;
+    protected int destinationID;
 
     protected byte[] controlInformation;
 
@@ -122,7 +122,7 @@ public abstract class ControlPacket implements BoltPacket {
         this.messageId = messageId;
     }
 
-    public long getDestinationID() {
+    public int getDestinationID() {
         return destinationID;
     }
 

@@ -1,6 +1,7 @@
 package bolt;
 
 import bolt.packets.DataPacket;
+import bolt.packets.PacketUtil;
 import bolt.receiver.RoutedData;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
@@ -14,29 +15,31 @@ import java.util.Optional;
 /**
  * Created by omahoc9 on 3/3/16.
  */
-public class BoltServer implements Server
-{
+public class BoltServer implements Server {
 
     private final XCoderRepository xCoderRepository;
 
     private volatile BoltEndPoint serverEndpoint;
 
-    public BoltServer(final XCoderRepository xCoderRepository)
-    {
+    public BoltServer(final XCoderRepository xCoderRepository) {
         this.xCoderRepository = xCoderRepository;
     }
 
     @Override
-    public Observable<?> bind(final InetAddress address, final int port)
-    {
+    public Observable<?> bind(final InetAddress address, final int port) {
         return Observable.create(subscriber -> {
-            try
-            {
+            try {
                 this.serverEndpoint = new BoltEndPoint(address, port);
                 this.serverEndpoint.start().subscribe(subscriber);
 
                 while (!subscriber.isUnsubscribed()) {
-                    pollReceivedData(subscriber);
+//                    try {
+                        pollReceivedData(subscriber);
+//                        Thread.sleep(0, 1000);
+//                    }
+//                    catch (InterruptedException e) {
+//                        // Do nothing.
+//                    }
                 }
             }
             catch (Exception ex) {
@@ -44,11 +47,11 @@ public class BoltServer implements Server
             }
             subscriber.onCompleted();
             shutdown();
-        }).share();
+        });
+//                .share();
     }
 
-    private void pollReceivedData(Subscriber<? super Object> subscriber)
-    {
+    private void pollReceivedData(final Subscriber<? super Object> subscriber) {
         for (BoltSession session : serverEndpoint.getSessions()) {
             if (session.getSocket() != null) {
                 final DataPacket packet = session.getSocket().getReceiveBuffer().poll();
@@ -57,7 +60,6 @@ public class BoltServer implements Server
                     final Object decoded = xCoderRepository.decode(packet);
                     if (decoded != null) {
                         subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
-//                        subscriber.onNext(new RoutedData(getDestination().getSocketID(), decoded));
                     }
                 }
             }
@@ -65,8 +67,7 @@ public class BoltServer implements Server
     }
 
     @Override
-    public void send(final Object obj, final long destId) throws IOException
-    {
+    public void send(final Object obj, final long destId) throws IOException {
         final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
         if (session != null) {
             final Collection<DataPacket> data = xCoderRepository.encode(obj);

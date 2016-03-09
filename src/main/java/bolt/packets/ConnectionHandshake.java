@@ -63,7 +63,7 @@ public class ConnectionHandshake extends ControlPacket
     }
 
     private ConnectionHandshake(long packetSize, long boltVersion, int initialSeqNo, long connectionType, long maxFlowWndSize,
-            int socketID, long destinationID, long cookie, InetAddress address)
+            int socketID, int destinationID, long cookie, InetAddress address)
     {
         this();
         this.packetSize = packetSize;
@@ -84,13 +84,13 @@ public class ConnectionHandshake extends ControlPacket
     }
 
     public static ConnectionHandshake ofClientSecond(long packetSize, int initialSeqNo, long maxFlowWndSize,
-            int socketID, long destinationID, long cookie, InetAddress address) {
+            int socketID, int destinationID, long cookie, InetAddress address) {
         return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }
 
     public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
-            int socketID, long destinationID, long cookie, InetAddress address) {
+            int socketID, int destinationID, long cookie, InetAddress address) {
         return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }

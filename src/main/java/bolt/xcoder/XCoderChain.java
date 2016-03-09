@@ -3,7 +3,7 @@ package bolt.xcoder;
 import bolt.packets.DataPacket;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -14,13 +14,13 @@ public class XCoderChain<T>
 {
 
     private final ObjectSpliterator<T>  spliterator;
-    private final PackageXCoder<T> PackageXCoder;
+    private final PackageXCoder<T> packageXCoder;
 
-    private XCoderChain(final ObjectSpliterator<T> spliterator, final PackageXCoder<T> PackageXCoder)
+    private XCoderChain(final ObjectSpliterator<T> spliterator, final PackageXCoder<T> packageXCoder)
     {
-        Objects.requireNonNull(PackageXCoder);
+        Objects.requireNonNull(packageXCoder);
         this.spliterator = spliterator;
-        this.PackageXCoder = PackageXCoder;
+        this.packageXCoder = packageXCoder;
     }
 
     public static XCoderChain rawBytePackageChain() {
@@ -44,20 +44,25 @@ public class XCoderChain<T>
 
     public T decode(final Collection<DataPacket> readyForDecode)
     {
-        return PackageXCoder.decode(readyForDecode);
+        return packageXCoder.decode(readyForDecode);
     }
 
     public Collection<DataPacket> encode(final T object)
     {
-        final Collection<T> split = (spliterator != null) ? spliterator.split(object) : Collections.singletonList(object);
-
-        return split.stream()
-                .flatMap(t -> PackageXCoder.encode(t).stream())
-                .collect(Collectors.toList());
+        if (spliterator == null) {
+            return packageXCoder.encode(object);
+        }
+        else {
+            //FIXME each split should have its own message id
+            final Collection<T> split = spliterator.split(object);
+            return split.stream()
+                    .flatMap(t -> packageXCoder.encode(t).stream())
+                    .collect(Collectors.toList());
+        }
     }
 
     public void setClassId(final int classId) {
-        PackageXCoder.setClassId(classId);
+        packageXCoder.setClassId(classId);
     }
 
 }

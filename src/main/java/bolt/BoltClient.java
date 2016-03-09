@@ -58,7 +58,6 @@ public class BoltClient implements Client {
                             final Object decoded = xCoderRepository.decode(packet);
                             if (decoded != null) {
                                 subscriber.onNext(new RoutedData(clientSession.getSocketID(), decoded));
-//                                subscriber.onNext(new RoutedData(clientSession.getDestination().getSocketID(), decoded));
                             }
                         }
                     }
@@ -89,12 +88,22 @@ public class BoltClient implements Client {
         }
     }
 
+    public void sendBlocking(final Object obj) throws BoltException {
+        try {
+            send(obj);
+            flush();
+        }
+        catch (InterruptedException | TimeoutException | IOException ex) {
+            throw new BoltException(ex);
+        }
+    }
+
     /**
      * Establishes a connection to the given server.
      * Starts the sender thread.
      *
      * @param address address of remote host.
-     * @param port port of remote host.
+     * @param port    port of remote host.
      * @throws UnknownHostException
      */
     private Observable<?> connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
@@ -115,26 +124,6 @@ public class BoltClient implements Client {
      */
     public void send(final DataPacket dataPacket) throws IOException {
         clientSession.getSocket().doWrite(dataPacket);
-    }
-
-    public void send(byte[] data) throws BoltException {
-        try {
-            clientSession.getSocket().doWrite(data);
-        }
-        catch (IOException e) {
-            throw new BoltException(e);
-        }
-    }
-
-    /**
-     * sends the given data and waits for acknowledgement
-     *
-     * @param data the data to send
-     * @throws IOException
-     * @throws InterruptedException if interrupted while waiting for ack
-     */
-    public void sendBlocking(byte[] data) throws IOException, InterruptedException {
-        clientSession.getSocket().doWriteBlocking(data);
     }
 
     /**

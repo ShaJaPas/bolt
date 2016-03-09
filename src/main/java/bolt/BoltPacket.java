@@ -8,7 +8,7 @@ public interface BoltPacket extends Comparable<BoltPacket> {
 
     void setMessageId(int messageNumber);
 
-    long getDestinationID();
+    int getDestinationID();
 
     void setDestinationID(int destinationID);
 

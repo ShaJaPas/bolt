@@ -24,19 +24,22 @@ import static org.junit.Assert.assertTrue;
 
 public class TestUdpEndpoint extends BoltTestBase {
 
+    public static final int SERVER_PORT = 65316;
+    public static final int CLIENT_PORT = 12340;
+
     @Test
     public void testClientServerMode() throws Exception {
         Logger.getLogger("bolt").setLevel(Level.INFO);
         final int numPackets = 50 + new Random().nextInt(50);
         final CountDownLatch ready = new CountDownLatch(1);
 
-        final BoltEndPoint server = new BoltEndPoint(InetAddress.getByName("localhost"), 65322);
+        final BoltEndPoint server = new BoltEndPoint(InetAddress.getByName("localhost"), SERVER_PORT);
         final Subscription endpointSub = server.start()
                 .observeOn(Schedulers.computation())
                 .subscribe();
 
-        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12346);
-        final Subscription clientSub = client.connect(InetAddress.getByName("localhost"), 65322)
+        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), CLIENT_PORT);
+        final Subscription clientSub = client.connect(InetAddress.getByName("localhost"), SERVER_PORT)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
                 .ofType(ConnectionReadyEvent.class)
@@ -47,7 +50,7 @@ public class TestUdpEndpoint extends BoltTestBase {
         }
 
         // Send packets
-        IntStream.range(0, numPackets).forEach(__ -> client.send((Object) getRandomData(1024)));
+        IntStream.range(0, numPackets).forEach(__ -> client.send(getRandomData(1024)));
 
         // Pause until all are delivered
         List<BoltSession> sessions = new ArrayList<>(server.getSessions());
@@ -74,9 +77,9 @@ public class TestUdpEndpoint extends BoltTestBase {
         Logger.getLogger("bolt").setLevel(Level.WARNING);
         System.out.println("Checking raw UDP send rate...");
         InetAddress localhost = InetAddress.getByName("localhost");
-        BoltEndPoint endpoint = new BoltEndPoint(localhost, 65322);
+        BoltEndPoint endpoint = new BoltEndPoint(localhost, SERVER_PORT);
         Subscription sub = endpoint.start().subscribe();
-        Destination d1 = new Destination(localhost, 12345);
+        Destination d1 = new Destination(localhost, CLIENT_PORT);
         int dataSize = BoltEndPoint.DATAGRAM_SIZE;
         DatagramPacket p = new DatagramPacket(getRandomData(dataSize), dataSize, d1.getAddress(), d1.getPort());
         int N = 100_000;

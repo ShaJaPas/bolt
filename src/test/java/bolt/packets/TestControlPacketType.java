@@ -26,12 +26,12 @@ public class TestControlPacketType {
         t = ControlPacketType.NAK;
         assertEquals(3, t.getTypeId());
         t = ControlPacketType.SHUTDOWN;
-        assertEquals(5, t.getTypeId());
+        assertEquals(4, t.getTypeId());
         t = ControlPacketType.ACK2;
-        assertEquals(6, t.getTypeId());
+        assertEquals(5, t.getTypeId());
         t = ControlPacketType.MESSAGE_DROP_REQUEST;
-        assertEquals(7, t.getTypeId());
+        assertEquals(6, t.getTypeId());
         t = ControlPacketType.USER_DEFINED;
-        assertEquals(15, t.getTypeId());
+        assertEquals(7, t.getTypeId());
     }
 }

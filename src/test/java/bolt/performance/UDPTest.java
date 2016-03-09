@@ -1,26 +1,27 @@
 package bolt.performance;
 
-import org.junit.Test;
 import bolt.BoltEndPoint;
 import bolt.packets.DataPacket;
 import bolt.statistic.MeanValue;
+import org.junit.Test;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * send some data over a UDP connection and measure performance
  */
 public class UDPTest {
 
-    final int num_packets = 1000;
+    public static final int SERVER_PORT = 65317;
+    final int num_packets = 1_000;
     final int packetSize = BoltEndPoint.DATAGRAM_SIZE;
-    private final BlockingQueue<DatagramPacket> handoff = new SynchronousQueue<DatagramPacket>();
+    private final Queue<DatagramPacket> handoff = new ConcurrentLinkedQueue<>();
     int N = 0;
     long total = 0;
     volatile boolean serverRunning = true;
@@ -40,7 +41,7 @@ public class UDPTest {
         long start = System.currentTimeMillis();
         DatagramPacket dp = new DatagramPacket(new byte[packetSize], packetSize);
         dp.setAddress(InetAddress.getByName("localhost"));
-        dp.setPort(65321);
+        dp.setPort(SERVER_PORT);
         System.out.println("Sending " + num_packets + " data blocks of <" + packetSize + "> bytes");
         MeanValue dgSendTime = new MeanValue("Datagram send time");
         MeanValue dgSendInterval = new MeanValue("Datagram send interval");
@@ -52,7 +53,7 @@ public class UDPTest {
             dgSendInterval.end();
             dgSendTime.begin();
             s.send(dp);
-            Thread.sleep(5);
+            Thread.sleep(0, 100);
             dgSendTime.end();
             dgSendInterval.begin();
         }
@@ -71,53 +72,47 @@ public class UDPTest {
 
     private void runServer() throws Exception {
         //server socket
-        final DatagramSocket serverSocket = new DatagramSocket(65321);
+        final DatagramSocket serverSocket = new DatagramSocket(SERVER_PORT);
 
-        Runnable serverProcess = new Runnable() {
-            public void run() {
-                try {
-                    byte[] buf = new byte[packetSize];
-                    while (true) {
-                        DatagramPacket dp = new DatagramPacket(buf, buf.length);
-                        serverSocket.receive(dp);
-                        handoff.offer(dp);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+        CompletableFuture.runAsync(() -> {
+            try {
+                byte[] buf = new byte[packetSize];
+                while (true) {
+                    DatagramPacket dp = new DatagramPacket(buf, buf.length);
+                    serverSocket.receive(dp);
+                    handoff.offer(dp);
                 }
-                serverRunning = false;
             }
-        };
-        Thread t = new Thread(serverProcess);
-        t.start();
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            serverRunning = false;
+        });
         System.out.println("Server started.");
     }
 
     private void runThirdThread() throws Exception {
-        Runnable serverProcess = new Runnable() {
-            public void run() {
-                try {
-                    int counter = 0;
-                    long start = System.currentTimeMillis();
-                    while (counter < num_packets) {
-                        DatagramPacket dp = handoff.poll(10, TimeUnit.MILLISECONDS);
-                        if (dp != null) {
-                            total += dp.getLength();
-                            counter++;
-                            System.out.println("Count: " + counter);
-                        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                int counter = 0;
+                long start = System.currentTimeMillis();
+                while (counter < num_packets) {
+                    DatagramPacket dp = handoff.poll();
+                    if (dp != null) {
+                        total += dp.getLength();
+                        counter++;
                     }
-                    long end = System.currentTimeMillis();
-                    System.out.println("Server time: " + (end - start) + " ms.");
-
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
-                serverRunning = false;
+                long end = System.currentTimeMillis();
+                System.out.println("Count: " + counter);
+                System.out.println("Server time: " + (end - start) + " ms.");
+
             }
-        };
-        Thread t = new Thread(serverProcess);
-        t.start();
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            serverRunning = false;
+        });
         System.out.println("Hand-off thread started.");
 
     }

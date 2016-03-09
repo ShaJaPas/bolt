@@ -100,22 +100,21 @@ public class TestPacketFactory {
         NegativeAcknowledgement p2 = (NegativeAcknowledgement) p;
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, (Integer) p2.getDecodedLossInfo().get(0));
+        assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
         assertEquals(6, p2.getDecodedLossInfo().size());
     }
 
     @Test
     public void testNegativeAcknowledgement2() throws IOException {
-        NegativeAcknowledgement p1 = new NegativeAcknowledgement();
+        final NegativeAcknowledgement p1 = new NegativeAcknowledgement();
         p1.setMessageId(9872);
         p1.setDestinationID(2);
-        List<Integer> loss = IntStream.range(5, 12).boxed().collect(Collectors.toList());
+        final List<Integer> loss = IntStream.of(5, 6, 7, 8, 9, 11).boxed().collect(Collectors.toList());
 
         p1.addLossInfo(loss);
-        byte[] p1_data = p1.getEncoded();
+        final byte[] encoded = p1.getEncoded();
 
-        BoltPacket p = PacketFactory.createPacket(p1_data);
-        NegativeAcknowledgement p2 = (NegativeAcknowledgement) p;
+        final NegativeAcknowledgement p2 = (NegativeAcknowledgement) PacketFactory.createPacket(encoded);
         assertEquals(p1, p2);
 
         assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));

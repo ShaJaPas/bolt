@@ -11,7 +11,6 @@ import bolt.util.Util;
 import rx.Observable;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -19,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -186,30 +184,6 @@ public class BoltSender {
         statistics.incNumberOfSentDataPackets();
     }
 
-    //TODO has no classId, should consider removing this method.
-    protected void sendRawReliablePacket(ByteBuffer bb, int timeout, TimeUnit units) throws IOException, InterruptedException {
-        if (!started) start();
-
-        final Consumer<DataPacket> valueSetter = packet -> {
-            packet.setReliable(true);
-            packet.setPacketSequenceNumber(getNextSequenceNumber());
-            packet.setSession(session);
-            packet.setMessage(false);
-            packet.setClassID(0);
-            packet.setDestinationID(session.getDestination().getSocketID());
-            int len = Math.min(bb.remaining(), chunkSize);
-            byte[] data = packet.getData();
-            bb.get(data, 0, len);
-            packet.setLength(len);
-        };
-
-        boolean complete = false;
-        while (!complete) {
-            complete = flowWindow.tryProduce(valueSetter);
-            if (!complete) Thread.sleep(3);
-        }
-    }
-
     /**
      * Writes a data packet, waiting at most for the specified time.
      * If this is not possible due to a full send queue.
@@ -220,56 +194,17 @@ public class BoltSender {
      * @throws IOException
      * @throws InterruptedException
      */
-    protected void sendPacket(final DataPacket p, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    protected void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
-
-        // TODO move as some kind of copy method
-        final Consumer<DataPacket> valueSetter = packet -> {
-            packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
-            packet.setSession(session);
-            packet.setDestinationID(session.getDestination().getSocketID());
-
-            packet.setData(p.getData());
-            packet.setMessage(p.isMessage());
-            packet.setReliable(p.isReliable());
-            if (p.isMessage()) {
-                packet.setFinalMessageChunk(p.isFinalMessageChunk());
-                packet.setMessageChunkNumber(p.getMessageChunkNumber());
-                packet.setMessageId(p.getMessageId());
-            }
-        };
+        src.setSession(session);
+        src.setDestinationID(session.getDestination().getSocketID());
+        src.setPacketSequenceNumber(src.isReliable() ? getNextSequenceNumber() : 0);
 
         boolean complete = false;
         while (!complete) {
-            complete = flowWindow.tryProduce(valueSetter);
-            if (!complete) Thread.sleep(3);
+            complete = flowWindow.tryProduce(src);
+            if (!complete) Thread.sleep(1);
         }
-//
-//        DataPacket packet;
-//        do {
-//            packet = flowWindow.getForProducer();
-//            if (packet == null) {
-//                Thread.sleep(10);
-//            }
-//        }
-//        while (packet == null);
-//        try {
-//            packet.setPacketSequenceNumber(p.isReliable() ? getNextSequenceNumber() : 0);
-//            packet.setSession(session);
-//            packet.setDestinationID(session.getDestination().getSocketID());
-//
-//            packet.setData(p.getData());
-//            packet.setMessage(p.isMessage());
-//            packet.setReliable(p.isReliable());
-//            if (p.isMessage()) {
-//                packet.setFinalMessageChunk(p.isFinalMessageChunk());
-//                packet.setMessageChunkNumber(p.getMessageChunkNumber());
-//                packet.setMessageId(p.getMessageId());
-//            }
-//        }
-//        finally {
-//            flowWindow.produce();
-//        }
     }
 
     /**

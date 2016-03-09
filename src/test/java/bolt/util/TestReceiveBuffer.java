@@ -1,11 +1,15 @@
 package bolt.util;
 
 import bolt.packets.DataPacket;
-import junit.framework.TestCase;
+import org.junit.Test;
 
 import java.util.concurrent.*;
 
-public class TestReceiveBuffer extends TestCase {
+import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
+public class TestReceiveBuffer {
 
     volatile boolean poll = false;
 
@@ -16,6 +20,7 @@ public class TestReceiveBuffer extends TestCase {
         return p;
     }
 
+    @Test
     public void testInOrder() {
         final ReceiveBuffer b = new ReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
@@ -34,6 +39,7 @@ public class TestReceiveBuffer extends TestCase {
         assertNull(b.poll());
     }
 
+    @Test
     public void testOutOfOrder() {
         ReceiveBuffer b = new ReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
@@ -53,6 +59,7 @@ public class TestReceiveBuffer extends TestCase {
         assertNull(b.poll());
     }
 
+    @Test
     public void testInterleaved() {
         final ReceiveBuffer b = new ReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
@@ -77,6 +84,7 @@ public class TestReceiveBuffer extends TestCase {
         assertEquals(3, a.getPacketSequenceNumber());
     }
 
+    @Test
     public void testOverflow() {
         ReceiveBuffer b = new ReceiveBuffer(4, 1);
 
@@ -95,13 +103,14 @@ public class TestReceiveBuffer extends TestCase {
         }
     }
 
+    @Test
     public void testTimedPoll() throws Exception {
         final ReceiveBuffer b = new ReceiveBuffer(4, 1);
 
-        Runnable write = () -> {
+        final Runnable write = () -> {
             try {
                 for (int i = 0; i < 5; i++) {
-                    Thread.sleep(500);
+                    Thread.sleep(50);
                     b.offer(sequencedDataPacket(i + 1, "test".getBytes()));
                 }
             }
@@ -111,12 +120,12 @@ public class TestReceiveBuffer extends TestCase {
             }
         };
 
-        Callable<String> reader = () -> {
+        final Callable<String> reader = () -> {
             for (int i = 0; i < 5; i++) {
                 DataPacket r = null;
                 do {
                     try {
-                        r = b.poll(200, TimeUnit.MILLISECONDS);
+                        r = b.poll(20, TimeUnit.MILLISECONDS);
                     }
                     catch (InterruptedException ie) {
                         ie.printStackTrace();
@@ -134,12 +143,13 @@ public class TestReceiveBuffer extends TestCase {
         es.shutdownNow();
     }
 
+    @Test
     public void testTimedPoll2() throws Exception {
         final ReceiveBuffer b = new ReceiveBuffer(4, 1);
 
         Runnable write = () -> {
             try {
-                Thread.sleep(2979);
+                Thread.sleep(297);
                 System.out.println("PUT");
                 while (!poll) Thread.sleep(10);
                 b.offer(sequencedDataPacket(1, "test".getBytes()));
@@ -157,7 +167,7 @@ public class TestReceiveBuffer extends TestCase {
                 try {
                     poll = true;
                     System.out.println("POLL");
-                    r = b.poll(1000, TimeUnit.MILLISECONDS);
+                    r = b.poll(100, TimeUnit.MILLISECONDS);
                     poll = false;
                     if (r != null) System.out.println("... POLL OK");
                     else System.out.println("... nothing.");

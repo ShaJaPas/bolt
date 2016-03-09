@@ -8,6 +8,7 @@ import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import org.junit.Test;
 import rx.Subscription;
+import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import static org.junit.Assert.fail;
  */
 public class BulkPackTest {
 
+    public static final int SERVER_PORT = 65319;
     private static long PACKET_COUNT = 1_000_000;
     private static int SIZE = 1400;
 
@@ -38,14 +40,16 @@ public class BulkPackTest {
     private void runClient() throws Exception {
         final CountDownLatch clientReady = new CountDownLatch(1);
         final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        Subscription clientSub = client.connect(InetAddress.getByName("localhost"), 65321)
+        final ConnectableObservable<?> o = client.connect(InetAddress.getByName("localhost"), SERVER_PORT)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
-//                .take(1)
-                .ofType(ConnectionReadyEvent.class)
-//                .toBlocking()
-                .subscribe(x -> {
+                .publish();
 
+        Subscription clientSub = o.subscribe();
+
+        o.ofType(ConnectionReadyEvent.class)
+                .take(1)
+                .subscribe(x -> {
                     try {
                         byte[] data = new byte[SIZE];
                         new Random().nextBytes(data);
@@ -66,6 +70,8 @@ public class BulkPackTest {
                         clientReady.countDown();
                     }
                 });
+
+        o.connect();
         clientReady.await();
         clientSub.unsubscribe();
     }
@@ -73,12 +79,13 @@ public class BulkPackTest {
     private void runServer() throws Exception {
         final BoltServer sock = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
         final AtomicInteger received = new AtomicInteger(0);
-        sock.bind(InetAddress.getByName("localhost"), 65321)
+        sock.bind(InetAddress.getByName("localhost"), SERVER_PORT)
                 .subscribeOn(Schedulers.io())
+                .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())
                 .ofType(RoutedData.class)
                 .subscribe(x -> {
-                            if (received.incrementAndGet() % 1_00 == 0) System.out.println("Received " + received.get());
+                            if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
                         },
                         ex -> {
                             ex.printStackTrace();

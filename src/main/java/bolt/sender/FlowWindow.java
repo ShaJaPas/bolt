@@ -51,7 +51,7 @@ public class FlowWindow {
         lock = new ReentrantLock(true);
     }
 
-    public boolean tryProduce(final Consumer<DataPacket> packetUpdater) {
+    public boolean tryProduce(final DataPacket src) {
         // Do quick check before locking for performance.
         if (isFull) return false;
         lock.lock();
@@ -59,7 +59,7 @@ public class FlowWindow {
             if (isFull) return false;
 
             final DataPacket toProduce = packets[writePos];
-            packetUpdater.accept(toProduce);
+            toProduce.copyFrom(src);
 
             if (++writePos == length) writePos = 0;
             ++validEntries;
