@@ -39,8 +39,8 @@ public class BoltReceiver {
      */
     private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
 
-    //every nth packet will be discarded... for testing only of course
-    public static int dropRate = 0;
+    // Every nth packet will be discarded... for testing only of course.
+    private volatile float dropRate = 0;
     private final BoltEndPoint endpoint;
     private final BoltSession session;
     private final BoltStatistics statistics;
@@ -450,16 +450,13 @@ public class BoltReceiver {
     }
 
     protected void onDataPacketReceived(final DataPacket dp) throws IOException {
-        int currentSequenceNumber = dp.getPacketSequenceNumber();
+        final int currentSequenceNumber = dp.getPacketSequenceNumber();
 
-        //for TESTING : check whether to drop this packet
-//		n++;
-//		//if(dropRate>0 && n % dropRate == 0){
-//			if(n % 1111 == 0){
-//				LOG.info("**** TESTING:::: DROPPING PACKET "+currentSequenceNumber+" FOR TESTING");
-//				return;
-//			}
-//		//}
+        if (!isReceivable())
+        {
+            return;
+        }
+
         boolean OK = session.getSocket().haveNewData(dp);
         if (!OK) {
             //need to drop packet...
@@ -661,6 +658,22 @@ public class BoltReceiver {
         }
         // Stop our sender as well.
         session.getSocket().getSender().stop();
+    }
+
+    private boolean isReceivable()
+    {
+        return dropRate <= 0 || ++n % dropRate < 1f;
+    }
+
+    /**
+     * Set an artificial packet loss.
+     *
+     * @param packetLossPercentage the packet loss as a percentage (ie. x, where 0 <= x <= 1.0).
+     */
+    public void setPacketLoss(final float packetLossPercentage)
+    {
+        final float normalizedPacketLossPercentage = Math.min(packetLossPercentage, 1f);
+        dropRate = (normalizedPacketLossPercentage <= 0f) ? 0f : 1f / normalizedPacketLossPercentage;
     }
 
     public String toString() {

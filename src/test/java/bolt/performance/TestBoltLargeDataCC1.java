@@ -1,13 +1,9 @@
 package bolt.performance;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.junit.Test;
 
-import bolt.BoltReceiver;
-import bolt.BoltSession;
-import bolt.cc.SimpleTCP;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 //uses different CC algorithm
 public class TestBoltLargeDataCC1 extends TestBoltLargeData {
@@ -28,10 +24,9 @@ public class TestBoltLargeDataCC1 extends TestBoltLargeData {
 	@Test
 	public void test1()throws Exception{
 		Logger.getLogger("bolt").setLevel(Level.INFO);
-		BoltReceiver.dropRate=0;
 //		System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
 		TIMEOUT=Integer.MAX_VALUE;
-		doTest();
+		doTest(0);
 	}
 
 }

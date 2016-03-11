@@ -11,14 +11,14 @@ import java.util.Random;
  * some additional utilities useful for testing
  */
 public abstract class BoltTestBase {
-	
+
 	//get an array filled with random data
 	protected byte[] getRandomData(int size){
 		byte[]data=new byte[size];
 		new Random().nextBytes(data);
 		return data;
 	}
-	
+
 	//compute the md5 hash
 	protected String computeMD5(byte[]...datablocks)throws Exception{
 		MessageDigest d=MessageDigest.getInstance("MD5");
@@ -27,7 +27,7 @@ public abstract class BoltTestBase {
 		}
 		return hexString(d);
 	}
-	
+
 	//read and discard data from the given input stream
 	//returns the md5 digest of the data
 	protected String readAll(InputStream is, int bufsize)throws Exception{
@@ -43,7 +43,7 @@ public abstract class BoltTestBase {
 		}
 		return hexString(d);
 	}
-	
+
 	protected byte[][]makeChunks(int number, byte[] data){
 		int chunksize=data.length/number;
 		byte[][]result=new byte[number][chunksize];
@@ -61,5 +61,5 @@ public abstract class BoltTestBase {
 		return TestUtil.hexString(digest);
 	}
 
-	
+
 }

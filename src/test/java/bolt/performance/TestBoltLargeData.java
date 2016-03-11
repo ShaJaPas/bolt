@@ -1,9 +1,9 @@
 package bolt.performance;
 
 import bolt.BoltClient;
-import bolt.BoltReceiver;
 import bolt.BoltServer;
 import bolt.BoltTestBase;
+import bolt.Config;
 import bolt.util.TestUtil;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
@@ -44,17 +44,18 @@ public class TestBoltLargeData extends BoltTestBase {
 //		System.setProperty("bolt.receiver.storeStatistics","true");
 //		System.setProperty("bolt.sender.storeStatistics","true");
 //        System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());
-        BoltReceiver.dropRate = 0;
         TIMEOUT = Integer.MAX_VALUE;
         try {
-            doTest();
+            doTest(0);
         } catch (TimeoutException te) {
             te.printStackTrace();
             fail();
         }
     }
 
-    protected void doTest() throws Exception {
+    protected void doTest(final float packetLossPercentage) throws Exception {
+        final Config config = new Config();
+        config.setPacketLoss(packetLossPercentage);
 
         format.setMaximumFractionDigits(2);
 

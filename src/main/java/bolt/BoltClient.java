@@ -27,19 +27,24 @@ public class BoltClient implements Client {
     private final BoltEndPoint clientEndpoint;
     private final XCoderRepository xCoderRepository;
     private ClientSession clientSession;
+    private final Config config;
 
+    public BoltClient(final InetAddress address, final int localPort, final Config config) throws SocketException, UnknownHostException {
+        this(new BoltEndPoint(address, localPort), config);
+    }
 
     public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
-        this(new BoltEndPoint(address, localPort));
+        this(address, localPort, new Config());
     }
 
     public BoltClient(final InetAddress address) throws SocketException, UnknownHostException {
-        this(new BoltEndPoint(address));
+        this(new BoltEndPoint(address), new Config());
     }
 
-    public BoltClient(final BoltEndPoint endpoint) throws SocketException, UnknownHostException {
+    private BoltClient(final BoltEndPoint endpoint, final Config config) throws SocketException, UnknownHostException {
         this.clientEndpoint = endpoint;
         this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        this.config = config;
         LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
 

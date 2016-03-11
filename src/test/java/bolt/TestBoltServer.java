@@ -26,41 +26,44 @@ public class TestBoltServer extends BoltTestBase {
     volatile boolean serverRunning = true;
     volatile String md5_received = null;
 
+    private Config createPacketLossConfig(float packetLossPercentage) {
+        final Config config = new Config();
+        config.setPacketLoss(0);
+        return config;
+    }
+
     @Test
     public void testWithoutLoss() throws Exception {
         Logger.getLogger("bolt").setLevel(Level.INFO);
-        BoltReceiver.dropRate = 0;
         num_packets = 1000;
         TIMEOUT = Integer.MAX_VALUE;
-        doTest();
+        doTest(createPacketLossConfig(0));
     }
 
     // Set an artificial loss rate.
     @Test
     public void testWithLoss() throws Exception {
-        BoltReceiver.dropRate = 3;
         TIMEOUT = Integer.MAX_VALUE;
         num_packets = 100;
         //set log level
         Logger.getLogger("bolt").setLevel(Level.INFO);
-        doTest();
+        doTest(createPacketLossConfig(0.33334f));
     }
 
     // Send even more data.
     @Test
     public void testLargeDataSet() throws Exception {
-        BoltReceiver.dropRate = 0;
         TIMEOUT = Integer.MAX_VALUE;
         num_packets = 100;
         //set log level
         Logger.getLogger("bolt").setLevel(Level.INFO);
-        doTest();
+        doTest(createPacketLossConfig(0));
 
     }
 
-    protected void doTest() throws Exception {
+    protected void doTest(final Config config) throws Exception {
         if (!running) runServer();
-        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
+        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345, config);
         client.connect(InetAddress.getByName("localhost"), 65321);
         int N = num_packets * 32768;
         byte[] data = new byte[N];
