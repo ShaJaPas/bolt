@@ -1,14 +1,12 @@
 package echo;
 
 import bolt.BoltServer;
+import bolt.Config;
 import bolt.receiver.RoutedData;
-import bolt.xcoder.MessageAssembleBuffer;
-import bolt.xcoder.XCoderRepository;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,14 +16,11 @@ public class EchoServer {
 
     final BoltServer server;
 
-    private final int port;
-
     volatile boolean started = false;
     volatile boolean stopped = false;
 
     public EchoServer(final int port) throws Exception {
-        this.port = port;
-        server = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
+        server = new BoltServer(new Config(InetAddress.getByName("localhost"), port));
     }
 
     public void stop() {
@@ -33,19 +28,14 @@ public class EchoServer {
     }
 
     public synchronized Subscription start() {
-        try {
-            Subscription s = server.bind(InetAddress.getByName("localhost"), port)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(Schedulers.computation())
-                    .ofType(RoutedData.class)
-//                    .take(1)
-                    .subscribe(x -> pool.execute(new Request(server, x)));
-            started = true;
-            return s;
-        }
-        catch (UnknownHostException e) {
-            throw new RuntimeException(e);
-        }
+
+        Subscription s = server.bind()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .ofType(RoutedData.class)
+                .subscribe(x -> pool.execute(new Request(server, x)));
+        started = true;
+        return s;
     }
 
     public static class Request implements Runnable {

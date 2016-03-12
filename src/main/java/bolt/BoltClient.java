@@ -21,7 +21,6 @@ import java.util.logging.Logger;
 
 public class BoltClient implements Client {
 
-
     private static final Logger LOGGER = Logger.getLogger(BoltClient.class.getName());
 
     private final BoltEndPoint clientEndpoint;
@@ -29,25 +28,16 @@ public class BoltClient implements Client {
     private ClientSession clientSession;
     private final Config config;
 
-    public BoltClient(final InetAddress address, final int localPort, final Config config) throws SocketException, UnknownHostException {
-        this(new BoltEndPoint(address, localPort), config);
-    }
-
     public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
-        this(address, localPort, new Config());
+        this(new Config(address, localPort));
     }
 
-    public BoltClient(final InetAddress address) throws SocketException, UnknownHostException {
-        this(new BoltEndPoint(address), new Config());
-    }
-
-    private BoltClient(final BoltEndPoint endpoint, final Config config) throws SocketException, UnknownHostException {
-        this.clientEndpoint = endpoint;
-        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+    public BoltClient(final Config config) throws SocketException, UnknownHostException {
         this.config = config;
+        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        this.clientEndpoint = new BoltEndPoint(config);
         LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
-
 
     @Override
     public Observable<?> connect(final InetAddress address, final int port) {
@@ -91,6 +81,7 @@ public class BoltClient implements Client {
                 throw new BoltException(ex);
             }
         }
+        System.out.println("DONE SENDING");
     }
 
     public void sendBlocking(final Object obj) throws BoltException {

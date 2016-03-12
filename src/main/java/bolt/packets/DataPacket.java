@@ -282,7 +282,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     public String toString() {
         return "DataPacket{" +
                 "classID=" + classID +
-                ", data=" + Arrays.toString(data) +
                 ", reliable=" + reliable +
                 ", message=" + message +
                 ", packetSequenceNumber=" + packetSequenceNumber +
@@ -290,6 +289,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
                 ", messageChunkNumber=" + messageChunkNumber +
                 ", messageId=" + messageId +
                 ", destinationID=" + destinationID +
+                ", data=" + Arrays.toString(data) +
                 '}';
     }
 }

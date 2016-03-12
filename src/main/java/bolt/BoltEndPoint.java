@@ -2,6 +2,7 @@ package bolt;
 
 import bolt.event.ConnectionReadyEvent;
 import bolt.packets.ConnectionHandshake;
+import bolt.packets.DataPacket;
 import bolt.packets.Destination;
 import bolt.packets.PacketFactory;
 import rx.Observable;
@@ -10,6 +11,7 @@ import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.*;
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +29,7 @@ public class BoltEndPoint {
     final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
+    private final Config config;
 
     /**
      * Active sessions keyed by socket ID.
@@ -34,31 +37,6 @@ public class BoltEndPoint {
     private final Map<Long, BoltSession> sessions = new ConcurrentHashMap<>();
 
     private final Map<Destination, BoltSession> sessionsBeingConnected = new ConcurrentHashMap<>();
-
-//    private boolean serverSocketMode = false;
-//
-//    private volatile boolean stopped = false;
-
-    /**
-     * create an endpoint on the given socket
-     *
-     * @param socket a UDP datagram socket
-     */
-    public BoltEndPoint(DatagramSocket socket) {
-        this.dgSocket = socket;
-        this.port = dgSocket.getLocalPort();
-    }
-
-    /**
-     * Bind to any local port on the given host address.
-     *
-     * @param localAddress
-     * @throws SocketException
-     * @throws UnknownHostException
-     */
-    public BoltEndPoint(InetAddress localAddress) throws SocketException, UnknownHostException {
-        this(localAddress, 0);
-    }
 
     /**
      * Bind to the given address and port
@@ -68,33 +46,23 @@ public class BoltEndPoint {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public BoltEndPoint(InetAddress localAddress, int localPort) throws SocketException, UnknownHostException {
-        this.dgSocket = new DatagramSocket(localPort, localAddress);
+    public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
+        this(new Config(localAddress, localPort));
+    }
 
-        this.port = (localPort > 0) ? localPort : dgSocket.getLocalPort();
-
+    /**
+     * Bind to the given address and port.
+     *
+     * @param config config containing the address information to bind.
+     * @throws SocketException
+     * @throws UnknownHostException
+     */
+    public BoltEndPoint(final Config config) throws SocketException, UnknownHostException {
+        this.config = config;
+        this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
+        // If the port is zero, the system will pick an ephemeral port.
+        this.port = (config.getLocalPort() > 0) ? config.getLocalPort() : dgSocket.getLocalPort();
         configureSocket();
-    }
-
-    /**
-     * bind to the default network interface on the machine
-     *
-     * @param localPort - the port to bind to. If the port is zero, the system will pick an ephemeral port.
-     * @throws SocketException
-     * @throws UnknownHostException
-     */
-    public BoltEndPoint(int localPort) throws SocketException, UnknownHostException {
-        this(null, localPort);
-    }
-
-    /**
-     * bind to an ephemeral port on the default network interface on the machine
-     *
-     * @throws SocketException
-     * @throws UnknownHostException
-     */
-    public BoltEndPoint() throws SocketException, UnknownHostException {
-        this(null, 0);
     }
 
     protected void configureSocket() throws SocketException {
@@ -176,6 +144,11 @@ public class BoltEndPoint {
                 }
                 else if (session != null) {
                     // Dispatch to existing session.
+                    if (!packet.isControlPacket()) {
+                        if (((DataPacket)packet).isFinalMessageChunk()) {
+                            System.out.println("NO MESS");
+                        }
+                    }
                     session.received(packet, peer);
                 }
                 else {
@@ -235,7 +208,11 @@ public class BoltEndPoint {
         byte[] data = packet.getEncoded();
         DatagramPacket dgp = packet.getSession().getDatagram();
         dgp.setData(data);
+        if (!packet.isControlPacket() && ((DataPacket)packet).isFinalMessageChunk() ) {
+            System.out.println("SEND NO MESS");
+        }
         dgSocket.send(dgp);
+//        System.out.println(MessageFormat.format("Sent [{0}]", packet.toString()));
     }
 
     public String toString() {
@@ -244,6 +221,10 @@ public class BoltEndPoint {
 
     public void sendRaw(DatagramPacket p) throws IOException {
         dgSocket.send(p);
+    }
+
+    public Config getConfig() {
+        return config;
     }
 
 }

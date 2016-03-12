@@ -18,6 +18,32 @@ public class TestDataPacket {
         return new DataPacket(encodedData);
     }
 
+
+    @Test
+    public void testCopyIsSymmetric() {
+        IntStream.range(0, 1000).parallel().forEach(__ -> {
+            final DataPacket src = createRandomPacket();
+            final DataPacket cpy = new DataPacket();
+            cpy.copyFrom(src);
+
+            assertEquals(src, cpy);
+        });
+    }
+
+    @Test
+    public void testMessageChunkNumber() {
+        final Random r = new Random();
+        IntStream.range(0, 10000).parallel().forEach(__ -> {
+            int messageChunkNum = r.nextInt(PacketUtil.MAX_MESSAGE_CHUNK_NUM);
+            final DataPacket src = createRandomPacket();
+            src.setMessage(true);
+            src.setMessageChunkNumber(messageChunkNum);
+            final DataPacket cpy = new DataPacket(src.getEncoded());
+
+            assertEquals(messageChunkNum, cpy.getMessageChunkNumber());
+        });
+    }
+
     @Test
     public void testDecodeAndEncodeAreSymmetric() {
         IntStream.range(0, 1000).parallel().forEach(__ -> {

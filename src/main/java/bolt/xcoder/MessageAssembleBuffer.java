@@ -1,21 +1,16 @@
 package bolt.xcoder;
 
 import bolt.packets.DataPacket;
+import bolt.packets.PacketUtil;
 import bolt.util.SequenceNumber;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by keen on 29/02/16.
  */
 public class MessageAssembleBuffer
 {
-
-    private static final int MAX_MESSAGE_ID = (int) Math.pow(2, 16) - 1;
 
     private volatile int messageId = 0;
 
@@ -32,7 +27,7 @@ public class MessageAssembleBuffer
     }
 
     public int nextMessageId() {
-        return SequenceNumber.increment(messageId, MAX_MESSAGE_ID);
+        return SequenceNumber.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
     }
 
 
@@ -43,7 +38,7 @@ public class MessageAssembleBuffer
         private Collection<DataPacket> addChunk(final DataPacket packet) {
             received.put(packet.getMessageChunkNumber(), packet);
             if (packet.isFinalMessageChunk()) {
-                totalChunks = packet.getMessageChunkNumber();
+                totalChunks = packet.getMessageChunkNumber() + 1;
             }
             return totalChunks == received.size()
                     ? new ArrayList<>(received.values())

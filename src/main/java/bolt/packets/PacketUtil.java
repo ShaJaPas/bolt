@@ -6,6 +6,9 @@ import java.net.UnknownHostException;
 
 public class PacketUtil {
 
+    public static final int MAX_MESSAGE_CHUNK_NUM = (int) Math.pow(2, 15) - 1;
+    public static final int MAX_MESSAGE_ID = (int) Math.pow(2, 16) - 1;
+
     public static byte[] encode(long value) {
         byte m4 = (byte) (value >> 24);
         byte m3 = (byte) (value >> 16);

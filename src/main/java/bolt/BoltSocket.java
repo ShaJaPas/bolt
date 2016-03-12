@@ -8,7 +8,6 @@ import rx.schedulers.Schedulers;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,11 +28,11 @@ public class BoltSocket {
     /**
      * @param endpoint
      * @param session
-     * @throws SocketException,UnknownHostException
+     * @throws SocketException, UnknownHostException
      */
     public BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
         this.session = session;
-        this.receiver = new BoltReceiver(session, endpoint);
+        this.receiver = new BoltReceiver(session, endpoint, endpoint.getConfig());
         this.sender = new BoltSender(session, endpoint);
 
         final int capacity = 2 * session.getFlowWindowSize();

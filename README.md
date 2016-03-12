@@ -9,3 +9,4 @@
 - [ ] Simulated jitter
 - [ ] Client disconnect (remove sessions, generate event)
 - [ ] Performance testing
+- [ ] Use log4j with performant string interpolation

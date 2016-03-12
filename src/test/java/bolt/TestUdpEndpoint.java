@@ -107,7 +107,7 @@ public class TestUdpEndpoint extends BoltTestBase {
 
     @Test
     public void testBindToAnyPort() throws Exception {
-        BoltEndPoint ep = new BoltEndPoint(InetAddress.getByName("localhost"));
+        BoltEndPoint ep = new BoltEndPoint(InetAddress.getByName("localhost"), 0);
         int port = ep.getLocalPort();
         assertTrue(port > 0);
     }

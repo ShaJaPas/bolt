@@ -11,6 +11,7 @@ import bolt.util.Util;
 import rx.Observable;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -39,8 +40,6 @@ public class BoltReceiver {
      */
     private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
 
-    // Every nth packet will be discarded... for testing only of course.
-    private volatile float dropRate = 0;
     private final BoltEndPoint endpoint;
     private final BoltSession session;
     private final BoltStatistics statistics;
@@ -149,12 +148,15 @@ public class BoltReceiver {
     private int n = 0;
     private volatile int ackSequenceNumber = 0;
 
+    private final Config config;
+
     /**
      * create a receiver with a valid {@link BoltSession}
      *
      * @param session
+     * @param config
      */
-    public BoltReceiver(final BoltSession session, final BoltEndPoint endpoint) {
+    public BoltReceiver(final BoltSession session, final BoltEndPoint endpoint, final Config config) {
         if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
         this.session = session;
@@ -168,6 +170,7 @@ public class BoltReceiver {
         this.bufferSize = session.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
         this.storeStatistics = Boolean.getBoolean("bolt.receiver.storeStatistics");
+        this.config = config;
         initMetrics();
     }
 
@@ -278,6 +281,7 @@ public class BoltReceiver {
             LOG.info("Polling of hand-off queue was interrupted.");
         }
         if (packet != null) {
+//            System.out.println(MessageFormat.format("RECV [{0}]", packet.toString()));
             // Reset exp count to 1
             expCount = 1;
             // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
@@ -454,12 +458,13 @@ public class BoltReceiver {
 
         if (!isReceivable())
         {
+//            LOG.info("Artificial packet loss, dropping packet");
             return;
         }
 
         boolean OK = session.getSocket().haveNewData(dp);
         if (!OK) {
-            //need to drop packet...
+            LOG.warning("Need to drop packet");
             return;
         }
 
@@ -662,19 +667,10 @@ public class BoltReceiver {
 
     private boolean isReceivable()
     {
+        final float dropRate = config.getPacketDropRate();
         return dropRate <= 0 || ++n % dropRate < 1f;
     }
 
-    /**
-     * Set an artificial packet loss.
-     *
-     * @param packetLossPercentage the packet loss as a percentage (ie. x, where 0 <= x <= 1.0).
-     */
-    public void setPacketLoss(final float packetLossPercentage)
-    {
-        final float normalizedPacketLossPercentage = Math.min(packetLossPercentage, 1f);
-        dropRate = (normalizedPacketLossPercentage <= 0f) ? 0f : 1f / normalizedPacketLossPercentage;
-    }
 
     public String toString() {
         return "BoltReceiver " + session + "\n" +

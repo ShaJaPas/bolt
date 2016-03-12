@@ -2,17 +2,21 @@ package bolt.xcoder;
 
 import bolt.packets.DataPacket;
 
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 /**
  * Created by keen on 27/02/16.
  */
 @SuppressWarnings("unchecked")
 public class XCoderRepository {
+
+    private static final Logger LOG = Logger.getLogger(XCoderRepository.class.getName());
 
     private final Map<Class<?>, XCoderChain<?>> classXCoders = new ConcurrentHashMap<>();
 
@@ -58,6 +62,7 @@ public class XCoderRepository {
         if (isMessage) {
             final int messageId = messageAssembleBuffer.nextMessageId();
             encoded.forEach(p -> p.setMessageId(messageId));
+            LOG.info(MessageFormat.format("Sending message {0} with {1} chunks.", messageId, encoded.size()));
         }
 
         return encoded;

@@ -1,6 +1,8 @@
 package bolt.xcoder;
 
+import bolt.BoltException;
 import bolt.packets.DataPacket;
+import bolt.packets.PacketUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,7 +15,7 @@ import java.util.Objects;
 public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 {
 
-    private final int maxPacketSize = 1400;
+    private final int maxPacketSize = 1400 - 12; // Minus 12 for header.
 
     private final ObjectXCoder<T> objectXCoder;
 
@@ -57,10 +59,14 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
      * @return a collection of data packets.
      */
     @Override
-    public Collection<DataPacket> encode(final T object) {
+    public Collection<DataPacket> encode(final T object) throws BoltException {
         final byte[] bytes = objectXCoder.encode(object);
         final boolean message = isMessage(bytes);
         final int chunkCount = (int) Math.ceil(bytes.length / (double)maxPacketSize);
+
+        if (chunkCount > PacketUtil.MAX_MESSAGE_CHUNK_NUM) {
+            throw new BoltException("Object is too large to chunk. Actual chunk count: " + chunkCount);
+        }
 
         final List<DataPacket> dataPackets = new ArrayList<>();
         for (int i = 0; i < chunkCount; i++) {

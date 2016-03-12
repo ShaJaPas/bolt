@@ -49,7 +49,7 @@ public class BoltSender {
     /**
      * Stores the sent data packets and their sequence numbers
      */
-    private final Map<Integer, byte[]> sendBuffer;
+    private final Map<Integer, DataPacket> sendBuffer;
 
     private final FlowWindow flowWindow;
 
@@ -140,7 +140,7 @@ public class BoltSender {
                 Supplier<Boolean> stopped = () -> this.stopped || subscriber.isUnsubscribed();
                 while (!stopped.get()) {
                     // Wait until explicitly (re)started.
-//                    startLatch.await();
+                    startLatch.await();
                     paused = false;
                     senderAlgorithm(stopped);
                 }
@@ -173,10 +173,13 @@ public class BoltSender {
             }
             if (p.isReliable()) {
                 // Store data for potential retransmit.
-                int l = p.getLength();
-                byte[] data = new byte[l];
-                System.arraycopy(p.getData(), 0, data, 0, l);
-                sendBuffer.put(p.getPacketSequenceNumber(), data);
+//                int l = p.getLength();
+//                byte[] data = new byte[l];
+//                System.arraycopy(p.getData(), 0, data, 0, l);
+
+                DataPacket buffered = new DataPacket();
+                buffered.copyFrom(p);
+                sendBuffer.put(p.getPacketSequenceNumber(), buffered);
                 unacknowledged.incrementAndGet();
                 largestSentSequenceNumber = p.getPacketSequenceNumber();
             }
@@ -403,15 +406,15 @@ public class BoltSender {
      *
      * @param seqNumber
      */
-    protected void handleRetransmit(Integer seqNumber) {
+    protected void handleRetransmit(final Integer seqNumber) {
         try {
             // Retransmit the packet and remove it from the list.
-            byte[] data = sendBuffer.get(seqNumber);
+            final DataPacket data = sendBuffer.get(seqNumber);
             if (data != null) {
+                retransmit.copyFrom(data);
                 retransmit.setPacketSequenceNumber(seqNumber);
                 retransmit.setSession(session);
                 retransmit.setDestinationID(session.getDestination().getSocketID());
-                retransmit.setData(data);
                 endpoint.doSend(retransmit);
                 statistics.incNumberOfRetransmittedDataPackets();
             }

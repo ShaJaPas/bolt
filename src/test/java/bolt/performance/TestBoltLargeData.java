@@ -54,13 +54,13 @@ public class TestBoltLargeData extends BoltTestBase {
     }
 
     protected void doTest(final float packetLossPercentage) throws Exception {
-        final Config config = new Config();
-        config.setPacketLoss(packetLossPercentage);
+        final Config config = new Config(InetAddress.getByName("localhost"), 12345)
+                .setPacketLoss(packetLossPercentage);
 
         format.setMaximumFractionDigits(2);
 
         if (!running) runServer();
-        BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
+        BoltClient client = new BoltClient(config);
         client.connect(InetAddress.getByName("localhost"), SERVER_PORT);
 
         long N = num_packets * size;
@@ -116,8 +116,8 @@ public class TestBoltLargeData extends BoltTestBase {
     private void runServer() throws Exception {
         final long start = System.currentTimeMillis();
         final MessageDigest md5 = MessageDigest.getInstance("MD5");
-        final BoltServer serverSocket = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
-        serverSocket.bind(InetAddress.getByName("localhost"), SERVER_PORT)
+        final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), SERVER_PORT));
+        server.bind()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
                 .ofType(byte[].class)

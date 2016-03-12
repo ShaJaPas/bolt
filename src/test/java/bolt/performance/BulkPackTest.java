@@ -2,10 +2,9 @@ package bolt.performance;
 
 import bolt.BoltClient;
 import bolt.BoltServer;
+import bolt.Config;
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
-import bolt.xcoder.MessageAssembleBuffer;
-import bolt.xcoder.XCoderRepository;
 import org.junit.Test;
 import rx.Subscription;
 import rx.observables.ConnectableObservable;
@@ -77,9 +76,9 @@ public class BulkPackTest {
     }
 
     private void runServer() throws Exception {
-        final BoltServer sock = new BoltServer(XCoderRepository.create(new MessageAssembleBuffer()));
+        final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), SERVER_PORT));
         final AtomicInteger received = new AtomicInteger(0);
-        sock.bind(InetAddress.getByName("localhost"), SERVER_PORT)
+        server.bind()
                 .subscribeOn(Schedulers.io())
                 .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())

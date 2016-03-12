@@ -1,16 +1,17 @@
 package bolt;
 
 import bolt.packets.DataPacket;
-import bolt.packets.PacketUtil;
 import bolt.receiver.RoutedData;
+import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
 import rx.Subscriber;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Created by omahoc9 on 3/3/16.
@@ -19,17 +20,22 @@ public class BoltServer implements Server {
 
     private final XCoderRepository xCoderRepository;
 
+    private final Config config;
+
     private volatile BoltEndPoint serverEndpoint;
 
-    public BoltServer(final XCoderRepository xCoderRepository) {
-        this.xCoderRepository = xCoderRepository;
+    private volatile int count;
+
+    public BoltServer(final Config config) {
+        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        this.config = config;
     }
 
     @Override
-    public Observable<?> bind(final InetAddress address, final int port) {
+    public Observable<?> bind() {
         return Observable.create(subscriber -> {
             try {
-                this.serverEndpoint = new BoltEndPoint(address, port);
+                this.serverEndpoint = new BoltEndPoint(config);
                 this.serverEndpoint.start().subscribe(subscriber);
 
                 while (!subscriber.isUnsubscribed()) {
@@ -54,14 +60,21 @@ public class BoltServer implements Server {
     private void pollReceivedData(final Subscriber<? super Object> subscriber) {
         for (BoltSession session : serverEndpoint.getSessions()) {
             if (session.getSocket() != null) {
-                final DataPacket packet = session.getSocket().getReceiveBuffer().poll();
+                try {
+                    final DataPacket packet = session.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
-                if (packet != null) {
-                    final Object decoded = xCoderRepository.decode(packet);
-                    if (decoded != null) {
-                        subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
+                    if (packet != null) {
+                        final Object decoded = xCoderRepository.decode(packet);
+                        if (decoded != null) {
+                            System.out.println("Count: " + ++count);
+                            subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
+                        }
                     }
                 }
+                catch (InterruptedException e) {
+                    // Do nothing
+                }
+
             }
         }
     }
