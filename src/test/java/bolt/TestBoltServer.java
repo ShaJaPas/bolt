@@ -5,13 +5,14 @@ import bolt.receiver.RoutedData;
 import bolt.util.TestUtil;
 import org.junit.Test;
 import rx.Observable;
-import rx.Subscription;
 import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
 import java.security.MessageDigest;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -23,29 +24,29 @@ public class TestBoltServer extends BoltTestBase {
 
     private static AtomicInteger SERVER_PORT = new AtomicInteger(65310);
     private static AtomicInteger CLIENT_PORT = new AtomicInteger(12335);
-    public int BUFSIZE = 1024;
     boolean running = false;
     int num_packets = 32;
-
-    private Subscription serverSub;
-
-    int TIMEOUT = 20000;
     long total = 0;
     volatile boolean serverRunning = true;
     volatile String md5_received = null;
 
+    @Test(expected = Exception.class)
+    public void testErrorTooManyChunks() throws Throwable {
+        Logger.getLogger("bolt").setLevel(Level.INFO);
+        num_packets = 10000;
+        doTest(0);
+    }
+
     @Test
-    public void testWithoutLoss() throws Exception {
+    public void testWithoutLoss() throws Throwable {
         Logger.getLogger("bolt").setLevel(Level.INFO);
         num_packets = 1000;
-        TIMEOUT = Integer.MAX_VALUE;
         doTest(0);
     }
 
     // Set an artificial loss rate.
     @Test
-    public void testWithLoss() throws Exception {
-        TIMEOUT = Integer.MAX_VALUE;
+    public void testWithLoss() throws Throwable {
         num_packets = 100;
         //set log level
         Logger.getLogger("bolt").setLevel(Level.INFO);
@@ -54,15 +55,14 @@ public class TestBoltServer extends BoltTestBase {
 
     // Send even more data.
     @Test
-    public void testLargeDataSet() throws Exception {
-        TIMEOUT = Integer.MAX_VALUE;
+    public void testLargeDataSet() throws Throwable {
         num_packets = 100;
         //set log level
         Logger.getLogger("bolt").setLevel(Level.INFO);
         doTest(0);
     }
 
-    protected void doTest(final float packetLossPercentage) throws Exception {
+    protected void doTest(final float packetLossPercentage) throws Throwable {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), CLIENT_PORT.incrementAndGet());
         final Config serverConfig = new Config(InetAddress.getByName("localhost"), SERVER_PORT.incrementAndGet())
                 .setPacketLoss(packetLossPercentage);
@@ -82,29 +82,24 @@ public class TestBoltServer extends BoltTestBase {
         final long start = System.currentTimeMillis();
         System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
 
-//        final Subscription sub = in.subscribe();
+        final Set<Throwable> errors = new HashSet<>();
 
-        cin
-                .ofType(ConnectionReadyEvent.class)
+        cin.ofType(ConnectionReadyEvent.class)
                 .take(1)
                 .timeout(5, TimeUnit.SECONDS)
-//                .toBlocking()
                 .observeOn(Schedulers.computation())
-                .subscribe(__ -> {
-                    client.sendBlocking(data);
-//                    serverSub.unsubscribe();
-                });
+                .subscribe(__ -> client.sendBlocking(data),
+                        errors::add);
 
         cin.observeOn(Schedulers.computation()).subscribe();
         cin.connect();
 
-//        in.connect();
+        while (total < N && errors.isEmpty()) Thread.sleep(100);
+
+        if (!errors.isEmpty()) throw errors.iterator().next();
+
         long end = System.currentTimeMillis();
         System.out.println("Shutdown client.");
-
-//        sub.unsubscribe();
-        while (total < N) Thread.sleep(100);
-
         System.out.println("Done. Sending " + N / 1024 + " Kbytes took " + (end - start) + " ms");
         System.out.println("Rate " + N / (end - start) + " Kbytes/sec");
         System.out.println("Server received: " + total);
@@ -121,7 +116,7 @@ public class TestBoltServer extends BoltTestBase {
         final MessageDigest md5 = MessageDigest.getInstance("MD5");
         final BoltServer server = new BoltServer(config);
 
-        serverSub = server.bind()
+        server.bind()
                 .subscribeOn(Schedulers.io())
                 .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())
@@ -130,7 +125,6 @@ public class TestBoltServer extends BoltTestBase {
                 .subscribe(x -> {
                             md5.update(x, 0, x.length);
                             total += x.length;
-//                            System.out.println(total);
                             md5_received = TestUtil.hexString(md5);
                         },
                         ex -> {
@@ -138,7 +132,6 @@ public class TestBoltServer extends BoltTestBase {
                             serverRunning = false;
                         },
                         () -> {
-                            System.out.println("DONE");
                             serverRunning = false;
                             md5_received = TestUtil.hexString(md5);
                         });

@@ -144,11 +144,12 @@ public class BoltEndPoint {
                 }
                 else if (session != null) {
                     // Dispatch to existing session.
-                    if (!packet.isControlPacket()) {
-                        if (((DataPacket)packet).isFinalMessageChunk()) {
-                            System.out.println("NO MESS");
-                        }
-                    }
+//                    if (!packet.isControlPacket()) {
+//                        System.out.println(((DataPacket)packet).getMessageChunkNumber());
+//                        if (((DataPacket)packet).isFinalMessageChunk()) {
+//                            System.out.println("NO MESS");
+//                        }
+//                    }
                     session.received(packet, peer);
                 }
                 else {
@@ -208,9 +209,9 @@ public class BoltEndPoint {
         byte[] data = packet.getEncoded();
         DatagramPacket dgp = packet.getSession().getDatagram();
         dgp.setData(data);
-        if (!packet.isControlPacket() && ((DataPacket)packet).isFinalMessageChunk() ) {
-            System.out.println("SEND NO MESS");
-        }
+//        if (!packet.isControlPacket() && ((DataPacket)packet).isFinalMessageChunk() ) {
+//            System.out.println("SEND NO MESS");
+//        }
         dgSocket.send(dgp);
 //        System.out.println(MessageFormat.format("Sent [{0}]", packet.toString()));
     }

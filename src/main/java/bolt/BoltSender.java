@@ -354,7 +354,7 @@ public class BoltSender {
         while (!paused) {
             long iterationStart = Util.getCurrentTime();
             // If the sender's loss list is not empty
-            Integer entry = senderLossList.getFirstEntry();
+            final Integer entry = senderLossList.getFirstEntry();
             if (entry != null) {
                 handleRetransmit(entry);
             }
