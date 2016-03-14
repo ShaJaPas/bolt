@@ -4,7 +4,7 @@
 - [ ] Message assembly/disassembly
 - [ ] Delivery strategy (aggressive, on NACK)
 - [ ] Trim control and data packets
-- [ ] Simulated packet-loss
+- [X] Simulated packet-loss
 - [ ] Simulated latency
 - [ ] Simulated jitter
 - [ ] Client disconnect (remove sessions, generate event)
