@@ -6,6 +6,7 @@ import bolt.BoltTestBase;
 import bolt.Config;
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
+import bolt.util.PortUtil;
 import org.junit.Test;
 import rx.schedulers.Schedulers;
 
@@ -24,7 +25,7 @@ import static org.junit.Assert.fail;
 
 public class TestBoltLargeData extends BoltTestBase {
 
-    public static final int SERVER_PORT = 65318;
+    public static final int SERVER_PORT = PortUtil.nextServerPort();
     private final NumberFormat format = NumberFormat.getNumberInstance();
     boolean running = false;
     //how many
@@ -58,7 +59,7 @@ public class TestBoltLargeData extends BoltTestBase {
 
     protected void doTest(final float packetLossPercentage) throws Exception {
         serverMD5 = MessageDigest.getInstance("MD5");
-        final Config config = new Config(InetAddress.getByName("localhost"), 12345)
+        final Config config = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort())
                 .setPacketLoss(packetLossPercentage);
 
         format.setMaximumFractionDigits(2);

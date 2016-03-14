@@ -1,5 +1,6 @@
 package bolt.performance;
 
+import bolt.util.PortUtil;
 import org.junit.Test;
 
 import java.io.InputStream;
@@ -16,11 +17,13 @@ public class TCPTest {
     int BUFSIZE = 1024;
     int num_packets = 100 * 1000;
 
+    private static final int SERVER_PORT = PortUtil.nextServerPort();
+
     @Test
     public void test1() throws Exception {
         runServer();
         //client socket
-        Socket s = new Socket("localhost", 65321);
+        Socket s = new Socket("localhost", SERVER_PORT);
         OutputStream os = s.getOutputStream();
         int N = num_packets * 1024;
         byte[] data = new byte[N];
@@ -43,7 +46,7 @@ public class TCPTest {
 
     private void runServer() throws Exception {
         // Server socket
-        final ServerSocket serverSocket = new ServerSocket(65321);
+        final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
         Runnable serverProcess = () -> {
             try {
                 Socket s = serverSocket.accept();

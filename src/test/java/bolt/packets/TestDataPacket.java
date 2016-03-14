@@ -33,7 +33,7 @@ public class TestDataPacket {
     @Test
     public void testMessageChunkNumber() {
         final Random r = new Random();
-        IntStream.range(0, 10000).parallel().forEach(__ -> {
+        IntStream.range(0, 1000).parallel().forEach(__ -> {
             int messageChunkNum = r.nextInt(PacketUtil.MAX_MESSAGE_CHUNK_NUM);
             final DataPacket src = createRandomPacket();
             src.setMessage(true);

@@ -3,6 +3,7 @@ package echo;
 import bolt.BoltClient;
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
+import bolt.util.PortUtil;
 import junit.framework.Assert;
 import org.junit.Test;
 import rx.Subscription;
@@ -20,12 +21,13 @@ public class TestEchoServer {
 
     @Test
     public void test1() throws Exception {
-        EchoServer es = new EchoServer(65321);
+        final int serverPort = PortUtil.nextServerPort();
+        EchoServer es = new EchoServer(serverPort);
         Subscription s = es.start();
 
         final Set<Object> echoedToClient = new HashSet<>();
-        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
-        final ConnectableObservable<?> conn = client.connect(InetAddress.getByName("localhost"), 65321)
+        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
+        final ConnectableObservable<?> conn = client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
                 .publish();

@@ -43,7 +43,7 @@ public class BoltEndPoint {
      *
      * @param localAddress the local address to bind.
      * @param localPort    the port to bind to. If the port is zero, the system will pick an ephemeral port.
-     * @throws SocketException
+     * @throws SocketException if for example if the port is already bound to.
      * @throws UnknownHostException
      */
     public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
@@ -57,7 +57,7 @@ public class BoltEndPoint {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public BoltEndPoint(final Config config) throws SocketException, UnknownHostException {
+    public BoltEndPoint(final Config config) throws UnknownHostException, SocketException {
         this.config = config;
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
@@ -159,6 +159,7 @@ public class BoltEndPoint {
             catch (SocketException | SocketTimeoutException ex) {
                 // For timeout, can safely ignore... will retry until the endpoint is stopped.
                 LOG.log(Level.INFO, "SocketException: " + ex.getMessage());
+//                if (dgSocket.isClosed()) subscriber.unsubscribe();
             }
             catch (Exception ex) {
                 LOG.log(Level.WARNING, "Got: " + ex.getMessage(), ex);

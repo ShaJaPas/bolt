@@ -9,6 +9,8 @@
 - [ ] Simulated jitter
 - [ ] Client disconnect (remove sessions, generate event)
 - [ ] Client disconnect/reconnect (bad network conditions)
-- [ ] Performance testing
+- [ ] Performance testing high-volume of single packets
+- [ ] Performance testing, high-volume of large messages
+- [ ] General performance testing
 - [ ] Use log4j with performant string interpolation
 - [ ] Improve performance in high-packet loss scenarios

@@ -5,6 +5,7 @@ import bolt.BoltServer;
 import bolt.Config;
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
+import bolt.util.PortUtil;
 import org.junit.Test;
 import rx.Subscription;
 import rx.observables.ConnectableObservable;
@@ -24,7 +25,7 @@ import static org.junit.Assert.fail;
  */
 public class BulkPackTest {
 
-    public static final int SERVER_PORT = 65319;
+    public static final int SERVER_PORT = PortUtil.nextServerPort();
     private static long PACKET_COUNT = 1_000_000;
     private static int SIZE = 1388;
 
@@ -37,7 +38,7 @@ public class BulkPackTest {
 
     private void runClient() throws Exception {
         final CountDownLatch clientReady = new CountDownLatch(1);
-        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), 12345);
+        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         final ConnectableObservable<?> o = client.connect(InetAddress.getByName("localhost"), SERVER_PORT)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())

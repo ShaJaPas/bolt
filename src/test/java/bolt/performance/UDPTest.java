@@ -3,6 +3,7 @@ package bolt.performance;
 import bolt.BoltEndPoint;
 import bolt.packets.DataPacket;
 import bolt.statistic.MeanValue;
+import bolt.util.PortUtil;
 import org.junit.Test;
 
 import java.net.DatagramPacket;
@@ -18,7 +19,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class UDPTest {
 
-    public static final int SERVER_PORT = 65317;
+    public static final int SERVER_PORT = PortUtil.nextServerPort();
+//    public static final int SERVER_PORT = 65317;
     final int num_packets = 1_000;
     final int packetSize = BoltEndPoint.DATAGRAM_SIZE;
     private final Queue<DatagramPacket> handoff = new ConcurrentLinkedQueue<>();
@@ -32,7 +34,7 @@ public class UDPTest {
         runThirdThread();
 
         //client socket
-        DatagramSocket s = new DatagramSocket(12345);
+        DatagramSocket s = new DatagramSocket(PortUtil.nextClientPort());
 
         //generate a test array with random content
         N = num_packets * packetSize;

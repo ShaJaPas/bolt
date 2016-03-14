@@ -2,10 +2,10 @@ package bolt;
 
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
+import bolt.util.PortUtil;
 import bolt.util.TestUtil;
 import org.junit.Test;
 import rx.Observable;
-import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,18 +21,18 @@ import static org.junit.Assert.assertEquals;
 
 public class TestBoltServer extends BoltTestBase {
 
-    private static AtomicInteger SERVER_PORT = new AtomicInteger(65310);
-    private static AtomicInteger CLIENT_PORT = new AtomicInteger(12335);
     boolean running = false;
     int num_packets = 32;
     long total = 0;
     volatile boolean serverRunning = true;
     volatile String md5_received = null;
+    private int SERVER_PORT = PortUtil.nextServerPort();
+    private int CLIENT_PORT = PortUtil.nextClientPort();
 
     @Test(expected = Exception.class)
     public void testErrorTooManyChunks() throws Throwable {
         Logger.getLogger("bolt").setLevel(Level.INFO);
-        num_packets = 10000;
+        num_packets = 10_000;
         doTest(0);
     }
 
@@ -50,7 +49,8 @@ public class TestBoltServer extends BoltTestBase {
         num_packets = 100;
         //set log level
         Logger.getLogger("bolt").setLevel(Level.INFO);
-        doTest(0.33334f);
+        doTest(0.1f);
+//        doTest(0.33334f);
     }
 
     // Send even more data.
@@ -63,39 +63,33 @@ public class TestBoltServer extends BoltTestBase {
     }
 
     protected void doTest(final float packetLossPercentage) throws Throwable {
-        final Config clientConfig = new Config(InetAddress.getByName("localhost"), CLIENT_PORT.incrementAndGet());
-        final Config serverConfig = new Config(InetAddress.getByName("localhost"), SERVER_PORT.incrementAndGet())
+        final Config clientConfig = new Config(InetAddress.getByName("localhost"), CLIENT_PORT);
+        final Config serverConfig = new Config(InetAddress.getByName("localhost"), SERVER_PORT)
                 .setPacketLoss(packetLossPercentage);
         if (!running) runServer(serverConfig);
         final BoltClient client = new BoltClient(clientConfig);
 
-        Observable<?> in = client.connect(InetAddress.getByName("localhost"), SERVER_PORT.get()).subscribeOn(Schedulers.io());
-        ConnectableObservable<?> cin = in.publish();
+        Observable<?> in = client.connect(InetAddress.getByName("localhost"), SERVER_PORT).subscribeOn(Schedulers.io());
 
         int N = num_packets * 32768;
         byte[] data = new byte[N];
         new Random().nextBytes(data);
 
-        while (!serverRunning) Thread.sleep(100);
-
         final String md5_sent = computeMD5(data);
         final long start = System.currentTimeMillis();
-        System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
-
         final Set<Throwable> errors = new HashSet<>();
 
-        cin.ofType(ConnectionReadyEvent.class)
-                .take(1)
-                .timeout(5, TimeUnit.SECONDS)
+        in.ofType(ConnectionReadyEvent.class)
+//                .timeout(5, TimeUnit.SECONDS)
                 .observeOn(Schedulers.computation())
-                .subscribe(__ -> client.sendBlocking(data),
-                        errors::add);
+                .subscribe(__ -> {
+                            System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
+                            client.sendBlocking(data);
+                        },
+                        errors::add
+                );
 
-        cin.observeOn(Schedulers.computation()).subscribe();
-        cin.connect();
-
-        while (total < N && errors.isEmpty()) Thread.sleep(100);
-
+        while (total < N && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw errors.iterator().next();
 
         long end = System.currentTimeMillis();

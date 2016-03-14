@@ -2,6 +2,7 @@ package bolt;
 
 import bolt.event.ConnectionReadyEvent;
 import bolt.packets.Destination;
+import bolt.util.PortUtil;
 import org.junit.Test;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
@@ -24,8 +25,8 @@ import static org.junit.Assert.assertTrue;
 
 public class TestUdpEndpoint extends BoltTestBase {
 
-    public static final int SERVER_PORT = 65316;
-    public static final int CLIENT_PORT = 12340;
+    public final int SERVER_PORT = PortUtil.nextServerPort();
+    public final int CLIENT_PORT = PortUtil.nextClientPort();
 
     @Test
     public void testClientServerMode() throws Exception {
@@ -80,9 +81,9 @@ public class TestUdpEndpoint extends BoltTestBase {
         BoltEndPoint endpoint = new BoltEndPoint(localhost, SERVER_PORT);
         Subscription sub = endpoint.start().subscribe();
         Destination d1 = new Destination(localhost, CLIENT_PORT);
-        int dataSize = BoltEndPoint.DATAGRAM_SIZE;
-        DatagramPacket p = new DatagramPacket(getRandomData(dataSize), dataSize, d1.getAddress(), d1.getPort());
-        int N = 100_000;
+        final int dataSize = BoltEndPoint.DATAGRAM_SIZE;
+        final DatagramPacket p = new DatagramPacket(getRandomData(dataSize), dataSize, d1.getAddress(), d1.getPort());
+        final int N = 100_000;
 
         // Send many packets as fast as we can
         long start = System.currentTimeMillis();
