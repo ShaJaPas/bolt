@@ -2,6 +2,7 @@ package bolt;
 
 import bolt.packets.DataPacket;
 import bolt.receiver.RoutedData;
+import bolt.util.Util;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
 import rx.Observable;
@@ -35,6 +36,7 @@ public class BoltServer implements Server {
     public Observable<?> bind() {
         return Observable.create(subscriber -> {
             try {
+                Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
                 this.serverEndpoint = new BoltEndPoint(config);
                 this.serverEndpoint.start().subscribe(subscriber);
 

@@ -26,12 +26,11 @@ public class BulkPackTest {
 
     public static final int SERVER_PORT = 65319;
     private static long PACKET_COUNT = 1_000_000;
-    private static int SIZE = 1400;
+    private static int SIZE = 1388;
 
 
     @Test
     public void testBulkPackets() throws Exception {
-
         runServer();
         runClient();
     }
