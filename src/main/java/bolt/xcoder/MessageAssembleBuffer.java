@@ -21,13 +21,19 @@ public class MessageAssembleBuffer
             return Collections.singletonList(dataPacket);
         }
         else {
-            messageMap.putIfAbsent(dataPacket.getMessageId(), new Message());
-            return messageMap.get(dataPacket.getMessageId()).addChunk(dataPacket);
+            Collection<DataPacket> result = getOrCreate(dataPacket.getMessageId()).addChunk(dataPacket);
+            if (!result.isEmpty()) messageMap.remove(dataPacket.getMessageId());  // remove if complete.
+            return result;
         }
     }
 
+    private Message getOrCreate(final int messageId) {
+        messageMap.putIfAbsent(messageId, new Message());
+        return messageMap.get(messageId);
+    }
+
     public int nextMessageId() {
-        return SequenceNumber.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
+        return messageId = SequenceNumber.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
     }
 
 
