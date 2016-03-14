@@ -16,8 +16,6 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
@@ -30,7 +28,7 @@ public class TestUdpEndpoint extends BoltTestBase {
 
     @Test
     public void testClientServerMode() throws Exception {
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); TODO CHECK
         final int numPackets = 50 + new Random().nextInt(50);
         final CountDownLatch ready = new CountDownLatch(1);
 
@@ -75,7 +73,7 @@ public class TestUdpEndpoint extends BoltTestBase {
      */
     @Test
     public void testRawSendRate() throws Exception {
-        Logger.getLogger("bolt").setLevel(Level.WARNING);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.WARNING); // TODO CHECK
         System.out.println("Checking raw UDP send rate...");
         InetAddress localhost = InetAddress.getByName("localhost");
         BoltEndPoint endpoint = new BoltEndPoint(localhost, SERVER_PORT);

@@ -2,10 +2,11 @@ package bolt;
 
 import bolt.statistic.BoltStatistics;
 import bolt.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 /**
  * Default Bolt congestion control.
@@ -14,7 +15,7 @@ import java.util.logging.Logger;
  */
 public class BoltCongestionControl implements CongestionControl {
 
-    private static final Logger logger = Logger.getLogger(BoltCongestionControl.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(BoltCongestionControl.class);
     private static final long PS = BoltEndPoint.DATAGRAM_SIZE;
     private static final double BETA_DIV_PS = 0.0000015 / PS;
 
@@ -22,46 +23,74 @@ public class BoltCongestionControl implements CongestionControl {
 
     protected final BoltStatistics statistics;
 
-    /** round trip time in microseconds */
+    /**
+     * round trip time in microseconds
+     */
     protected long roundTripTime = 0;
 
-    /** rate in packets per second */
+    /**
+     * rate in packets per second
+     */
     protected long packetArrivalRate = 0;
 
-    /** link capacity in packets per second */
+    /**
+     * link capacity in packets per second
+     */
     protected long estimatedLinkCapacity = 0;
 
-    /**  Packet sending period = packet send interval, in microseconds */
+    /**
+     * Packet sending period = packet send interval, in microseconds
+     */
     protected double packetSendingPeriod = 1;
 
-    /**  Congestion window size, in packets */
+    /**
+     * Congestion window size, in packets
+     */
     protected double congestionWindowSize = 16;
 
-    /** if larger than 0, the receiver should acknowledge every n'th packet */
+    /**
+     * if larger than 0, the receiver should acknowledge every n'th packet
+     */
     protected long ackInterval = -1;
 
-    /** number of decreases in a congestion epoch */
+    /**
+     * number of decreases in a congestion epoch
+     */
     long decCount = 1;
 
-    /** random threshold on decrease by number of loss events */
+    /**
+     * random threshold on decrease by number of loss events
+     */
     long decreaseRandom = 1;
 
-    /** average number of NAKs per congestion */
+    /**
+     * average number of NAKs per congestion
+     */
     long averageNACKNum;
 
-    /** if in slow start phase */
+    /**
+     * if in slow start phase
+     */
     private boolean slowStartPhase = true;
 
-    /** last ACKed seq no */
+    /**
+     * last ACKed seq no
+     */
     private long lastAckSeqNumber = -1;
 
-    /** max packet seq. no. sent out when last decrease happened */
+    /**
+     * max packet seq. no. sent out when last decrease happened
+     */
     private long lastDecreaseSeqNo;
 
-    /** NAK counter */
+    /**
+     * NAK counter
+     */
     private long nACKCount = 1;
 
-    /** this flag avoids immediate rate increase after a NAK */
+    /**
+     * this flag avoids immediate rate increase after a NAK
+     */
     private boolean loss = false;
 
 
@@ -132,17 +161,19 @@ public class BoltCongestionControl implements CongestionControl {
                 slowStartPhase = false;
                 if (packetArrivalRate > 0) {
                     packetSendingPeriod = 1000000.0 / packetArrivalRate;
-                } else {
+                }
+                else {
                     packetSendingPeriod = congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
                 }
             }
 
-        } else {
+        }
+        else {
             // 1. if it's not in slow start phase,set the congestion window size to the product of packet arrival rate and(rtt +SYN)
             double A = packetArrivalRate / 1000000.0 * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
-            if (logger.isLoggable(Level.FINER)) {
-                logger.finer("receive rate " + packetArrivalRate + " rtt " + roundTripTime + " set to window size: " + (A + 16));
+            if (logger.isTraceEnabled()) {
+                logger.trace("receive rate " + packetArrivalRate + " rtt " + roundTripTime + " set to window size: " + (A + 16));
             }
         }
 
@@ -173,7 +204,8 @@ public class BoltCongestionControl implements CongestionControl {
 
         if (remaining <= 0) {
             return 1.0 / BoltEndPoint.DATAGRAM_SIZE;
-        } else {
+        }
+        else {
             double exp = Math.ceil(Math.log10(remaining * PS * 8));
             double power10 = Math.pow(10.0, exp) * BETA_DIV_PS;
             return Math.max(power10, 1 / PS);
@@ -189,7 +221,8 @@ public class BoltCongestionControl implements CongestionControl {
         if (slowStartPhase) {
             if (packetArrivalRate > 0) {
                 packetSendingPeriod = 100000.0 / packetArrivalRate;
-            } else {
+            }
+            else {
                 packetSendingPeriod = congestionWindowSize / (roundTripTime + Util.getSYNTime());
             }
             slowStartPhase = false;
@@ -206,7 +239,7 @@ public class BoltCongestionControl implements CongestionControl {
             // -reset NAKCount and DecCount to 1,
             nACKCount = 1;
             decCount = 1;
-			/* - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum */
+            /* - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum */
             decreaseRandom = (int) Math.ceil((averageNACKNum - 1) * Math.random() + 1);
             // -Update LastDecSeq
             lastDecreaseSeqNo = currentMaxSequenceNumber;

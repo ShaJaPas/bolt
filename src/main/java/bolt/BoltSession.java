@@ -4,12 +4,14 @@ import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.statistic.BoltStatistics;
 import bolt.util.SequenceNumber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Subscriber;
 
 import java.net.DatagramPacket;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
+
 
 /**
  * <h2>Connection Setup and shutdown</h2>
@@ -107,33 +109,13 @@ import java.util.logging.Logger;
  */
 public abstract class BoltSession {
 
-    public enum SessionState {
-        START(0),
-        HANDSHAKING(1),
-        HANDSHAKING2(2),
-        READY(50),
-        KEEPALIVE(80),
-        SHUTDOWN(90),
-        INVALID(99);
-
-        final int seqNo;
-        SessionState(final int seqNo) {
-            this.seqNo = seqNo;
-        }
-
-        public int seqNo() {
-            return seqNo;
-        }
-    }
-
     /**
      * Key for a system property defining the CC class to be used.
      *
      * @see CongestionControl
      */
-    private static final Logger        LOG            = Logger.getLogger(BoltSession.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
     private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
-
     protected final BoltStatistics statistics;
     protected final CongestionControl cc;
     /**
@@ -146,22 +128,18 @@ public abstract class BoltSession {
     protected int receiveBufferSize = 64 * 32768;
     //session cookie created during handshake
     protected long sessionCookie = 0;
-
     /**
      * Flow window size (how many data packets are in-flight at a single time).
      */
     protected int flowWindowSize = 1024 * 10;
-
     /**
      * Buffer size (i.e. datagram size). This is negotiated during connection setup.
      */
     protected int datagramSize = BoltEndPoint.DATAGRAM_SIZE;
-
     protected Integer initialSequenceNumber = null;
     private volatile SessionState state = SessionState.START;
     // Cache dgPacket (peer stays the same always)
     private DatagramPacket dgPacket;
-
     public BoltSession(final String description, final Destination destination) {
         this.statistics = new BoltStatistics(description);
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
@@ -169,7 +147,6 @@ public abstract class BoltSession {
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
         this.cc = new BoltCongestionControl(this);
     }
-
 
     public abstract void received(BoltPacket packet, Destination peer);
 
@@ -236,7 +213,6 @@ public abstract class BoltSession {
         return mySocketID;
     }
 
-
     public synchronized int getInitialSequenceNumber() {
         if (initialSequenceNumber == null) {
             initialSequenceNumber = SequenceNumber.random();
@@ -257,6 +233,26 @@ public abstract class BoltSession {
                 " [" +
                 "socketID=" + this.mySocketID +
                 " ]";
+    }
+
+    public enum SessionState {
+        START(0),
+        HANDSHAKING(1),
+        HANDSHAKING2(2),
+        READY(50),
+        KEEPALIVE(80),
+        SHUTDOWN(90),
+        INVALID(99);
+
+        final int seqNo;
+
+        SessionState(final int seqNo) {
+            this.seqNo = seqNo;
+        }
+
+        public int seqNo() {
+            return seqNo;
+        }
     }
 
 }

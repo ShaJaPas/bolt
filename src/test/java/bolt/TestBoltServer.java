@@ -14,8 +14,8 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+
 
 import static org.junit.Assert.assertEquals;
 
@@ -31,14 +31,14 @@ public class TestBoltServer extends BoltTestBase {
 
     @Test(expected = Exception.class)
     public void testErrorTooManyChunks() throws Throwable {
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); // TODO CHECK
         num_packets = 10_000;
         doTest(0);
     }
 
     @Test
     public void testWithoutLoss() throws Throwable {
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); // TODO CHECK
         num_packets = 1000;
         doTest(0);
     }
@@ -48,7 +48,7 @@ public class TestBoltServer extends BoltTestBase {
     public void testWithLoss() throws Throwable {
         num_packets = 100;
         //set log level
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); TODO CHECK
         doTest(0.1f);
 //        doTest(0.33334f);
     }
@@ -58,7 +58,7 @@ public class TestBoltServer extends BoltTestBase {
     public void testLargeDataSet() throws Throwable {
         num_packets = 100;
         //set log level
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); // TODO CHECK
         doTest(0);
     }
 

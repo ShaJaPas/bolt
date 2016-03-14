@@ -8,6 +8,7 @@ import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
 import bolt.util.PortUtil;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
@@ -17,8 +18,8 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -43,7 +44,7 @@ public class TestBoltLargeData extends BoltTestBase {
 
     @Test
     public void test1() throws Exception {
-        Logger.getLogger("bolt").setLevel(Level.INFO);
+//        LoggerFactory.getLogger("bolt").setLevel(Level.INFO); TODO CHECK
 //		System.setProperty("bolt.receiver.storeStatistics","true");
 //		System.setProperty("bolt.sender.storeStatistics","true");
 //        System.setProperty(BoltSession.CC_CLASS, SimpleTCP.class.getName());

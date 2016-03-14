@@ -8,16 +8,16 @@ import bolt.statistic.BoltStatistics;
 import bolt.statistic.MeanValue;
 import bolt.util.SequenceNumber;
 import bolt.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 /**
  * Receiver half of a Bolt entity.
@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  */
 public class BoltReceiver {
 
-    private static final Logger LOG = Logger.getLogger(BoltReceiver.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BoltReceiver.class);
     /**
      * Milliseconds to timeout a new session that stays idle
      */
@@ -77,6 +77,7 @@ public class BoltReceiver {
      */
     private final BlockingQueue<BoltPacket> handOffQueue;
     private final boolean storeStatistics;
+    private final Config config;
     /**
      * estimated link capacity
      */
@@ -141,14 +142,11 @@ public class BoltReceiver {
     private MeanValue dataPacketInterval;
     private MeanValue processTime;
     private MeanValue dataProcessTime;
-
     /**
      * Number of received data packets.
      */
     private int n = 0;
     private volatile int ackSequenceNumber = 0;
-
-    private final Config config;
 
     /**
      * create a receiver with a valid {@link BoltSession}
@@ -207,7 +205,7 @@ public class BoltReceiver {
                 }
             }
             catch (final Exception ex) {
-                LOG.log(Level.SEVERE, "", ex);
+                LOG.error("Receiver exception", ex);
                 subscriber.onError(ex);
             }
             LOG.info("STOPPING RECEIVER for " + session);
@@ -221,8 +219,8 @@ public class BoltReceiver {
      */
     protected void receive(final BoltPacket p) throws IOException {
         if (storeStatistics) dgReceiveInterval.end();
-        if (!p.isControlPacket() && LOG.isLoggable(Level.FINE)) {
-            LOG.fine("++ " + p + " queuesize=" + handOffQueue.size());
+        if (!p.isControlPacket() && LOG.isTraceEnabled()) {
+            LOG.trace("++ " + p + " queuesize=" + handOffQueue.size());
         }
         handOffQueue.offer(p);
         if (storeStatistics) dgReceiveInterval.begin();
@@ -456,15 +454,14 @@ public class BoltReceiver {
     protected void onDataPacketReceived(final DataPacket dp) throws IOException {
         final int currentSequenceNumber = dp.getPacketSequenceNumber();
 
-        if (!isReceivable())
-        {
-//            LOG.info("Artificial packet loss, dropping packet");
+        if (!isReceivable()) {
+            LOG.debug("Artificial packet loss, dropping packet");
             return;
         }
 
         boolean OK = session.getSocket().haveNewData(dp);
         if (!OK) {
-            LOG.warning("Need to drop packet");
+            LOG.warn("Need to drop packet");
             return;
         }
 
@@ -659,14 +656,13 @@ public class BoltReceiver {
             session.getSocket().close();
         }
         catch (IOException ex) {
-            LOG.warning("Could not shutdown cleanly" + ex.getMessage());
+            LOG.warn("Could not shutdown cleanly" + ex.getMessage());
         }
         // Stop our sender as well.
         session.getSocket().getSender().stop();
     }
 
-    private boolean isReceivable()
-    {
+    private boolean isReceivable() {
         final float dropRate = config.getPacketDropRate();
         return dropRate <= 0 || ++n % dropRate < 1f;
     }

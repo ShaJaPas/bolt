@@ -7,6 +7,8 @@ import bolt.receiver.RoutedData;
 import bolt.statistic.BoltStatistics;
 import bolt.xcoder.MessageAssembleBuffer;
 import bolt.xcoder.XCoderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.IOException;
@@ -16,12 +18,10 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class BoltClient implements Client {
 
-    private static final Logger LOGGER = Logger.getLogger(BoltClient.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
     private final BoltEndPoint clientEndpoint;
     private final XCoderRepository xCoderRepository;
@@ -36,7 +36,7 @@ public class BoltClient implements Client {
         this.config = config;
         this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
-        LOGGER.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
+        LOG.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
 
     @Override
@@ -108,7 +108,7 @@ public class BoltClient implements Client {
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
 
-        LOGGER.info("The BoltClient is connecting");
+        LOG.info("The BoltClient is connecting");
         return Observable.merge(clientEndpoint.start(), clientSession.connect());
     }
 
@@ -141,7 +141,7 @@ public class BoltClient implements Client {
                 clientEndpoint.doSend(shutdown);
             }
             catch (IOException e) {
-                LOGGER.log(Level.SEVERE, "ERROR: Connection could not be stopped!", e);
+                LOG.error("ERROR: Connection could not be stopped!", e);
             }
             clientSession.getSocket().getReceiver().stop();
             clientEndpoint.stop();

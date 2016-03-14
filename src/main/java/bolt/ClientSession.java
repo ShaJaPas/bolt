@@ -3,14 +3,14 @@ package bolt;
 import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.packets.Shutdown;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.SocketException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static bolt.BoltSession.SessionState.*;
 
@@ -20,7 +20,7 @@ import static bolt.BoltSession.SessionState.*;
  */
 public class ClientSession extends BoltSession {
 
-    private static final Logger LOG = Logger.getLogger(ClientSession.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
     private final BoltEndPoint endPoint;
 
@@ -82,7 +82,7 @@ public class ClientSession extends BoltSession {
                     setState(HANDSHAKING2);
                 }
                 catch (Exception ex) {
-                    LOG.log(Level.WARNING, "Error creating socket", ex);
+                    LOG.warn("Error creating socket", ex);
                     setState(INVALID);
                 }
             }
@@ -100,7 +100,7 @@ public class ClientSession extends BoltSession {
                 socket.start().subscribe(subscriber);
             }
             catch (Exception ex) {
-                LOG.log(Level.WARNING, "Error creating socket", ex);
+                LOG.error("Error creating socket", ex);
                 setState(INVALID);
             }
         }
@@ -127,7 +127,7 @@ public class ClientSession extends BoltSession {
             }
             catch (Exception ex) {
                 // Session is invalid.
-                LOG.log(Level.SEVERE, "Error in " + toString(), ex);
+                LOG.error("Error in " + toString(), ex);
                 setState(INVALID);
             }
         }

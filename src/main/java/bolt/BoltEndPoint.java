@@ -2,21 +2,21 @@ package bolt;
 
 import bolt.event.ConnectionReadyEvent;
 import bolt.packets.ConnectionHandshake;
-import bolt.packets.DataPacket;
 import bolt.packets.Destination;
 import bolt.packets.PacketFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.*;
-import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+
 
 /**
  * The UDPEndpoint takes care of sending and receiving UDP network packets,
@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 public class BoltEndPoint {
 
     public static final int DATAGRAM_SIZE = 1400;
-    private static final Logger LOG = Logger.getLogger(ClientSession.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class.getName());
     final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
@@ -144,25 +144,19 @@ public class BoltEndPoint {
                 }
                 else if (session != null) {
                     // Dispatch to existing session.
-//                    if (!packet.isControlPacket()) {
-//                        System.out.println(((DataPacket)packet).getMessageChunkNumber());
-//                        if (((DataPacket)packet).isFinalMessageChunk()) {
-//                            System.out.println("NO MESS");
-//                        }
-//                    }
                     session.received(packet, peer);
                 }
                 else {
-                    LOG.warning("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
+                    LOG.warn("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
                 }
             }
             catch (SocketException | SocketTimeoutException ex) {
                 // For timeout, can safely ignore... will retry until the endpoint is stopped.
-                LOG.log(Level.INFO, "SocketException: " + ex.getMessage());
+                LOG.info("SocketException: " + ex.getMessage());
 //                if (dgSocket.isClosed()) subscriber.unsubscribe();
             }
             catch (Exception ex) {
-                LOG.log(Level.WARNING, "Got: " + ex.getMessage(), ex);
+                LOG.warn("Got: " + ex.getMessage(), ex);
             }
         }
         stop();

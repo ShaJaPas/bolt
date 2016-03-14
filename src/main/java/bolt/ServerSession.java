@@ -5,13 +5,15 @@ import bolt.packets.Destination;
 import bolt.packets.KeepAlive;
 import bolt.packets.Shutdown;
 import bolt.util.SequenceNumber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Subscriber;
 
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+
 
 import static bolt.BoltSession.SessionState.*;
 
@@ -20,7 +22,7 @@ import static bolt.BoltSession.SessionState.*;
  */
 public class ServerSession extends BoltSession {
 
-    private static final Logger LOG = Logger.getLogger(ServerSession.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ServerSession.class);
 
     private final BoltEndPoint endPoint;
 
@@ -71,7 +73,7 @@ public class ServerSession extends BoltSession {
             }
             catch (IOException ex) {
                 // Session invalid.
-                LOG.log(Level.WARNING, "Error processing ConnectionHandshake", ex);
+                LOG.warn("Error processing ConnectionHandshake", ex);
                 setState(INVALID);
             }
         }
@@ -105,7 +107,7 @@ public class ServerSession extends BoltSession {
             }
             catch (Exception ex) {
                 // Session invalid
-                LOG.log(Level.SEVERE, "", ex);
+                LOG.error("Session error receiving packet", ex);
                 setState(INVALID);
             }
         }

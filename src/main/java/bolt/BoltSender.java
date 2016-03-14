@@ -8,6 +8,8 @@ import bolt.statistic.MeanThroughput;
 import bolt.statistic.MeanValue;
 import bolt.util.SequenceNumber;
 import bolt.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.IOException;
@@ -19,8 +21,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 
 /**
@@ -33,7 +33,7 @@ import java.util.logging.Logger;
  */
 public class BoltSender {
 
-    private static final Logger LOG = Logger.getLogger(BoltClient.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
     private final BoltEndPoint endpoint;
 
@@ -146,7 +146,7 @@ public class BoltSender {
                 }
             }
             catch (IOException | InterruptedException ex) {
-                LOG.log(Level.SEVERE, "", ex);
+                LOG.error("Sender error", ex);
                 subscriber.onError(ex);
             }
             LOG.info("STOPPING SENDER for " + session);
@@ -303,8 +303,8 @@ public class BoltSender {
         session.getSocket().getReceiver().resetEXPTimer();
         statistics.incNumberOfNAKReceived();
 
-        if (LOG.isLoggable(Level.FINER)) {
-            LOG.finer("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
                     + "set send period to " + session.getCongestionControl().getSendInterval());
         }
     }
@@ -420,12 +420,12 @@ public class BoltSender {
             }
         }
         catch (Exception e) {
-            LOG.log(Level.WARNING, "", e);
+            LOG.warn("Retransmission error", e);
         }
     }
 
     /**
-     * for processing EXP event (see spec. p 13)
+     * For processing EXP event (see spec. p 13).
      */
     protected void putUnacknowledgedPacketsIntoLossList() {
         synchronized (sendLock) {

@@ -12,5 +12,5 @@
 - [ ] Performance testing high-volume of single packets
 - [ ] Performance testing, high-volume of large messages
 - [ ] General performance testing
-- [ ] Use log4j with performant string interpolation
+- [X] Use log4j with performant string interpolation
 - [ ] Improve performance in high-packet loss scenarios
