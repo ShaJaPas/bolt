@@ -81,6 +81,10 @@ public class BoltServer implements Server {
         }
     }
 
+    public int getPort() {
+        return (serverEndpoint != null) ? serverEndpoint.getLocalPort() : config.getLocalPort();
+    }
+
     @Override
     public void send(final Object obj, final long destId) throws IOException {
         final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
