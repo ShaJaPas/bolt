@@ -103,4 +103,8 @@ public class BoltServer implements Server {
         }
     }
 
+    public Config config() {
+        return config;
+    }
+
 }
