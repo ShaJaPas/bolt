@@ -61,7 +61,7 @@ public class TestDataPacket {
         p.setData(new byte[0]);
         byte[] x = p.getEncoded();
         byte highest = x[0];
-        //check highest bit is "0" for DataPacket
+        // Check highest bit is "0" for DataPacket
         assertEquals(0, highest & 128);
         byte lowest = x[3];
         assertEquals(1, lowest);
@@ -92,7 +92,7 @@ public class TestDataPacket {
         byte[] data1 = "Hallo".getBytes();
         testPacket1.setData(data1);
 
-        //get the encoded data
+        // Get the encoded data
         byte[] encodedData = testPacket1.getEncoded();
 
         int headerLength = 8;
@@ -103,7 +103,7 @@ public class TestDataPacket {
         String s1 = new String(payload);
         assertEquals("Hallo", s1);
 
-        //create a new DataPacket from the encoded data
+        // Create a new DataPacket from the encoded data
         DataPacket testPacket2 = new DataPacket(encodedData);
 
         assertEquals(127, testPacket2.getPacketSequenceNumber());

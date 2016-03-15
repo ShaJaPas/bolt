@@ -17,7 +17,7 @@ public class Util {
     private static final double SYN_D = 10000.0;
 
     /**
-     * get the current timer value in microseconds
+     * Get the current timer value in microseconds.
      *
      * @return
      */
@@ -26,7 +26,7 @@ public class Util {
     }
 
     /**
-     * get the SYN time in microseconds. The SYN time is 0.01 seconds = 10000 microseconds
+     * Get the SYN time in microseconds. The SYN time is 0.01 seconds = 10000 microseconds.
      *
      * @return
      */
@@ -39,7 +39,7 @@ public class Util {
     }
 
     /**
-     * get the SYN time in seconds. The SYN time is 0.01 seconds = 10000 microseconds
+     * Get the SYN time in seconds. The SYN time is 0.01 seconds = 10000 microseconds.
      *
      * @return
      */
@@ -49,7 +49,7 @@ public class Util {
 
 
     /**
-     * perform UDP hole punching to the specified client by sending
+     * Perform UDP hole punching to the specified client by sending
      * a dummy packet. A local port will be chosen automatically.
      *
      * @param client - client address

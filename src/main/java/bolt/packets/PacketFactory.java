@@ -8,11 +8,11 @@ import java.io.IOException;
 public class PacketFactory {
 
     /**
-     * creates a Control or Data packet depending on the highest bit
-     * of the first 32 bit of data
+     * Creates a Control or Data packet depending on the highest bit
+     * of the first 32 bit of data.
      *
-     * @param encodedData
-     * @return
+     * @param encodedData encoded data to decode.
+     * @return the created packet.
      */
     public static BoltPacket createPacket(byte[] encodedData) throws IOException {
         boolean isControl = (encodedData[0] & 128) != 0;
@@ -27,11 +27,11 @@ public class PacketFactory {
     }
 
     /**
-     * create the right type of control packet based on the packet data
+     * Create the right type of control packet based on the packet data.
      *
-     * @param encodedData
-     * @param length
-     * @return
+     * @param encodedData the encoded control packet.
+     * @param length size of the encoded packet.
+     * @return the created Control packet.
      */
     public static ControlPacket createControlPacket(byte[] encodedData, int length) throws IOException {
 

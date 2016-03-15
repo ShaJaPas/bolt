@@ -41,7 +41,7 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
     @Override
     public T decode(final Collection<DataPacket> data)
     {
-        // TODO this method needs testing
+        // TODO this method needs testing (include performance testing).
         final int byteCount = data.stream().map(d -> d.getData().length).reduce(0, (acc, x) -> acc + x);
         final byte[] bytes = new byte[byteCount];
         data.stream().map(DataPacket::getData).reduce(0, (acc, x) -> {

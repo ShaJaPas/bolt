@@ -61,10 +61,6 @@ public class FlowWindow {
             final DataPacket toProduce = packets[writePos];
             toProduce.copyFrom(src);
 
-//            if (toProduce.isFinalMessageChunk()) {
-//                System.out.println("FINAL PRODUCE");
-//            }
-
             if (++writePos == length) writePos = 0;
             ++validEntries;
             ++produced;
@@ -86,10 +82,6 @@ public class FlowWindow {
             if (isEmpty) return null;
 
             DataPacket p = packets[++readPos];
-
-//            if (p.isFinalMessageChunk()) {
-//                System.out.println("FINAL CONSUME");
-//            }
 
             if (readPos == length - 1) readPos = -1;
             --validEntries;

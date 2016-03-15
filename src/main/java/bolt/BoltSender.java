@@ -78,9 +78,10 @@ public class BoltSender {
      */
     private volatile int currentSequenceNumber = 0;
 
-    //the largest data packet sequence number that has actually been sent out
+    /** The largest data packet sequence number that has actually been sent out. */
     private volatile int largestSentSequenceNumber = -1;
-    //last acknowledge number, initialised to the initial sequence number
+
+    /** Last acknowledge number, initialised to the initial sequence number. */
     private volatile int lastAckSequenceNumber;
     private volatile boolean started = false;
     private volatile boolean stopped = false;
@@ -101,7 +102,7 @@ public class BoltSender {
         this.statistics = session.getStatistics();
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
-        this.chunkSize = session.getDatagramSize() - 24;//need space for the header;
+        this.chunkSize = session.getDatagramSize() - 24;  // Need space for the header
         this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
         this.lastAckSequenceNumber = session.getInitialSequenceNumber();
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;

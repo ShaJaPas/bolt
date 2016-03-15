@@ -12,7 +12,7 @@ public class PacketHistoryWindow extends CircularArray<Long> {
     private final int num;
 
     /**
-     * create a new PacketHistoryWindow of the given size
+     * Create a new PacketHistoryWindow of the given size.
      *
      * @param size
      */
@@ -46,10 +46,11 @@ public class PacketHistoryWindow extends CircularArray<Long> {
             intervals[count] = interval;
             total += interval;
             count++;
-        } while (count < num);
-        //compute median
+        }
+        while (count < num);
+        // Compute median
         AI = total / num;
-        //compute the actual value, filtering out intervals between AI/8 and AI*8
+        // Compute the actual value, filtering out intervals between AI/8 and AI*8
         count = 0;
         total = 0;
         for (long l : intervals) {

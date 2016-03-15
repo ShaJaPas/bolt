@@ -3,8 +3,7 @@ package bolt.receiver;
 import bolt.util.Util;
 
 /**
- * store the Sent Acknowledge packet number
- * and the time it is sent out
+ * Store the Sent Acknowledge packet number and the time it is sent out.
  */
 public class AckHistoryEntry {
 
@@ -36,9 +35,9 @@ public class AckHistoryEntry {
     }
 
     /**
-     * get the age of this sent ack sequence number
+     * Get the age of this sent ack sequence number.
      *
-     * @return
+     * @return the age.
      */
     public long getAge() {
         return Util.getCurrentTime() - sentTime;

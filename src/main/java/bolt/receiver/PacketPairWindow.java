@@ -34,7 +34,7 @@ public class PacketPairWindow extends CircularArray<Long> {
         }
         median = median / num;
 
-        //median filtering
+        // Median filtering
         double upper = median * 8;
         double lower = median / 8;
         double total = 0;

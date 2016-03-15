@@ -16,16 +16,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * <h2>Connection Setup and shutdown</h2>
  * <p>
- * UDT supports two different connection setup methods, the traditional
+ * Bolt supports two different connection setup methods, the traditional
  * client/server mode and the rendezvous mode. In the latter mode, both
- * UDT sockets connect to each other at (approximately) the same time.
+ * Bolt sockets connect to each other at (approximately) the same time.
  * <p>
- * The UDT client (in rendezvous mode, both peer are clients) sends a
+ * The Bolt client (in rendezvous mode, both peer are clients) sends a
  * handshake request (type 0 control packet) to the server or the peer
- * side. The handshake packet has the following information (suppose UDT
+ * side. The handshake packet has the following information (suppose Bolt
  * socket A sends this handshake to B):
  * <ol>
- * <li> UDT version: this value is for compatibility purpose. The
+ * <li> Bolt version: this value is for compatibility purpose. The
  * current version is 4.
  * <li> Socket Type: STREAM (0) or DGRAM (1).
  * <li> Initial Sequence Number: It is the sequence number for the first
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * however, it is needed in the current reference implementation.
  * <li> Connection Type. This information is used to differential the
  * connection setup modes and request/response.
- * <li> Socket ID. The client UDT socket ID.
+ * <li> Socket ID. The client Bolt socket ID.
  * <li> Cookie. This is a cookie value used to avoid SYN flooding attack
  * [RFC4987].
  * <li> Peer IP address: B's IP address.
@@ -44,9 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * <h3>Client/Server Connection Setup</h3>
  * <p>
- * One UDT entity starts first as the server (listener). The server
+ * One Bolt entity starts first as the server (listener). The server
  * accepts and processes incoming connection request, and creates new
- * UDT socket for each new connection.
+ * Bolt socket for each new connection.
  * <p>
  * A client that wants to connect to the server will send a handshake
  * packet first. The client should keep on sending the handshake packet
@@ -89,7 +89,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * (version, packet size, window size, etc.) as described in Section
  * 5.1. In addition, the peer only process the connection request from
  * the address it has sent a connection request to. Finally, rendezvous
- * connection should be rejected by a regular UDT server (listener).
+ * connection should be rejected by a regular Bolt server (listener).
  * A peer initializes the connection when it receives -1 response.
  * <p>
  * The rendezvous connection setup is useful when both peers are behind
@@ -97,7 +97,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * listening server is not desirable.
  * <h3>Shutdown</h3>
  * <p>
- * If one of the connected UDT entities is being closed, it will send a
+ * If one of the connected Bolt entities is being closed, it will send a
  * shutdown message to the peer side. The peer side, after received this
  * message, will also be closed. This shutdown message, delivered using
  * UDP, is only sent once and not guaranteed to be received. If the
@@ -126,8 +126,9 @@ public abstract class BoltSession {
     protected volatile boolean active;
     protected volatile BoltSocket socket;
     protected int receiveBufferSize = 64 * 32768;
-    //session cookie created during handshake
+    /** Session cookie created during handshake. */
     protected long sessionCookie = 0;
+
     /**
      * Flow window size (how many data packets are in-flight at a single time).
      */

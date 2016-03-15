@@ -10,6 +10,7 @@ import java.util.List;
  * Negative Acknowledgement (NAK) carries information about lost packets.
  * <p>
  * Additional Info: Undefined
+ * <p>
  * Control Info:
  * <ol>
  * <li> 32 bits integer array of compressed loss information (see section 3.9).
@@ -17,10 +18,10 @@ import java.util.List;
  */
 public class NegativeAcknowledgement extends ControlPacket {
 
-    //after decoding this contains the lost sequence numbers
+    // After decoding this contains the lost sequence numbers
     List<Integer> lostSequenceNumbers;
 
-    //this contains the loss information intervals as described on p.15 of the spec
+    // This contains the loss information intervals as described on p.15 of the spec
     ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
 
     public NegativeAcknowledgement() {
@@ -33,28 +34,28 @@ public class NegativeAcknowledgement extends ControlPacket {
     }
 
     /**
-     * decode the loss info
+     * Decode the loss info.
      *
-     * @param lossInfo
+     * @param lossInfo list of lost sequence numbers.
      */
     private List<Integer> decode(byte[] lossInfo) {
         List<Integer> lostSequenceNumbers = new ArrayList<>();
         ByteBuffer bb = ByteBuffer.wrap(lossInfo);
         byte[] buffer = new byte[4];
         while (bb.remaining() > 0) {
-            //read 4 bytes
+            // Read 4 bytes
             buffer[0] = bb.get();
             buffer[1] = bb.get();
             buffer[2] = bb.get();
             buffer[3] = bb.get();
             boolean isNotSingle = (buffer[0] & 128) != 0;
-            //set highest bit back to 0
+            // Set highest bit back to 0
             buffer[0] = (byte) (buffer[0] & 0x7f);
             int lost = ByteBuffer.wrap(buffer).getInt();
             if (isNotSingle) {
-                //get the end of the interval
+                // Get the end of the interval
                 int end = bb.getInt();
-                //and add all lost numbers to the result list
+                // And add all lost numbers to the result list
                 for (int i = lost; i <= end; i++) {
                     lostSequenceNumbers.add(i);
                 }
@@ -66,9 +67,9 @@ public class NegativeAcknowledgement extends ControlPacket {
     }
 
     /**
-     * add a single lost packet number
+     * Add a single lost packet number.
      *
-     * @param singleSequenceNumber
+     * @param singleSequenceNumber packet sequence number that was lost.
      */
     public void addLossInfo(long singleSequenceNumber) {
         byte[] enc = PacketUtil.encodeSetHighest(false, singleSequenceNumber);
@@ -79,18 +80,18 @@ public class NegativeAcknowledgement extends ControlPacket {
     }
 
     /**
-     * add an interval of lost packet numbers
+     * Add an interval of lost packet numbers.
      *
      * @param firstSequenceNumber
      * @param lastSequenceNumber
      */
     public void addLossInfo(long firstSequenceNumber, long lastSequenceNumber) {
-        //check if we really need an interval
+        // Check if we really need an interval
         if (lastSequenceNumber - firstSequenceNumber == 0) {
             addLossInfo(firstSequenceNumber);
             return;
         }
-        //else add an interval
+        // Else add an interval
         byte[] enc1 = PacketUtil.encodeSetHighest(true, firstSequenceNumber);
         byte[] enc2 = PacketUtil.encodeSetHighest(false, lastSequenceNumber);
         try {
@@ -159,10 +160,10 @@ public class NegativeAcknowledgement extends ControlPacket {
             return false;
         NegativeAcknowledgement other = (NegativeAcknowledgement) obj;
 
-        List<Integer> thisLost;
-        List<Integer> otherLost;
+        final List<Integer> thisLost;
+        final List<Integer> otherLost;
 
-        //compare the loss info
+        // Compare the loss info
         if (lostSequenceNumbers != null) {
             thisLost = lostSequenceNumbers;
         } else {

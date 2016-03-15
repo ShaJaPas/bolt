@@ -33,9 +33,9 @@ import java.util.Objects;
  * number is wrapped after it is increased to the maximum number (2^29 - 1).
  * <p>
  * Following is the 32-bit Destination Socket ID.
- * The Destination ID is used for UDP multiplexer. Multiple UDT socket
- * can be bound on the same UDP port and this UDT socket ID is used to
- * differentiate the UDT connections.
+ * The Destination ID is used for UDP multiplexer. Multiple Bolt socket
+ * can be bound on the same UDP port and this Bolt socket ID is used to
+ * differentiate the Bolt connections.
  * <p>
  * The next 32-bit field in the header is for the messaging. The first bit
  * "F" flags whether the packet is the last message chunk (1), or not (0).

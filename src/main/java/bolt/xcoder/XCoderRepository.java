@@ -81,18 +81,4 @@ public class XCoderRepository {
         return getXCoder(clazz);
     }
 
-//    private int getClassId(final Class<?> clazz) throws NoSuchElementException {
-//        final Integer classId = classToIds.get(clazz);
-//        if (classId == null) throw new NoSuchElementException("No class id found for class " + clazz);
-//        return classId;
-//    }
-//
-//    private int getClassIdFromData(final byte[] data) {
-//        return (data[0] & 0xFF) << 8 | (data[1] & 0xFF);
-//    }
-//
-//    private byte[] getObjectData(final byte[] data) {
-//        return Arrays.copyOfRange(data, CLASS_ID_BYTE_LENGTH, data.length);
-//    }
-
 }

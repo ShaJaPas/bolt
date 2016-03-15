@@ -14,3 +14,8 @@
 - [ ] General performance testing
 - [X] Use log4j with performant string interpolation
 - [ ] Improve performance in high-packet loss scenarios
+- [ ] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
+- [ ] Review level of each log statement
+- [ ] Review Javadoc
+- [ ] Add group to base of package (before bolt.*)
+- [ ] Separate to core and api packages

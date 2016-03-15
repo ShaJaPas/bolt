@@ -12,8 +12,7 @@ import rx.Subscriber;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-
-
+import java.text.MessageFormat;
 
 import static bolt.BoltSession.SessionState.*;
 
@@ -31,7 +30,7 @@ public class ServerSession extends BoltSession {
     public ServerSession(final Destination peer, final BoltEndPoint endPoint) throws SocketException, UnknownHostException {
         super("ServerSession localPort=" + endPoint.getLocalPort() + " peer=" + peer.getAddress() + ":" + peer.getPort(), peer);
         this.endPoint = endPoint;
-        LOG.info("Created " + toString() + " talking to " + peer.getAddress() + ":" + peer.getPort());
+        LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
     }
 
     /**
@@ -44,13 +43,14 @@ public class ServerSession extends BoltSession {
     @Override
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
-        LOG.info("Received " + handshake + " in state <" + getState() + ">");
+        LOG.info("Received {} in state [{}]", handshake, getState());
         if (getState() == READY) {
             // Just send confirmation packet again.
             try {
                 sendFinalHandShake(handshake);
             }
-            catch (IOException io) {
+            catch (final IOException io) {
+                LOG.debug("Sender another confirmation packet. Reason: [{}]", io.getMessage());
             }
         }
 
@@ -106,7 +106,7 @@ public class ServerSession extends BoltSession {
                 }
             }
             catch (Exception ex) {
-                // Session invalid
+                // Invalidate session
                 LOG.error("Session error receiving packet", ex);
                 setState(INVALID);
             }
@@ -114,12 +114,12 @@ public class ServerSession extends BoltSession {
     }
 
     /**
-     * handle the connection handshake
+     * Handle the second connection handshake.
      *
-     * @param handshake
-     * @throws IOException
+     * @param handshake the second connection handshake.
+     * @throws IOException if the received cookie doesn't equal the expected cookie.
      */
-    protected boolean handleSecondHandShake(ConnectionHandshake handshake) throws IOException {
+    protected boolean handleSecondHandShake(final ConnectionHandshake handshake) throws IOException {
         if (sessionCookie == 0) {
             ackInitialHandshake(handshake);
             // Need one more handshake.
@@ -129,7 +129,7 @@ public class ServerSession extends BoltSession {
         long otherCookie = handshake.getCookie();
         if (sessionCookie != otherCookie) {
             setState(INVALID);
-            throw new IOException("Invalid cookie <" + otherCookie + "> received, my cookie is <" + sessionCookie + ">");
+            throw new IOException(MessageFormat.format("Invalid cookie [{0}] received; Expected cookie is [{1}]", otherCookie, sessionCookie));
         }
         sendFinalHandShake(handshake);
         return true;
@@ -147,15 +147,14 @@ public class ServerSession extends BoltSession {
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        sessionCookie = SequenceNumber.random();
+        sessionCookie = SequenceNumber.random(); // TODO use long generation method?
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
         responseHandshake.setSession(this);
-        LOG.info("Sending reply " + responseHandshake);
+        LOG.info("Sending reply {}", responseHandshake);
         endPoint.doSend(responseHandshake);
     }
-
 
     protected void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
 
@@ -172,7 +171,7 @@ public class ServerSession extends BoltSession {
                     handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
             finalConnectionHandshake.setSession(this);
         }
-        LOG.info("Sending final handshake ack " + finalConnectionHandshake);
+        LOG.info("Sending final handshake ack {}", finalConnectionHandshake);
         endPoint.doSend(finalConnectionHandshake);
     }
 

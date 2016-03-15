@@ -28,14 +28,21 @@ public abstract class BoltTestBase {
         return PortUtil.nextClientPort();
     }
 
-    //get an array filled with random data
-    protected byte[] getRandomData(int size) {
+    // Get an array filled with random data
+    protected byte[] getRandomData(final int size) {
         byte[] data = new byte[size];
         new Random().nextBytes(data);
         return data;
     }
 
-    //compute the md5 hash
+    // Get an array filled with seeded random data
+    protected byte[] getRandomData(final int seed, final int size) {
+        byte[] data = new byte[size];
+        new Random(seed).nextBytes(data);
+        return data;
+    }
+
+    // Compute the md5 hash
     protected String computeMD5(byte[]... datablocks) throws Exception {
         MessageDigest d = MessageDigest.getInstance("MD5");
         for (byte[] data : datablocks) {
@@ -69,7 +76,7 @@ public abstract class BoltTestBase {
                 .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())
                 .ofType(RoutedData.class)
-                .filter(rd -> ofType.isAssignableFrom(rd.getPayload().getClass()))
+                .filter(rd -> rd.isOfSubType(ofType))
                 .map(rd -> (T) rd.getPayload())
                 .subscribe(onNext, onError);
 

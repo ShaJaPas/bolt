@@ -15,14 +15,14 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 import static org.junit.Assert.*;
 
-/*
- * tests for the various list and queue classes
+/**
+ * Tests for the various list and queue classes.
  */
 public class TestList {
 
     @Test
     public void testCircularArray() {
-        CircularArray<Integer> c = new CircularArray<Integer>(5);
+        final CircularArray<Integer> c = new CircularArray<>(5);
         for (int i = 0; i < 5; i++) c.add(i);
         assertEquals(5, c.size());
         c.add(6);
@@ -42,9 +42,9 @@ public class TestList {
         PacketHistoryWindow packetHistoryWindow = new PacketHistoryWindow(16);
         long offset = 1000000;
         for (int i = 0; i < 28; i++) {
-            packetHistoryWindow.add(offset + i * 5000l);
+            packetHistoryWindow.add(offset + i * 5000L);
         }
-        //packets arrive every 5 ms, so packet arrival rate is 200/sec
+        // Packets arrive every 5 ms, so packet arrival rate is 200/sec
         assertEquals(200, packetHistoryWindow.getPacketArrivalSpeed());
     }
 
@@ -52,9 +52,8 @@ public class TestList {
     public void testPacketPairWindow() {
         long[] values = {2, 4, 6};
         PacketPairWindow p = new PacketPairWindow(16);
-        for (int i = 0; i < values.length; i++) {
-            p.add(values[i]);
-        }
+        for (long value : values) p.add(value);
+
         assertEquals(4.0d, p.computeMedianTimeInterval(), 0.001d);
 
         long[] arrivaltimes = {12, 12, 12, 12};
@@ -117,7 +116,7 @@ public class TestList {
 
         BoltPacket p = q.poll();
         assertFalse(p.isControlPacket());
-        //check ordering by sequence number
+        // Check ordering by sequence number
         assertEquals(1, p.getPacketSequenceNumber());
 
         DataPacket d = new DataPacket();

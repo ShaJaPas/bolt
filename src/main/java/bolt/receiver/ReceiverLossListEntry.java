@@ -2,8 +2,10 @@ package bolt.receiver;
 
 import bolt.util.Util;
 
+import java.util.Objects;
+
 /**
- * an entry in the {@link ReceiverLossList}
+ * An entry in the {@link ReceiverLossList}.
  */
 public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> {
 
@@ -12,9 +14,9 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
     private long k = 2;
 
     /**
-     * constructor
+     * Instantiate a new object.
      *
-     * @param sequenceNumber
+     * @param sequenceNumber sequence number lost.
      */
     public ReceiverLossListEntry(final int sequenceNumber) {
         if (sequenceNumber <= 0) {
@@ -26,7 +28,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
 
 
     /**
-     * call once when this seqNo is fed back in NAK
+     * Call once when this seqNo is fed back in NAK.
      */
     public void feedback() {
         k++;
@@ -51,10 +53,10 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
     }
 
     /**
-     * order by increasing sequence number
+     * Order by increasing sequence number.
      */
     public int compareTo(ReceiverLossListEntry o) {
-        return (int) (sequenceNumber - o.sequenceNumber);
+        return sequenceNumber - o.sequenceNumber;
     }
 
 
@@ -62,28 +64,21 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
         return sequenceNumber + "[k=" + k + ",time=" + lastFeedbackTime + "]";
     }
 
-
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (int) (k ^ (k >>> 32));
-        result = prime * result
-                + (int) (sequenceNumber ^ (sequenceNumber >>> 32));
-        return result;
+    public boolean equals(Object o)
+    {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        ReceiverLossListEntry that = (ReceiverLossListEntry) o;
+        return sequenceNumber == that.sequenceNumber;
     }
 
-
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ReceiverLossListEntry other = (ReceiverLossListEntry) obj;
-        return (sequenceNumber == other.sequenceNumber);
+    public int hashCode()
+    {
+        return Objects.hash(sequenceNumber);
     }
 
 }

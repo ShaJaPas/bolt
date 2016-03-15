@@ -22,4 +22,12 @@ public class RoutedData {
         return payload;
     }
 
+    public boolean isOfType(final Class<?> expected) {
+        return payload != null && expected.equals(payload.getClass());
+    }
+
+    public boolean isOfSubType(final Class<?> expected) {
+        return payload != null && expected.isAssignableFrom(payload.getClass());
+    }
+
 }

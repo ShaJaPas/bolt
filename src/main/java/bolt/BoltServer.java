@@ -68,7 +68,6 @@ public class BoltServer implements Server {
                     if (packet != null) {
                         final Object decoded = xCoderRepository.decode(packet);
                         if (decoded != null) {
-//                            System.out.println("Count: " + ++count);
                             subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
                         }
                     }

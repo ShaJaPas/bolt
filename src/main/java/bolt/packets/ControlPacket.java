@@ -3,8 +3,10 @@ package bolt.packets;
 import bolt.BoltPacket;
 import bolt.BoltSession;
 
+import java.util.Objects;
+
 /**
- * If the flag bit of a UDT packet is 1, then it is a control packet and
+ * If the flag bit of a Bolt packet is 1, then it is a control packet and
  * parsed according to the following structure:
  * <p>
  * <pre>
@@ -23,13 +25,13 @@ import bolt.BoltSession;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
  * <p>
- * There are 8 types of control packets in UDT and the type information
+ * There are 8 types of control packets in Bolt and the type information
  * is put in bit field 1 - 15 of the header. The contents of the
  * following fields depend on the packet type. The first 128 bits must
  * exist in the packet header, whereas there may be an empty control
  * information field, depending on the packet type.
  * <p>
- * Particularly, UDT uses sub-sequencing for ACK packet. Each ACK packet
+ * Particularly, Bolt uses sub-sequencing for ACK packet. Each ACK packet
  * is assigned a unique increasing 16-bit sequence number, which is
  * independent of the data packet sequence number. The ACK sequence
  * number uses bits 32 - 63 ("Additional Info") in the control packet
@@ -38,7 +40,7 @@ import bolt.BoltSession;
  * TYPE 0x0:  Protocol Connection Handshake
  * Additional Info: Undefined
  * Control Info:
- * 1) 32 bits: UDT version
+ * 1) 32 bits: Bolt version
  * 2) 32 bits: Socket Type (STREAM or DGRAM)
  * 3) 32 bits: initial packet sequence number
  * 4) 32 bits: maximum packet size (including UDP/IP headers)
@@ -132,11 +134,11 @@ public abstract class ControlPacket implements BoltPacket {
 
 
     /**
-     * return the header according to specification p.5
+     * Computers the contrl packet header.
      *
-     * @return
+     * @return the encoded header byte array.
      */
-    byte[] getHeader() {
+    public byte[] getHeader() {
         byte[] res = new byte[12];
         System.arraycopy(PacketUtil.encodeControlPacketType(controlPacketType), 0, res, 0, 4);
         System.arraycopy(PacketUtil.encode(getAdditionalInfo()), 0, res, 4, 4);
@@ -153,15 +155,14 @@ public abstract class ControlPacket implements BoltPacket {
 
 
     /**
-     * this method builds the control information
-     * from the control parameters
+     * This method builds the control information from the control parameters.
      *
-     * @return
+     * @return the encoded control information.
      */
     public abstract byte[] encodeControlInformation();
 
     /**
-     * complete header+ControlInformation packet for transmission
+     * Complete header+ControlInformation packet for transmission.
      */
     public byte[] getEncoded() {
         byte[] header = getHeader();
@@ -177,19 +178,20 @@ public abstract class ControlPacket implements BoltPacket {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object o)
+    {
+        if (this == o)
             return true;
-        if (obj == null)
+        if (o == null || getClass() != o.getClass())
             return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ControlPacket other = (ControlPacket) obj;
-        if (controlPacketType != other.controlPacketType)
-            return false;
-        if (destinationID != other.destinationID)
-            return false;
-        return true;
+        ControlPacket that = (ControlPacket) o;
+        return controlPacketType == that.controlPacketType && destinationID == that.destinationID;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(controlPacketType, destinationID);
     }
 
     public boolean isControlPacket() {

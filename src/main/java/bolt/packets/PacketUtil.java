@@ -101,11 +101,11 @@ public class PacketUtil {
     }
 
     /**
-     * encodes the specified address into 128 bit
+     * Encodes the specified address into 128 bit.
      *
-     * @param address - inet address
+     * @param address INet address.
      */
-    public static byte[] encode(InetAddress address) {
+    public static byte[] encode(final InetAddress address) {
         byte[] res = new byte[16];
         byte[] add = address.getAddress();
         System.arraycopy(add, 0, res, 0, add.length);

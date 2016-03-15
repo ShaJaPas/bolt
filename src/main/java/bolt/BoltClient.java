@@ -81,7 +81,7 @@ public class BoltClient implements Client {
                 throw new BoltException(ex);
             }
         }
-//        System.out.println("DONE SENDING");
+        LOG.info("Completed sending object {}", obj);
     }
 
     public void sendBlocking(final Object obj) throws BoltException {

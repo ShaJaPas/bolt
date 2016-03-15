@@ -15,19 +15,26 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ReceiveBuffer {
 
     private final DataPacket[] buffer;
-    // The lowest sequence number stored in this buffer
+
+    /** The lowest sequence number stored in this buffer. */
     private final int initialSequenceNumber;
-    // Number of chunks.
+
+    /** Number of chunks.. */
     private final AtomicInteger numValidChunks = new AtomicInteger(0);
-    //lock and condition for poll() with timeout
+
+    /** Lock and condition for poll() with timeout. */
     private final Condition notEmpty;
     private final ReentrantLock lock;
-    //the size of the buffer
+
+    /** The size of the buffer. */
     private final int size;
-    //the head of the buffer: contains the next chunk to be read by the application,
-    //i.e. the one with the lowest sequence number
+
+    /**
+     * The head of the buffer: contains the next chunk to be read by the application, i.e. the one with the lowest sequence number.
+     */
     private volatile int readPosition = 0;
-    //the highest sequence number already read by the application
+
+    /** The highest sequence number already read by the application. */
     private int highestReadSequenceNumber;
 
     public ReceiveBuffer(final int size, final int initialSequenceNumber) {
@@ -64,7 +71,7 @@ public class ReceiveBuffer {
     }
 
     /**
-     * return a data chunk, guaranteed to be in-order, waiting up to the
+     * Return a data chunk, guaranteed to be in-order, waiting up to the
      * specified wait time if necessary for a chunk to become available.
      *
      * @param timeout how long to wait before giving up, in units of

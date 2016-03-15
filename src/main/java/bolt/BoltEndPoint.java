@@ -204,11 +204,7 @@ public class BoltEndPoint {
         byte[] data = packet.getEncoded();
         DatagramPacket dgp = packet.getSession().getDatagram();
         dgp.setData(data);
-//        if (!packet.isControlPacket() && ((DataPacket)packet).isFinalMessageChunk() ) {
-//            System.out.println("SEND NO MESS");
-//        }
         dgSocket.send(dgp);
-//        System.out.println(MessageFormat.format("Sent [{0}]", packet.toString()));
     }
 
     public String toString() {

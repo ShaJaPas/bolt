@@ -5,6 +5,7 @@ import bolt.util.Util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -25,6 +26,11 @@ public class ReceiverLossList {
     }
 
     public void insert(ReceiverLossListEntry entry) {
+        /*
+        TODO is synchronized necessary?
+        Or use ConcurrentSet as complimentary to prevent duplicates?
+        Or use ConcurrentSkipListSet?
+         */
         synchronized (backingList) {
             if (!backingList.contains(entry)) {
                 backingList.add(entry);
@@ -45,9 +51,9 @@ public class ReceiverLossList {
     }
 
     /**
-     * read (but NOT remove) the first entry in the loss list
+     * Read (but NOT remove) the first entry in the loss list.
      *
-     * @return
+     * @return the read entry.
      */
     public ReceiverLossListEntry getFirstEntry() {
         return backingList.peek();
@@ -58,14 +64,14 @@ public class ReceiverLossList {
     }
 
     /**
-     * return all sequence numbers whose last feedback time is larger than k*RTT
+     * Return all sequence numbers whose last feedback time is larger than k * RTT.
      *
      * @param RTT        the current round trip time
      * @param doFeedback true if the k parameter should be increased and the time should
      *                   be reset (using {@link ReceiverLossListEntry#feedback()} )
-     * @return
+     * @return the sequence numbers.
      */
-    public List<Integer> getFilteredSequenceNumbers(long RTT, boolean doFeedback) {
+    public List<Integer> getFilteredSequenceNumbers(final long RTT, final boolean doFeedback) {
         final List<Integer> result = new ArrayList<>();
         final ReceiverLossListEntry[] sorted = backingList.toArray(new ReceiverLossListEntry[0]);
         Arrays.sort(sorted);

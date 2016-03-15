@@ -9,7 +9,7 @@ public class ConnectionReadyEvent {
 
     private final BoltSession sessionReady;
 
-    public ConnectionReadyEvent(BoltSession sessionReady) {
+    public ConnectionReadyEvent(final BoltSession sessionReady) {
         this.sessionReady = sessionReady;
     }
 

@@ -36,7 +36,7 @@ public class BoltReceiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltReceiver.class);
     /**
-     * Milliseconds to timeout a new session that stays idle
+     * Milliseconds to timeout a new session that stays idle.
      */
     private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
 
@@ -44,15 +44,15 @@ public class BoltReceiver {
     private final BoltSession session;
     private final BoltStatistics statistics;
     /**
-     * record seqNo of detected lost data and latest feedback time
+     * Record seqNo of detected lost data and latest feedback time.
      */
     private final ReceiverLossList receiverLossList;
     /**
-     * record each sent ACK and the sent time
+     * Record each sent ACK and the sent time.
      */
     private final AckHistoryWindow ackHistoryWindow;
 
-    //ACK event related
+    // ACK event related
     /**
      * Packet history window that stores the time interval between the current and the last seq.
      */
@@ -64,11 +64,12 @@ public class BoltReceiver {
      */
     private final PacketPairWindow packetPairWindow;
 
-    //EXP event related
-    //instant when the session was created (for expiry checking)
+    // EXP event related
+    /** Instant when the session was created (for expiry checking) */
     private final long sessionUpSince;
+
     /**
-     * buffer size for storing data
+     * Buffer size for storing data.
      */
     private final long bufferSize;
 
@@ -79,11 +80,11 @@ public class BoltReceiver {
     private final boolean storeStatistics;
     private final Config config;
     /**
-     * estimated link capacity
+     * Estimated link capacity.
      */
     long estimateLinkCapacity;
     /**
-     * the packet arrival rate
+     * The packet arrival rate.
      */
     long packetArrivalSpeed;
     /**
@@ -149,7 +150,7 @@ public class BoltReceiver {
     private volatile int ackSequenceNumber = 0;
 
     /**
-     * create a receiver with a valid {@link BoltSession}
+     * Create a receiver with a valid {@link BoltSession}
      *
      * @param session
      * @param config
@@ -279,7 +280,6 @@ public class BoltReceiver {
             LOG.info("Polling of hand-off queue was interrupted.");
         }
         if (packet != null) {
-//            System.out.println(MessageFormat.format("RECV [{0}]", packet.toString()));
             // Reset exp count to 1
             expCount = 1;
             // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
@@ -339,7 +339,7 @@ public class BoltReceiver {
      * </ol>
      */
     protected void processACKEvent(boolean isTriggeredByTimer) throws IOException {
-        // 1: Find the sequence number *prior to which* all the packets have been received
+        // 1) Find the sequence number *prior to which* all the packets have been received
         final int ackNumber;
         ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
         if (entry == null) {
@@ -348,35 +348,33 @@ public class BoltReceiver {
         else {
             ackNumber = entry.getSequenceNumber();
         }
-        // 2a: If ackNumber equals to the largest sequence number ever acknowledged by ACK2
+        // 2a) If ackNumber equals to the largest sequence number ever acknowledged by ACK2
         if (ackNumber == largestAcknowledgedAckNumber) {
-            //do not send this ACK
+            // Do not send this ACK
             return;
         }
         else if (ackNumber == lastAckNumber) {
-            //or it is equals to the ackNumber in the last ACK
-            //and the time interval between these two ACK packets
-            //is less than 2 RTTs,do not send(stop)
+            // Or it is equals to the ackNumber in the last ACK and the time interval
+            // between these two ACK packets is less than 2 RTTs,do not send(stop).
             long timeOfLastSentAck = ackHistoryWindow.getTime(lastAckNumber);
             if (Util.getCurrentTime() - timeOfLastSentAck < 2 * roundTripTime) {
                 return;
             }
         }
         final long ackSeqNumber;
-        //if this ACK is not triggered by ACK timers,send out a light Ack and stop.
+        // If this ACK is not triggered by ACK timers,send out a light Ack and stop.
         if (!isTriggeredByTimer) {
             ackSeqNumber = sendLightAcknowledgment(ackNumber);
             return;
         }
         else {
-            //pack the packet speed and link capacity into the ACK packet and send it out.
-            //(7).records  the ACK number,ackseqNumber and the departure time of
-            //this Ack in the ACK History Window
+            // Pack the packet speed and link capacity into the ACK packet and send it out.
+            // 7) Records the ACK number, ackseqNumber and the departure time of this Ack in the ACK History Window.
             ackSeqNumber = sendAcknowledgment(ackNumber);
         }
         AckHistoryEntry sentAckNumber = new AckHistoryEntry(ackSeqNumber, ackNumber, Util.getCurrentTime());
         ackHistoryWindow.add(sentAckNumber);
-        //store ack number for next iteration
+        // Store ack number for next iteration
         lastAckNumber = ackNumber;
     }
 
@@ -400,7 +398,7 @@ public class BoltReceiver {
      * <li> Put all the unacknowledged packets into the sender's loss list.
      * <li> If (ExpCount > 16) and at least 3 seconds has elapsed since that
      * last time when ExpCount is reset to 1, or, 3 minutes has elapsed,
-     * close the UDT connection and exit.
+     * close the Bolt connection and exit.
      * <li> If the sender's loss list is empty, send a keep-alive packet to
      * the peer side.
      * <li> Increase ExpCount by 1.
@@ -516,13 +514,13 @@ public class BoltReceiver {
         nAckPacket.addLossInfo(largestReceivedSeqNumber + 1, currentSequenceNumber);
         nAckPacket.setSession(session);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
-        //put all the sequence numbers between (but excluding) these two values into the receiver loss list
+        // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
         for (int i = largestReceivedSeqNumber + 1; i < currentSequenceNumber; i++) {
             final ReceiverLossListEntry detectedLossSeqNumber = new ReceiverLossListEntry(i);
             receiverLossList.insert(detectedLossSeqNumber);
         }
         endpoint.doSend(nAckPacket);
-        //LOG.info("NAK for "+currentSequenceNumber);
+        LOG.info("NAK for {}", currentSequenceNumber);
         statistics.incNumberOfNAKSent();
     }
 
@@ -545,10 +543,10 @@ public class BoltReceiver {
 
     protected long sendAcknowledgment(final int ackNumber) throws IOException {
         Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
-        //set the estimate link capacity
+        // Set the estimate link capacity
         estimateLinkCapacity = packetPairWindow.getEstimatedLinkCapacity();
         acknowledgmentPkt.setEstimatedLinkCapacity(estimateLinkCapacity);
-        //set the packet arrival rate
+        // Set the packet arrival rate
         packetArrivalSpeed = packetHistoryWindow.getPacketArrivalSpeed();
         acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
 
@@ -559,16 +557,16 @@ public class BoltReceiver {
         return acknowledgmentPkt.getAckSequenceNumber();
     }
 
-    //builds a "light" Acknowledgement
+    // Builds a "light" Acknowledgement
     private Acknowledgement buildLightAcknowledgement(final int ackNumber) {
         Acknowledgement acknowledgmentPkt = new Acknowledgement();
-        //the packet sequence number to which all the packets have been received
+        // The packet sequence number to which all the packets have been received
         acknowledgmentPkt.setAckNumber(ackNumber);
-        //assign this ack a unique increasing ACK sequence number
+        // Assign this ack a unique increasing ACK sequence number
         acknowledgmentPkt.setAckSequenceNumber(++ackSequenceNumber);
         acknowledgmentPkt.setRoundTripTime(roundTripTime);
         acknowledgmentPkt.setRoundTripTimeVar(roundTripTimeVar);
-        //set the buffer size
+        // Set the buffer size
         acknowledgmentPkt.setBufferSize(bufferSize);
 
         acknowledgmentPkt.setDestinationID(session.getDestination().getSocketID());
@@ -616,7 +614,7 @@ public class BoltReceiver {
      * @param messageDropRequest the received MessageDropRequest packet.
      */
     protected void onMessageDropRequest(MessageDropRequest messageDropRequest) {
-        //TODO this was never implemented. Investigate if required and implications.
+        // TODO this was never implemented. Investigate if required and implications.
     }
 
     protected void sendKeepAlive() throws IOException {

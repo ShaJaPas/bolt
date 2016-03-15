@@ -33,10 +33,10 @@ public class UDPTest {
         runServer();
         runThirdThread();
 
-        //client socket
+        // Client socket
         DatagramSocket s = new DatagramSocket(PortUtil.nextClientPort());
 
-        //generate a test array with random content
+        // Generate a test array with random content
         N = num_packets * packetSize;
         byte[] data = new byte[packetSize];
         new Random().nextBytes(data);
@@ -73,7 +73,6 @@ public class UDPTest {
     }
 
     private void runServer() throws Exception {
-        //server socket
         final DatagramSocket serverSocket = new DatagramSocket(SERVER_PORT);
 
         CompletableFuture.runAsync(() -> {

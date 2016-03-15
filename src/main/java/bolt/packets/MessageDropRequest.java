@@ -1,20 +1,21 @@
 package bolt.packets;
 
 import java.io.ByteArrayOutputStream;
-
+import java.util.Objects;
 
 /**
  * Message Drop Request.
  * <p>
- * Additional Info: Message ID      <br>
- * Control Info:                    <br>
+ * Additional Info: Message ID
+ * <p>
+ * Control Info:
  * <ol>
  * <li> 32 bits: First sequence number in the message
  * <li> 32 bits: Last sequence number in the message
  * </ol>
  */
 public class MessageDropRequest extends ControlPacket {
-    //Bits 35-64: Message number
+    // Bits 35-64: Message number
 
     private long msgFirstSeqNo;
     private long msgLastSeqNo;
@@ -25,7 +26,6 @@ public class MessageDropRequest extends ControlPacket {
 
     public MessageDropRequest(byte[] controlInformation) {
         this();
-        //this.controlInformation=controlInformation;
         decode(controlInformation);
     }
 
@@ -61,24 +61,25 @@ public class MessageDropRequest extends ControlPacket {
             // can't happen
             return null;
         }
-
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object o)
+    {
+        if (this == o)
             return true;
-        if (!super.equals(obj))
+        if (o == null || getClass() != o.getClass())
             return false;
-        if (getClass() != obj.getClass())
+        if (!super.equals(o))
             return false;
-        MessageDropRequest other = (MessageDropRequest) obj;
-        if (msgFirstSeqNo != other.msgFirstSeqNo)
-            return false;
-        if (msgLastSeqNo != other.msgLastSeqNo)
-            return false;
-        return true;
+        MessageDropRequest that = (MessageDropRequest) o;
+        return msgFirstSeqNo == that.msgFirstSeqNo && msgLastSeqNo == that.msgLastSeqNo;
     }
 
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(super.hashCode(), msgFirstSeqNo, msgLastSeqNo);
+    }
 
 }

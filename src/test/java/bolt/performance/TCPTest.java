@@ -22,9 +22,9 @@ public class TCPTest {
     @Test
     public void test1() throws Exception {
         runServer();
-        //client socket
-        Socket s = new Socket("localhost", SERVER_PORT);
-        OutputStream os = s.getOutputStream();
+        // Client socket
+        Socket clientSocket = new Socket("localhost", SERVER_PORT);
+        OutputStream os = clientSocket.getOutputStream();
         int N = num_packets * 1024;
         byte[] data = new byte[N];
         new Random().nextBytes(data);

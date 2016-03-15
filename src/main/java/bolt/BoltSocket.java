@@ -17,10 +17,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class BoltSocket {
 
-    //endpoint
+    // Endpoint
     private final BoltSession session;
     private volatile boolean active;
-    //processing received data
+
+    // Processing received data
     private final BoltReceiver receiver;
     private final BoltSender sender;
     private final ReceiveBuffer receiveBuffer;
@@ -100,7 +101,7 @@ public class BoltSocket {
                 sender.waitForAck(seqNo);
             }
         }
-        //TODO need to check if we can pause the sender...
+        // TODO need to check if we can pause the sender...
 //        sender.pause();
     }
 

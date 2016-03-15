@@ -12,7 +12,7 @@ import bolt.BoltSender;
 public class Acknowledgment2 extends ControlPacket {
 
 
-    //the ack sequence number
+    /** The ACK sequence number */
     private long ackSequenceNumber;
 
     public Acknowledgment2() {

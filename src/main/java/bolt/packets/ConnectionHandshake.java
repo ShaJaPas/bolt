@@ -13,7 +13,7 @@ import java.net.InetAddress;
  * <p>
  * Control Info:
  * <ol>
- * <li> 32 bits: UDT version
+ * <li> 32 bits: Bolt version
  * <li> 32 bits: Socket Type (STREAM or DGRAM)
  * <li> 32 bits: initial packet sequence number
  * <li> 32 bits: maximum packet size (including UDP/IP headers)
@@ -35,11 +35,11 @@ public class ConnectionHandshake extends ControlPacket
      */
     public static final long CONNECTION_SERVER_ACK      = -1L;
     private             long boltVersion                = 4;
-    private             long socketType                 = SOCKET_TYPE_DGRAM; //stream or dgram
+    private             long socketType                 = SOCKET_TYPE_DGRAM;  // Stream or dgram TODO is stream needed?
     private             int  initialSeqNo               = 0;
     private long packetSize;
     private long maxFlowWndSize;
-    private long connectionType = CONNECTION_TYPE_REGULAR;//regular or rendezvous mode
+    private long connectionType = CONNECTION_TYPE_REGULAR;  // Regular or rendezvous mode
 
     /**
      * Tell peer what the socket ID on this side is.
@@ -48,7 +48,7 @@ public class ConnectionHandshake extends ControlPacket
 
     private long cookie = 0;
 
-    //address of the UDP socket
+    // Address of the UDP socket
     private InetAddress address;
 
     public ConnectionHandshake()
@@ -95,7 +95,9 @@ public class ConnectionHandshake extends ControlPacket
                 destinationID, cookie, address);
     }
 
-    //faster than instanceof...
+    /**
+     * High-performance test (faster than instanceof).
+     */
     public boolean isConnectionHandshake()
     {
         return true;
@@ -111,7 +113,7 @@ public class ConnectionHandshake extends ControlPacket
         connectionType = PacketUtil.decode(data, 20);
         socketID = PacketUtil.decodeInt(data, 24);
         cookie = PacketUtil.decode(data, 28);
-        //TODO ipv6 check
+        // TODO ipv6 check
         address = PacketUtil.decodeInetAddress(data, 32, false);
     }
 

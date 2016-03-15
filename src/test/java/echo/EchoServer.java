@@ -7,6 +7,7 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,26 +17,29 @@ public class EchoServer {
 
     final BoltServer server;
 
-    volatile boolean started = false;
-    volatile boolean stopped = false;
+    private volatile Subscription active;
 
     public EchoServer(final int port) throws Exception {
         server = new BoltServer(new Config(InetAddress.getByName("localhost"), port));
     }
 
-    public void stop() {
-        stopped = true;
+    public synchronized void stop() {
+        if (active != null) {
+            active.unsubscribe();
+            active = null;
+        }
     }
 
     public synchronized Subscription start() {
-
-        Subscription s = server.bind()
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.computation())
-                .ofType(RoutedData.class)
-                .subscribe(x -> pool.execute(new Request(server, x)));
-        started = true;
-        return s;
+        if (active == null || active.isUnsubscribed())
+        {
+            active = server.bind()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.computation())
+                    .ofType(RoutedData.class)
+                    .subscribe(x -> pool.execute(new Request(server, x)));
+        }
+        return active;
     }
 
     public static class Request implements Runnable {
@@ -50,7 +54,7 @@ public class EchoServer {
 
         public void run() {
             try {
-                if (received.getPayload().getClass().equals(byte[].class)) {
+                if (received.isOfType(byte[].class)) {
                     System.out.println(new String((byte[]) received.getPayload()));
                 }
                 else {

@@ -24,25 +24,25 @@ import java.io.ByteArrayOutputStream;
  */
 public class Acknowledgement extends ControlPacket {
 
-    //the ack sequence number
+    /** The ACK sequence number */
     private int ackSequenceNumber;
 
-    //the packet sequence number to which all the previous packets have been received (excluding)
+    /** The packet sequence number to which all the previous packets have been received (excluding) */
     private int ackNumber;
 
-    //round-trip time in microseconds(RTT)
+    /** round-trip time in microseconds(RTT) */
     private long roundTripTime;
 
-    // RTT variance
+    /** RTT variance */
     private long roundTripTimeVariance;
 
-    //Available buffer size (in bytes)
+    /** Available buffer size (in bytes) */
     private long bufferSize;
 
-    //packet receiving rate in number of packets per second
+    /** Packet receiving rate in number of packets per second */
     private long pktArrivalSpeed;
 
-    //estimated link capacity in number of packets per second
+    /** Estimated link capacity in number of packets per second */
     private long estimatedLinkCapacity;
 
     public Acknowledgement() {
@@ -55,7 +55,7 @@ public class Acknowledgement extends ControlPacket {
         decodeControlInformation(controlInformation);
     }
 
-    void decodeControlInformation(byte[] data) {
+    void decodeControlInformation(final byte[] data) {
         ackNumber = PacketUtil.decodeInt(data, 0);
         if (data.length > 4) {
             roundTripTime = PacketUtil.decode(data, 4);
@@ -159,6 +159,7 @@ public class Acknowledgement extends ControlPacket {
     @Override
     public byte[] encodeControlInformation() {
         try {
+            // TODO shorten packing
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             bos.write(PacketUtil.encode(ackNumber));
             bos.write(PacketUtil.encode(roundTripTime));
@@ -174,6 +175,7 @@ public class Acknowledgement extends ControlPacket {
         }
     }
 
+    // TODO should ackSequenceNumber be included in this? Also, implement hashCode.
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
