@@ -65,4 +65,8 @@ public class XCoderChain<T>
         packageXCoder.setClassId(classId);
     }
 
+    public void setReliable(boolean reliable) {
+        packageXCoder.setReliable(reliable);
+    }
+
 }

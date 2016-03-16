@@ -69,13 +69,13 @@ public class XCoderRepository {
         return encoded;
     }
 
-    private <T> XCoderChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
+    public <T> XCoderChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
         final XCoderChain<T> xCoder = (XCoderChain<T>) classXCoders.get(clazz);
         if (xCoder == null) throw new NoSuchElementException("Class not found for class " + clazz);
         return xCoder;
     }
 
-    private <T> XCoderChain<T> getXCoder(final int classId) throws NoSuchElementException {
+    public <T> XCoderChain<T> getXCoder(final int classId) throws NoSuchElementException {
         final Class<T> clazz = (Class<T>) idsToClass.get(classId);
         if (clazz == null) throw new NoSuchElementException("Class not found for id " + classId);
         return getXCoder(clazz);

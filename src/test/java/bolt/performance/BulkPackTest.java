@@ -11,11 +11,9 @@ import rx.Subscription;
 import rx.observables.ConnectableObservable;
 import rx.schedulers.Schedulers;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
@@ -61,9 +59,6 @@ public class BulkPackTest {
                         }
                         client.flush();
                         client.shutdown();
-                    }
-                    catch (IOException | TimeoutException | InterruptedException ex) {
-                        throw new RuntimeException(ex);
                     }
                     finally {
                         clientReady.countDown();

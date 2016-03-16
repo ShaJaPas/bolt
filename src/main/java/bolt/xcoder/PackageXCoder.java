@@ -19,7 +19,7 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 
     private final ObjectXCoder<T> objectXCoder;
 
-    private final boolean reliable;
+    private boolean reliable;
 
     public PackageXCoder(final ObjectXCoder<T> objectXCoder)
     {
@@ -95,6 +95,10 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 
     public void setClassId(final int classId) {
         objectXCoder.setClassId(classId);
+    }
+
+    public void setReliable(boolean reliable) {
+        this.reliable = reliable;
     }
 
 }

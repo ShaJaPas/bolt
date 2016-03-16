@@ -17,7 +17,6 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class BoltClient implements Client {
 
@@ -25,8 +24,8 @@ public class BoltClient implements Client {
 
     private final BoltEndPoint clientEndpoint;
     private final XCoderRepository xCoderRepository;
-    private ClientSession clientSession;
     private final Config config;
+    private ClientSession clientSession;
 
     public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
         this(new Config(address, localPort));
@@ -85,13 +84,8 @@ public class BoltClient implements Client {
     }
 
     public void sendBlocking(final Object obj) throws BoltException {
-        try {
-            send(obj);
-            flush();
-        }
-        catch (InterruptedException | TimeoutException | IOException ex) {
-            throw new BoltException(ex);
-        }
+        send(obj);
+        flush();
     }
 
     /**
@@ -123,13 +117,17 @@ public class BoltClient implements Client {
     }
 
     /**
-     * flush outstanding data, with the specified maximum waiting time
+     * Flush outstanding data, with the specified maximum waiting time.
      *
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws BoltException
      */
-    public void flush() throws IOException, InterruptedException, TimeoutException {
-        clientSession.getSocket().flush();
+    public void flush() throws BoltException {
+        try {
+            clientSession.getSocket().flush();
+        }
+        catch (InterruptedException | IllegalStateException e) {
+            throw new BoltException(e);
+        }
     }
 
     public void shutdown() {
@@ -152,5 +150,8 @@ public class BoltClient implements Client {
         return clientSession.getStatistics();
     }
 
+    public XCoderRepository getxCoderRepository() {
+        return xCoderRepository;
+    }
 
 }
