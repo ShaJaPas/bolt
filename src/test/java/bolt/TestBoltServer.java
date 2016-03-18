@@ -13,8 +13,8 @@ public class TestBoltServer extends BoltTestBase {
 
     int num_packets = 32;
     long total = 0;
-    volatile boolean serverRunning = true;
-    volatile String md5_received = null;
+    private volatile boolean serverRunning = true;
+    private volatile String md5_received = null;
     protected MessageDigest serverMd5;
 
     @Test(expected = Exception.class)

@@ -37,7 +37,7 @@ public class ServerSession extends BoltSession {
      * Reply to a connection handshake message.
      *
      * @param subscriber
-     * @param handshake incoming connection handshake from the client.
+     * @param handshake  incoming connection handshake from the client.
      * @param peer
      */
     @Override
@@ -98,12 +98,8 @@ public class ServerSession extends BoltSession {
         else if (getState() == READY) {
             active = true;
             try {
-                if (packet.forSender()) {
-                    socket.getSender().receive(packet);
-                }
-                else {
-                    socket.getReceiver().receive(packet);
-                }
+                socket.getSender().receive(packet);
+                socket.getReceiver().receive(packet);
             }
             catch (Exception ex) {
                 // Invalidate session
@@ -119,7 +115,7 @@ public class ServerSession extends BoltSession {
      * @param handshake the second connection handshake.
      * @throws IOException if the received cookie doesn't equal the expected cookie.
      */
-    protected boolean handleSecondHandShake(final ConnectionHandshake handshake) throws IOException {
+    private boolean handleSecondHandShake(final ConnectionHandshake handshake) throws IOException {
         if (sessionCookie == 0) {
             ackInitialHandshake(handshake);
             // Need one more handshake.
@@ -139,7 +135,7 @@ public class ServerSession extends BoltSession {
      * Response after the initial connection handshake received:
      * compute cookie
      */
-    protected void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
+    private void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
         // Compare the packet size and choose minimum.
         final long clientBufferSize = handshake.getPacketSize();
         final long myBufferSize = getDatagramSize();
@@ -156,7 +152,7 @@ public class ServerSession extends BoltSession {
         endPoint.doSend(responseHandshake);
     }
 
-    protected void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
+    private void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
 
         if (finalConnectionHandshake == null) {
             // Compare the packet size and choose minimum

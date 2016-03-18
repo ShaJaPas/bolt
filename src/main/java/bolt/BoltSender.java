@@ -4,8 +4,6 @@ import bolt.packets.*;
 import bolt.sender.FlowWindow;
 import bolt.sender.SenderLossList;
 import bolt.statistic.BoltStatistics;
-import bolt.statistic.MeanThroughput;
-import bolt.statistic.MeanValue;
 import bolt.util.SequenceNumber;
 import bolt.util.Util;
 import org.slf4j.Logger;
@@ -47,53 +45,51 @@ public class BoltSender {
     private final SenderLossList senderLossList;
 
     /**
-     * Stores the sent data packets and their sequence numbers
+     * Stores the sent data packets and their sequence numbers.
      */
     private final Map<Integer, DataPacket> sendBuffer;
 
     private final FlowWindow flowWindow;
 
     /**
-     * Protects against races when reading/writing to the sendBuffer
+     * Protects against races when reading/writing to the sendBuffer.
+     * TODO consider alternatives (could be a performance bottleneck).
      */
     private final Object sendLock = new Object();
 
     /**
-     * Number of unacknowledged data packets
+     * Number of unacknowledged data packets.
      */
     private final AtomicInteger unacknowledged = new AtomicInteger(0);
 
     /**
-     * Used by the sender to wait for an ACK
+     * Used by the sender to wait for an ACK.
      */
     private final ReentrantLock ackLock = new ReentrantLock();
     private final Condition ackCondition = ackLock.newCondition();
 
-    private final boolean storeStatistics;
-    private final int chunkSize;
-    private final DataPacket retransmit = new DataPacket();
-
     /**
-     * For generating data packet sequence numbers
+     * For generating data packet sequence numbers.
      */
     private volatile int currentSequenceNumber = 0;
 
-    /** The largest data packet sequence number that has actually been sent out. */
+    /**
+     * The largest data packet sequence number that has actually been sent out.
+     */
     private volatile int largestSentSequenceNumber = -1;
 
-    /** Last acknowledge number, initialised to the initial sequence number. */
+    /**
+     * Last acknowledge number, initialised to the initial sequence number.
+     */
     private volatile int lastAckSequenceNumber;
     private volatile boolean started = false;
     private volatile boolean stopped = false;
-    private volatile boolean paused = false;
 
     /**
      * Used to signal that the sender should start to send
      */
     private volatile CountDownLatch startLatch = new CountDownLatch(1);
-    private MeanValue dgSendTime;
-    private MeanValue dgSendInterval;
-    private MeanThroughput throughput;
+
 
     public BoltSender(final BoltSession session, final BoltEndPoint endpoint) {
         if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
@@ -102,29 +98,19 @@ public class BoltSender {
         this.statistics = session.getStatistics();
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
-        this.chunkSize = session.getDatagramSize() - 24;  // Need space for the header
-        this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
+
         this.lastAckSequenceNumber = session.getInitialSequenceNumber();
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
-        this.storeStatistics = Boolean.getBoolean("bolt.sender.storeStatistics");
-        initMetrics();
-    }
 
-    private void initMetrics() {
-        if (!storeStatistics) return;
-        dgSendTime = new MeanValue("SENDER: Datagram send time");
-        statistics.addMetric(dgSendTime);
-        dgSendInterval = new MeanValue("SENDER: Datagram send interval");
-        statistics.addMetric(dgSendInterval);
-        throughput = new MeanThroughput("SENDER: Throughput", session.getDatagramSize());
-        statistics.addMetric(throughput);
+        final int chunkSize = session.getDatagramSize() - 24;
+        this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
     }
 
     /**
      * Start the sender thread.
      */
     public void start() {
-        LOG.info("STARTING SENDER for " + session);
+        LOG.info("STARTING SENDER for {}", session);
         startLatch.countDown();
         started = true;
     }
@@ -138,13 +124,12 @@ public class BoltSender {
                 String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
                 Thread.currentThread().setName("Bolt-Sender-" + s + Util.THREAD_INDEX.incrementAndGet());
 
-                Supplier<Boolean> stopped = () -> this.stopped || subscriber.isUnsubscribed();
-                while (!stopped.get()) {
-                    // Wait until explicitly (re)started.
-                    startLatch.await();
-                    paused = false;
-                    senderAlgorithm(stopped);
-                }
+                final Supplier<Boolean> stopped = () -> this.stopped || subscriber.isUnsubscribed();
+//                while (!stopped.get()) {
+                // Wait until explicitly (re)started.
+                startLatch.await();
+                senderAlgorithm(stopped);
+//                }
             }
             catch (IOException | InterruptedException ex) {
                 LOG.error("Sender error", ex);
@@ -157,32 +142,23 @@ public class BoltSender {
     }
 
     /**
-     * sends the given data packet, storing the relevant information
+     * Sends the given data packet, storing the relevant information.
      */
-    private void send(final DataPacket p) throws IOException {
+    private void send(final DataPacket dp) throws IOException {
         synchronized (sendLock) {
-            if (storeStatistics) {
-                dgSendInterval.end();
-                dgSendTime.begin();
-            }
-            endpoint.doSend(p);
-            if (storeStatistics) {
-                dgSendTime.end();
-                dgSendInterval.begin();
-                throughput.end();
-                throughput.begin();
-            }
-            if (p.isReliable()) {
-                // Store data for potential retransmit.
-//                int l = p.getLength();
-//                byte[] data = new byte[l];
-//                System.arraycopy(p.getData(), 0, data, 0, l);
+            statistics.beginSend();
 
-                DataPacket buffered = new DataPacket();
-                buffered.copyFrom(p);
-                sendBuffer.put(p.getPacketSequenceNumber(), buffered);
+            endpoint.doSend(dp);
+
+            statistics.endSend();
+
+            if (dp.isReliable()) {
+                // Store data for potential retransmit.
+                final DataPacket buffered = new DataPacket();
+                buffered.copyFrom(dp);
+                sendBuffer.put(dp.getPacketSequenceNumber(), buffered);
                 unacknowledged.incrementAndGet();
-                largestSentSequenceNumber = p.getPacketSequenceNumber();
+                largestSentSequenceNumber = dp.getPacketSequenceNumber();
             }
         }
         statistics.incNumberOfSentDataPackets();
@@ -215,16 +191,15 @@ public class BoltSender {
      * Receive a packet from server from the peer.
      */
     protected void receive(final BoltPacket p) throws IOException {
-        if (p instanceof Acknowledgement) {
-            Acknowledgement acknowledgement = (Acknowledgement) p;
-            onAcknowledge(acknowledgement);
-        }
-        else if (p instanceof NegativeAcknowledgement) {
-            NegativeAcknowledgement nak = (NegativeAcknowledgement) p;
-            onNAKPacketReceived(nak);
-        }
-        else if (p instanceof KeepAlive) {
-            session.getSocket().getReceiver().resetEXPCount();
+        if (p.isControlPacket()) {
+            if (p instanceof Acknowledgement) {
+                Acknowledgement acknowledgement = (Acknowledgement) p;
+                onAcknowledge(acknowledgement);
+            }
+            else if (p instanceof NegativeAcknowledgement) {
+                NegativeAcknowledgement nak = (NegativeAcknowledgement) p;
+                onNAKPacketReceived(nak);
+            }
         }
     }
 
@@ -246,7 +221,7 @@ public class BoltSender {
      * @param acknowledgement the received ACK packet.
      * @throws IOException if sending of ACK2 fails.
      */
-    protected void onAcknowledge(final Acknowledgement acknowledgement) throws IOException {
+    private void onAcknowledge(final Acknowledgement acknowledgement) throws IOException {
         ackLock.lock();
         ackCondition.signal();
         ackLock.unlock();
@@ -283,7 +258,7 @@ public class BoltSender {
         // Send ACK2 packet to the receiver.
         sendAck2(ackNumber);
         statistics.incNumberOfACKReceived();
-        if (storeStatistics) statistics.storeParameters();
+        statistics.storeParameters();
     }
 
     /**
@@ -296,17 +271,17 @@ public class BoltSender {
      *
      * @param nak NAK packet received.
      */
-    protected void onNAKPacketReceived(NegativeAcknowledgement nak) {
+    private void onNAKPacketReceived(NegativeAcknowledgement nak) {
         for (Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }
         session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
-        session.getSocket().getReceiver().resetEXPTimer();
+//        session.getSocket().getReceiver().resetEXPTimer();
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("NAK for " + nak.getDecodedLossInfo().size() + " packets lost, "
-                    + "set send period to " + session.getCongestionControl().getSendInterval());
+            LOG.debug("NAK for {} packets lost, set send period to {}",
+                    nak.getDecodedLossInfo().size(), session.getCongestionControl().getSendInterval());
         }
     }
 
@@ -348,12 +323,12 @@ public class BoltSender {
      * congestion control and t is the total time used by step 1 to step 5. Go to 1).
      * </ol>
      *
-     * @throws InterruptedException if the thread is interrupted wating for an ACK.
+     * @throws InterruptedException if the thread is interrupted waiting for an ACK.
      * @throws IOException          on failure to send the DataPacket.
      */
-    public void senderAlgorithm(final Supplier<Boolean> stopped) throws InterruptedException, IOException {
-        while (!paused) {
-            long iterationStart = Util.getCurrentTime();
+    private void senderAlgorithm(final Supplier<Boolean> stopped) throws InterruptedException, IOException {
+        while (!stopped.get()) {
+            final long iterationStart = Util.getCurrentTime();
             // If the sender's loss list is not empty
             final Integer entry = senderLossList.getFirstEntry();
             if (entry != null) {
@@ -412,6 +387,7 @@ public class BoltSender {
             // Retransmit the packet and remove it from the list.
             final DataPacket data = sendBuffer.get(seqNumber);
             if (data != null) {
+                final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
                 retransmit.setPacketSequenceNumber(seqNumber);
                 retransmit.setSession(session);
@@ -441,8 +417,7 @@ public class BoltSender {
      * The initial sequence number is "0".
      */
     public int getNextSequenceNumber() {
-        currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
-        return currentSequenceNumber;
+        return currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
     }
 
     public int getCurrentSequenceNumber() {
@@ -462,7 +437,7 @@ public class BoltSender {
     }
 
     /**
-     * wait until the given sequence number has been acknowledged
+     * Wait until the given sequence number has been acknowledged.
      *
      * @throws InterruptedException
      */
@@ -478,24 +453,12 @@ public class BoltSender {
         }
     }
 
-    public void waitForAck(int sequenceNumber, int timeout) throws InterruptedException {
-        while (!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)) {
-            ackLock.lock();
-            try {
-                ackCondition.await(timeout, TimeUnit.MILLISECONDS);
-            }
-            finally {
-                ackLock.unlock();
-            }
-        }
-    }
-
     /**
      * Wait for the next acknowledge.
      *
      * @throws InterruptedException if the thread is interrupted.
      */
-    public void waitForAck() throws InterruptedException {
+    private void waitForAck() throws InterruptedException {
         ackLock.lock();
         try {
             ackCondition.await(200, TimeUnit.MICROSECONDS);
@@ -508,11 +471,6 @@ public class BoltSender {
 
     public void stop() {
         stopped = true;
-    }
-
-    public void pause() {
-        startLatch = new CountDownLatch(1);
-        paused = true;
     }
 
 }

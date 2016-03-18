@@ -11,7 +11,7 @@ import bolt.util.CircularArray;
 public class PacketPairWindow extends CircularArray<Long> {
 
     /**
-     * construct a new packet pair window with the given size
+     * Construct a new packet pair window with the given size
      *
      * @param size
      */
@@ -20,7 +20,7 @@ public class PacketPairWindow extends CircularArray<Long> {
     }
 
     /**
-     * compute the median packet pair interval of the last
+     * Compute the median packet pair interval of the last
      * 16 packet pair intervals (PI).
      * (see specification section 6.2, page 12)
      *
@@ -51,10 +51,9 @@ public class PacketPairWindow extends CircularArray<Long> {
     }
 
     /**
-     * compute the estimated linK capacity using the values in
-     * packet pair window
+     * Compute the estimated link capacity using the values in packet pair window.
      *
-     * @return number of packets per second
+     * @return number of packets per second.
      */
     public long getEstimatedLinkCapacity() {
         long res = (long) Math.ceil(1000000 / computeMedianTimeInterval());

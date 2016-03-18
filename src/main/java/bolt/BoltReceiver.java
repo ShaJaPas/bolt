@@ -5,7 +5,6 @@ import bolt.packets.ControlPacket.ControlPacketType;
 import bolt.packets.Shutdown;
 import bolt.receiver.*;
 import bolt.statistic.BoltStatistics;
-import bolt.statistic.MeanValue;
 import bolt.util.SequenceNumber;
 import bolt.util.Util;
 import org.slf4j.Logger;
@@ -65,7 +64,9 @@ public class BoltReceiver {
     private final PacketPairWindow packetPairWindow;
 
     // EXP event related
-    /** Instant when the session was created (for expiry checking) */
+    /**
+     * Instant when the session was created (for expiry checking)
+     */
     private final long sessionUpSince;
 
     /**
@@ -74,29 +75,20 @@ public class BoltReceiver {
     private final long bufferSize;
 
     /**
-     * stores received packets to be sent
+     * Stores received packets to be sent.
      */
     private final BlockingQueue<BoltPacket> handOffQueue;
-    private final boolean storeStatistics;
     private final Config config;
     /**
-     * Estimated link capacity.
+     * Round trip time, calculated from ACK/ACK2 pairs.
      */
-    long estimateLinkCapacity;
+    private long roundTripTime = 0;
     /**
-     * The packet arrival rate.
+     * Round trip time variance.
      */
-    long packetArrivalSpeed;
+    private long roundTripTimeVar = roundTripTime / 2;
     /**
-     * round trip time, calculated from ACK/ACK2 pairs
-     */
-    long roundTripTime = 0;
-    /**
-     * round trip time variance
-     */
-    long roundTripTimeVar = roundTripTime / 2;
-    /**
-     * for storing the arrival time of the last received data packet
+     * For storing the arrival time of the last received data packet.
      */
     private volatile long lastDataPacketArrivalTime = 0;
     /**
@@ -105,7 +97,7 @@ public class BoltReceiver {
      */
     private volatile int largestReceivedSeqNumber = 0;
     /**
-     * last Ack number
+     * Last Ack number.
      */
     private long lastAckNumber = 0;
     /**
@@ -121,28 +113,25 @@ public class BoltReceiver {
      */
     private long nextACK;
     /**
-     * microseconds to next ACK event
+     * Microseconds to next ACK event.
      */
     private long ackTimerInterval = Util.getSYNTime();
     /**
-     * microseconds to next NAK event
+     * Microseconds to next NAK event.
      */
     private long nakTimerInterval = Util.getSYNTime();
     private long nextNAK;
     /**
-     * microseconds to next EXP event
+     * Microseconds to next EXP event.
      */
-    private long expTimerInterval = 100 * Util.getSYNTime();
+    private final long expTimerInterval = 100 * Util.getSYNTime();
     private long nextEXP;
     private volatile boolean stopped = false;
     /**
      * (optional) ack interval (see CongestionControl interface)
      */
     private volatile long ackInterval = -1;
-    private MeanValue dgReceiveInterval;
-    private MeanValue dataPacketInterval;
-    private MeanValue processTime;
-    private MeanValue dataProcessTime;
+
     /**
      * Number of received data packets.
      */
@@ -168,21 +157,7 @@ public class BoltReceiver {
         this.largestReceivedSeqNumber = session.getInitialSequenceNumber() - 1;
         this.bufferSize = session.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
-        this.storeStatistics = Boolean.getBoolean("bolt.receiver.storeStatistics");
         this.config = config;
-        initMetrics();
-    }
-
-    private void initMetrics() {
-        if (!storeStatistics) return;
-        dgReceiveInterval = new MeanValue("RECEIVER: Bolt receive interval");
-        statistics.addMetric(dgReceiveInterval);
-        dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
-        statistics.addMetric(dataPacketInterval);
-        processTime = new MeanValue("RECEIVER: Bolt packet process time");
-        statistics.addMetric(processTime);
-        dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
-        statistics.addMetric(dataProcessTime);
     }
 
     /**
@@ -219,12 +194,22 @@ public class BoltReceiver {
      * Packets are written by the endpoint.
      */
     protected void receive(final BoltPacket p) throws IOException {
-        if (storeStatistics) dgReceiveInterval.end();
-        if (!p.isControlPacket() && LOG.isTraceEnabled()) {
-            LOG.trace("++ " + p + " queuesize=" + handOffQueue.size());
+        final int controlPacketType = p.getControlPacketType();
+        if (ControlPacketType.KEEP_ALIVE.getTypeId() == controlPacketType) {
+            resetEXPCount();
         }
-        handOffQueue.offer(p);
-        if (storeStatistics) dgReceiveInterval.begin();
+        else if (ControlPacketType.NAK.getTypeId() == controlPacketType) {
+            resetEXPTimer();
+        }
+        else if (!p.forSender()) {
+            // Only allow in here for DataPacket/Ack2/Shutdown
+            statistics.beginReceive();
+            if (!p.isControlPacket() && LOG.isDebugEnabled()) {
+                LOG.debug("++ " + p + " queuesize=" + handOffQueue.size());
+            }
+            handOffQueue.offer(p);
+            statistics.endReceive();
+        }
     }
 
     /**
@@ -254,23 +239,9 @@ public class BoltReceiver {
      * <li> Update LRSN. Go to 1).
      * </ol>
      */
-    public void receiverAlgorithm() throws InterruptedException, IOException {
-        // check ACK timer
-        long currentTime = Util.getCurrentTime();
-        if (nextACK < currentTime) {
-            nextACK = currentTime + ackTimerInterval;
-            processACKEvent(true);
-        }
-        // check NAK timer
-        if (nextNAK < currentTime) {
-            nextNAK = currentTime + nakTimerInterval;
-            processNAKEvent();
-        }
-        // check EXP timer
-        if (nextEXP < currentTime) {
-            nextEXP = currentTime + expTimerInterval;
-            processEXPEvent();
-        }
+    private void receiverAlgorithm() throws InterruptedException, IOException {
+        checkTimers();
+
         // Perform time-bounded UDP receive
         BoltPacket packet = null;
         try {
@@ -287,19 +258,38 @@ public class BoltReceiver {
             if (packet.isControlPacket()) {
                 ControlPacket cp = (ControlPacket) packet;
                 int cpType = cp.getControlPacketType();
+                // TODO is it even possible to reach here. ACK/NACK are received by sender
                 if (cpType == ControlPacketType.ACK.getTypeId() || cpType == ControlPacketType.NAK.getTypeId()) {
                     needEXPReset = true;
                 }
             }
-
             if (needEXPReset) {
                 nextEXP = Util.getCurrentTime() + expTimerInterval;
             }
-            if (storeStatistics) processTime.begin();
+            statistics.beginProcess();
 
             processPacket(packet);
 
-            if (storeStatistics) processTime.end();
+            statistics.endProcess();
+        }
+    }
+
+    private void checkTimers() throws IOException {
+        // Check ACK timer.
+        final long currentTime = Util.getCurrentTime();
+        if (nextACK < currentTime) {
+            nextACK = currentTime + ackTimerInterval;
+            processACKEvent(true);
+        }
+        // Check NAK timer.
+        if (nextNAK < currentTime) {
+            nextNAK = currentTime + nakTimerInterval;
+            processNAKEvent();
+        }
+        // Check EXP timer.
+        if (nextEXP < currentTime) {
+            nextEXP = currentTime + expTimerInterval;
+            processEXPEvent();
         }
     }
 
@@ -338,7 +328,7 @@ public class BoltReceiver {
      * of this ACK in the ACK History Window.
      * </ol>
      */
-    protected void processACKEvent(boolean isTriggeredByTimer) throws IOException {
+    private void processACKEvent(boolean isTriggeredByTimer) throws IOException {
         // 1) Find the sequence number *prior to which* all the packets have been received
         final int ackNumber;
         ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
@@ -387,7 +377,7 @@ public class BoltReceiver {
      * (according to section 6.4) and send these numbers back to the sender
      * in an NAK packet.
      */
-    protected void processNAKEvent() throws IOException {
+    private void processNAKEvent() throws IOException {
         final List<Integer> seqNumbers = receiverLossList.getFilteredSequenceNumbers(roundTripTime, true);
         sendNAK(seqNumbers);
     }
@@ -406,7 +396,7 @@ public class BoltReceiver {
      *
      * @throws IOException if shutdown, stop or send of keep-alive fails.
      */
-    protected void processEXPEvent() throws IOException {
+    private void processEXPEvent() throws IOException {
         if (session.getSocket() == null || !session.getSocket().isActive()) return;
         final BoltSender sender = session.getSocket().getSender();
         // Put all the unacknowledged packets in the senders loss list.
@@ -425,23 +415,15 @@ public class BoltReceiver {
         expCount++;
     }
 
-    protected void processPacket(BoltPacket p) throws IOException {
+    private void processPacket(BoltPacket p) throws IOException {
         // 3) Check the packet type and process it according to this.
-
         if (!p.isControlPacket()) {
-            DataPacket dp = (DataPacket) p;
-            if (storeStatistics) {
-                dataPacketInterval.end();
-                dataProcessTime.begin();
-            }
-            onDataPacketReceived(dp);
-            if (storeStatistics) {
-                dataProcessTime.end();
-                dataPacketInterval.begin();
-            }
+            statistics.beginDataProcess();
+            onDataPacketReceived((DataPacket) p);
+            statistics.endDataProcess();
         }
         else if (p.getControlPacketType() == ControlPacketType.ACK2.getTypeId()) {
-            Acknowledgment2 ack2 = (Acknowledgment2) p;
+            final Acknowledgment2 ack2 = (Acknowledgment2) p;
             onAck2PacketReceived(ack2);
         }
         else if (p instanceof Shutdown) {
@@ -449,8 +431,7 @@ public class BoltReceiver {
         }
     }
 
-    protected void onDataPacketReceived(final DataPacket dp) throws IOException {
-        final int currentSequenceNumber = dp.getPacketSequenceNumber();
+    private void onDataPacketReceived(final DataPacket dp) throws IOException {
 
         if (!isReceivable()) {
             LOG.debug("Artificial packet loss, dropping packet");
@@ -464,6 +445,8 @@ public class BoltReceiver {
         }
 
         long currentDataPacketArrivalTime = Util.getCurrentTime();
+        final int currentSequenceNumber = dp.getPacketSequenceNumber();
+        statistics.incNumberOfReceivedDataPackets();
 
         // 4) If the seqNo of the current data packet is 16n+1, record the time interval
         // between this packet and the last data packet in the packet pair window.
@@ -479,7 +462,7 @@ public class BoltReceiver {
 
         // 6) Number of detected lossed packet
         if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber + 1) > 0) {
-            // 6.a) If the number of the current data packet is greater than LSRN+1,
+            // 6.a) If the number of the current data packet is greater than LSRN + 1,
             // put all the sequence numbers between (but excluding) these two values
             // into the receiver's loss list and send them to the sender in an NAK packet
             sendNAK(currentSequenceNumber);
@@ -488,8 +471,6 @@ public class BoltReceiver {
             // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
             receiverLossList.remove(currentSequenceNumber);
         }
-
-        statistics.incNumberOfReceivedDataPackets();
 
         // 7) Update the LRSN
         if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) > 0) {
@@ -503,13 +484,13 @@ public class BoltReceiver {
     }
 
     /**
-     * write a NAK triggered by a received sequence number that is larger than
+     * Write a NAK triggered by a received sequence number that is larger than
      * the largestReceivedSeqNumber + 1
      *
-     * @param currentSequenceNumber - the currently received sequence number
+     * @param currentSequenceNumber the currently received sequence number
      * @throws IOException
      */
-    protected void sendNAK(long currentSequenceNumber) throws IOException {
+    private void sendNAK(long currentSequenceNumber) throws IOException {
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(largestReceivedSeqNumber + 1, currentSequenceNumber);
         nAckPacket.setSession(session);
@@ -520,11 +501,11 @@ public class BoltReceiver {
             receiverLossList.insert(detectedLossSeqNumber);
         }
         endpoint.doSend(nAckPacket);
-        LOG.info("NAK for {}", currentSequenceNumber);
+        LOG.debug("NAK for {}", currentSequenceNumber);
         statistics.incNumberOfNAKSent();
     }
 
-    protected void sendNAK(List<Integer> sequenceNumbers) throws IOException {
+    private void sendNAK(List<Integer> sequenceNumbers) throws IOException {
         if (sequenceNumbers.isEmpty()) return;
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(sequenceNumbers);
@@ -534,20 +515,20 @@ public class BoltReceiver {
         statistics.incNumberOfNAKSent();
     }
 
-    protected long sendLightAcknowledgment(final int ackNumber) throws IOException {
+    private long sendLightAcknowledgment(final int ackNumber) throws IOException {
         Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
         endpoint.doSend(acknowledgmentPkt);
         statistics.incNumberOfACKSent();
         return acknowledgmentPkt.getAckSequenceNumber();
     }
 
-    protected long sendAcknowledgment(final int ackNumber) throws IOException {
+    private long sendAcknowledgment(final int ackNumber) throws IOException {
         Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
         // Set the estimate link capacity
-        estimateLinkCapacity = packetPairWindow.getEstimatedLinkCapacity();
+        final long estimateLinkCapacity = packetPairWindow.getEstimatedLinkCapacity();
         acknowledgmentPkt.setEstimatedLinkCapacity(estimateLinkCapacity);
         // Set the packet arrival rate
-        packetArrivalSpeed = packetHistoryWindow.getPacketArrivalSpeed();
+        final long packetArrivalSpeed = packetHistoryWindow.getPacketArrivalSpeed();
         acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
 
         endpoint.doSend(acknowledgmentPkt);
@@ -587,8 +568,8 @@ public class BoltReceiver {
      * <li> Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
      * </ol>
      */
-    protected void onAck2PacketReceived(Acknowledgment2 ack2) {
-        AckHistoryEntry entry = ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
+    private void onAck2PacketReceived(Acknowledgment2 ack2) {
+        final AckHistoryEntry entry = ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
         if (entry != null) {
             long ackNumber = entry.getAckNumber();
             largestAcknowledgedAckNumber = Math.max(ackNumber, largestAcknowledgedAckNumber);
@@ -617,14 +598,14 @@ public class BoltReceiver {
         // TODO this was never implemented. Investigate if required and implications.
     }
 
-    protected void sendKeepAlive() throws IOException {
+    private void sendKeepAlive() throws IOException {
         KeepAlive ka = new KeepAlive();
         ka.setDestinationID(session.getDestination().getSocketID());
         ka.setSession(session);
         endpoint.doSend(ka);
     }
 
-    protected void sendShutdown() throws IOException {
+    private void sendShutdown() throws IOException {
         Shutdown s = new Shutdown();
         s.setDestinationID(session.getDestination().getSocketID());
         s.setSession(session);
@@ -644,7 +625,7 @@ public class BoltReceiver {
         this.ackInterval = ackInterval;
     }
 
-    protected void onShutdown() throws IOException {
+    private void onShutdown() throws IOException {
         stop();
     }
 
@@ -654,7 +635,7 @@ public class BoltReceiver {
             session.getSocket().close();
         }
         catch (IOException ex) {
-            LOG.warn("Could not shutdown cleanly" + ex.getMessage());
+            LOG.warn("Could not shutdown cleanly [{}]", ex.getMessage());
         }
         // Stop our sender as well.
         session.getSocket().getSender().stop();

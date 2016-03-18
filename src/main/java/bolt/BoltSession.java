@@ -109,12 +109,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BoltSession {
 
-    /**
-     * Key for a system property defining the CC class to be used.
-     *
-     * @see CongestionControl
-     */
+
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
+
     private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
     protected final BoltStatistics statistics;
     protected final CongestionControl cc;
@@ -126,7 +123,9 @@ public abstract class BoltSession {
     protected volatile boolean active;
     protected volatile BoltSocket socket;
     protected int receiveBufferSize = 64 * 32768;
-    /** Session cookie created during handshake. */
+    /**
+     * Session cookie created during handshake.
+     */
     protected long sessionCookie = 0;
 
     /**
@@ -139,10 +138,12 @@ public abstract class BoltSession {
     protected int datagramSize = BoltEndPoint.DATAGRAM_SIZE;
     protected Integer initialSequenceNumber = null;
     private volatile SessionState state = SessionState.START;
+
     // Cache dgPacket (peer stays the same always)
     private DatagramPacket dgPacket;
+
     public BoltSession(final String description, final Destination destination) {
-        this.statistics = new BoltStatistics(description);
+        this.statistics = new BoltStatistics(description, datagramSize);
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
         this.destination = destination;
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());

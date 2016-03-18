@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,11 +25,10 @@ public class BoltStatistics {
     private final AtomicInteger numberOfACKReceived = new AtomicInteger(0);
     private final AtomicInteger numberOfCCSlowDownEvents = new AtomicInteger(0);
     private final AtomicInteger numberOfCCWindowExceededEvents = new AtomicInteger(0);
-
     private final String componentDescription;
-    private final List<MeanValue> metrics = new ArrayList<>();
+    //    private final Map<Metric, MeanValue> metrics = new HashMap<>();
     private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
-    boolean first = true;
+    private boolean first = true;
     private volatile long roundTripTime;
     private volatile long roundTripTimeVariance;
     private volatile long packetArrivalRate;
@@ -37,8 +37,21 @@ public class BoltStatistics {
     private volatile long congestionWindowSize;
     private long initialTime;
 
-    public BoltStatistics(String componentDescription) {
+    // Sender metrics
+    private final MeanValue dgSendTime = new MeanValue("SENDER: Datagram send time");
+    private final MeanValue dgSendInterval = new MeanValue("SENDER: Datagram send interval");
+    private final MeanThroughput throughput;
+
+    // Receiver metrics
+    private final MeanValue dgReceiveInterval = new MeanValue("RECEIVER: Bolt receive interval");
+    private final MeanValue dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
+    private final MeanValue processTime = new MeanValue("RECEIVER: Bolt packet process time");
+    private final MeanValue dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
+
+
+    public BoltStatistics(final String componentDescription, final int datagramSize) {
         this.componentDescription = componentDescription;
+        this.throughput = new MeanThroughput("SENDER: Throughput", datagramSize);
     }
 
     public int getNumberOfSentDataPackets() {
@@ -148,25 +161,17 @@ public class BoltStatistics {
     }
 
     /**
-     * add a metric
-     *
-     * @param m - the metric to add
-     */
-    public void addMetric(MeanValue m) {
-        metrics.add(m);
-    }
-
-    /**
      * get a read-only list containing all metrics
      *
      * @return
      */
     public List<MeanValue> getMetrics() {
-        return Collections.unmodifiableList(metrics);
+        return Collections.unmodifiableList(Arrays.asList(dgSendInterval, dgSendTime, throughput, dgReceiveInterval,
+                dataPacketInterval, processTime, dataProcessTime));
     }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
         sb.append("Statistics for ").append(componentDescription).append("\n");
         sb.append("Sent data packets: ").append(getNumberOfSentDataPackets()).append("\n");
         sb.append("Received data packets: ").append(getNumberOfReceivedDataPackets()).append("\n");
@@ -193,17 +198,18 @@ public class BoltStatistics {
         }
         sb.append("CC parameter SND:  ").append((int) sendPeriod).append("\n");
         sb.append("CC parameter CWND: ").append(congestionWindowSize).append("\n");
-        for (MeanValue v : metrics) {
+        for (MeanValue v : getMetrics()) {
             sb.append(v.getName()).append(": ").append(v.getFormattedMean()).append("\n");
         }
         return sb.toString();
     }
 
     /**
-     * take a snapshot of relevant parameters for later storing to
+     * Take a snapshot of relevant parameters for later storing to
      * file using {@link #writeParameterHistory(File)}
      */
     public void storeParameters() {
+        final List<MeanValue> metrics = getMetrics();
         synchronized (statsHistory) {
             if (first) {
                 first = false;
@@ -215,7 +221,7 @@ public class BoltStatistics {
     }
 
     /**
-     * write saved parameters to disk
+     * Write saved parameters to disk.
      *
      * @param toFile
      */
@@ -228,6 +234,69 @@ public class BoltStatistics {
                 }
             }
         }
+    }
+
+//    public void begin(final Metric metric) {
+//        final MeanValue v = metrics.get(metric);
+//        if (v != null) v.begin();
+//    }
+//
+//    public void end(final Metric metric) {
+//        final MeanValue v = metrics.get(metric);
+//        if (v != null) v.end();
+//    }
+
+    public void beginSend() {
+        dgSendInterval.end();
+        dgSendTime.begin();
+    }
+
+    public void endSend() {
+        dgSendTime.end();
+        dgSendInterval.begin();
+        throughput.end();
+        throughput.begin();
+    }
+
+    public void beginDataProcess() {
+        dataPacketInterval.end();
+        dataProcessTime.begin();
+    }
+
+    public void endDataProcess() {
+        dataProcessTime.end();
+        dataPacketInterval.begin();
+    }
+
+    public void beginProcess() {
+        processTime.begin();
+    }
+
+    public void endProcess() {
+        processTime.end();
+    }
+
+    public void beginReceive() {
+        dgReceiveInterval.end();
+    }
+
+    public void endReceive() {
+        dgReceiveInterval.begin();
+    }
+
+    public enum Metric {
+
+        // Receiver
+        DG_RECEIVE_INTERVAL,
+        DATA_PACKET_INTERVAL,
+        PROCESS_TIME,
+        DATA_PROCESS_TIME,
+
+        // Sender
+        DG_SEND_TIME,
+        DG_SEND_INTERVAL,
+        THROUGHPUT,;
+
     }
 
 }

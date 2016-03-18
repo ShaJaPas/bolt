@@ -16,4 +16,9 @@ public class KeepAlive extends ControlPacket {
     public byte[] encodeControlInformation() {
         return null;
     }
+
+    @Override
+    public boolean forSender() {
+        return false;
+    }
 }

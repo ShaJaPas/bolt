@@ -26,7 +26,7 @@ public class MeanValue {
         this.name = name;
     }
 
-    public void addValue(final double value) {
+    private void addValue(final double value) {
         mean = (mean * n + value) / (n + 1);
         n++;
         max = Math.max(max, value);
@@ -37,7 +37,7 @@ public class MeanValue {
         return mean;
     }
 
-    public String getFormattedMean() {
+    String getFormattedMean() {
         return format.format(getMean());
     }
 
@@ -58,7 +58,7 @@ public class MeanValue {
         if (start > 0) addValue(Util.getCurrentTime() - start);
     }
 
-    public String getName() {
+    String getName() {
         return name;
     }
 

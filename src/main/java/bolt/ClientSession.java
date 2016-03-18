@@ -111,24 +111,23 @@ public class ClientSession extends BoltSession {
     public void received(BoltPacket packet, Destination peer) {
         if (getState() == READY) {
 
-            if (packet instanceof Shutdown) {
+            if (packet.isControlPacket() && packet instanceof Shutdown) {
                 setState(SHUTDOWN);
                 active = false;
                 LOG.info("Connection shutdown initiated by the other side.");
-                return;
             }
-            active = true;
-            try {
-                if (packet.forSender()) {
+            else {
+                active = true;
+                try {
+                    // Send all packets to both sender and receiver
                     socket.getSender().receive(packet);
-                } else {
                     socket.getReceiver().receive(packet);
                 }
-            }
-            catch (Exception ex) {
-                // Session is invalid.
-                LOG.error("Error in " + toString(), ex);
-                setState(INVALID);
+                catch (Exception ex) {
+                    // Session is invalid.
+                    LOG.error("Error in " + toString(), ex);
+                    setState(INVALID);
+                }
             }
         }
     }
