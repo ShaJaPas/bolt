@@ -10,7 +10,7 @@ import java.util.Random;
 public class SequenceNumber {
 
 
-    public final static int MAX_SEQ_NUM = 0x1FFFFFFF; //2^29 - 1
+    public final static int MAX_SEQ_NUM = (int) (Math.pow(2, 28) - 1);
     private final static int MAX_OFFSET = MAX_SEQ_NUM / 2;
 
     private final static Random rand = new Random();
@@ -77,7 +77,7 @@ public class SequenceNumber {
     }
 
     /**
-     * generates a random number between 1 and {@value MAX_OFFSET} (inclusive)
+     * Generates a random number between 1 and {@value MAX_OFFSET} (inclusive).
      */
     public static int random() {
         return 1 + rand.nextInt(MAX_OFFSET);

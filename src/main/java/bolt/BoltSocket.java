@@ -1,6 +1,7 @@
 package bolt;
 
 import bolt.packets.DataPacket;
+import bolt.util.AdvancedReceiveBuffer;
 import bolt.util.ReceiveBuffer;
 import rx.Observable;
 import rx.schedulers.Schedulers;
@@ -24,7 +25,7 @@ public class BoltSocket {
     // Processing received data
     private final BoltReceiver receiver;
     private final BoltSender sender;
-    private final ReceiveBuffer receiveBuffer;
+    private final AdvancedReceiveBuffer receiveBuffer;
 
     /**
      * @param endpoint
@@ -37,7 +38,7 @@ public class BoltSocket {
         this.sender = new BoltSender(session, endpoint);
 
         final int capacity = 2 * session.getFlowWindowSize();
-        this.receiveBuffer = new ReceiveBuffer(capacity, session.getInitialSequenceNumber());
+        this.receiveBuffer = new AdvancedReceiveBuffer(capacity, session.getInitialSequenceNumber());
     }
 
     public Observable<?> start() {
@@ -114,7 +115,7 @@ public class BoltSocket {
         active = false;
     }
 
-    public ReceiveBuffer getReceiveBuffer() {
+    public AdvancedReceiveBuffer getReceiveBuffer() {
         return receiveBuffer;
     }
 

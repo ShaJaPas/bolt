@@ -8,6 +8,7 @@ import rx.Observable;
 public interface Server extends Sender {
 
     /*
+    EVENTS:
     Client connect
     Client disconnect
     Receive data

@@ -2,6 +2,9 @@ package bolt.util;
 
 import bolt.packets.DataPacket;
 
+import java.util.Comparator;
+import java.util.Queue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -12,12 +15,10 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Cian O'Mahony
  */
-public class ReceiveBuffer {
+public class AdvancedReceiveBuffer
+{
 
-    private final DataPacket[] buffer;
-
-    /** The lowest sequence number stored in this buffer. */
-    private final int initialSequenceNumber;
+    private final Queue<DataPacket> buffer;
 
     /** Number of chunks.. */
     private final AtomicInteger numValidChunks = new AtomicInteger(0);
@@ -29,18 +30,12 @@ public class ReceiveBuffer {
     /** The size of the buffer. */
     private final int size;
 
-    /**
-     * The head of the buffer: contains the next chunk to be read by the application, i.e. the one with the lowest sequence number.
-     */
-    private volatile int readPosition = 0;
-
     /** The highest sequence number already read by the application. */
     private int highestReadSequenceNumber;
 
-    public ReceiveBuffer(final int size, final int initialSequenceNumber) {
+    public AdvancedReceiveBuffer(final int size, final int initialSequenceNumber) {
         this.size = size;
-        this.buffer = new DataPacket[size];
-        this.initialSequenceNumber = initialSequenceNumber;
+        this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriortyComparator());
         this.lock = new ReentrantLock(false);
         this.notEmpty = lock.newCondition();
         this.highestReadSequenceNumber = SequenceNumber.decrement(initialSequenceNumber);
@@ -62,15 +57,15 @@ public class ReceiveBuffer {
         }
         lock.lock();
         try {
-            final int seq = data.getPacketSequenceNumber();
-            // If already have this chunk, discard it.
-            if (SequenceNumber.compare(seq, highestReadSequenceNumber) <= 0) {
-                return true;
+            if (data.isOrdered()) {
+                final int seq = data.getPacketSequenceNumber();
+                // If already have this chunk, discard it.
+                if (SequenceNumber.compare(seq, highestReadSequenceNumber) <= 0) {
+                    return true;
+                }
             }
             // Else compute insert position.
-            int offset = SequenceNumber.seqOffset(initialSequenceNumber, seq);
-            int insert = offset % size;
-            buffer[insert] = data;
+            buffer.offer(data);
             numValidChunks.incrementAndGet();
             notEmpty.signal();
             return true;
@@ -121,18 +116,31 @@ public class ReceiveBuffer {
     /**
      * Return a data chunk, guaranteed to be in-order.
      */
+    //TODO this needs to be heavily test with many combinations (reliability|ordering)
     public DataPacket poll() {
         if (numValidChunks.get() == 0) {
             return null;
         }
-        final DataPacket r = buffer[readPosition];
+        final DataPacket r = buffer.peek();
         if (r != null) {
-            int thisSeq = r.getPacketSequenceNumber();
-            if (1 == SequenceNumber.seqOffset(highestReadSequenceNumber, thisSeq)) {
-                increment();
-                highestReadSequenceNumber = thisSeq;
+            // If packet is ordered, ensure that is it the next in the sequence to be read.
+            if (r.isOrdered()) {
+                final int thisSeq = r.getPacketSequenceNumber();
+                final int comparison = SequenceNumber.seqOffset(highestReadSequenceNumber, thisSeq);
+                if (comparison == 1) {
+                    highestReadSequenceNumber = thisSeq;
+                }
+                else if (comparison <= 0) {
+                    buffer.remove(r);
+                    numValidChunks.decrementAndGet();
+                    return null;
+                }
+                else {
+                    return null;
+                }
             }
-            else return null;
+            numValidChunks.decrementAndGet();
+            buffer.remove(r);
         }
         return r;
     }
@@ -141,11 +149,26 @@ public class ReceiveBuffer {
         return numValidChunks.get();
     }
 
-    private void increment() {
-        buffer[readPosition] = null;
-        readPosition++;
-        if (readPosition == size) readPosition = 0;
-        numValidChunks.decrementAndGet();
+    private static class DataPacketPriortyComparator implements Comparator<DataPacket> {
+
+        /**
+         * Compares with the following priority:
+         * <ol>
+         *     <li>Unordered packets</li>
+         *     <li>Ordered packets by seq number</li>
+         * </ol>
+         *
+         * @param o1 Packet 1.
+         * @param o2 Packet 2.
+         * @return the ordering.
+         */
+        @Override
+        public int compare(final DataPacket o1, final DataPacket o2)
+        {
+            if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? -1 : 1);
+
+            return o1.getPacketSequenceNumber() - o2.getPacketSequenceNumber();
+        }
     }
 
 }

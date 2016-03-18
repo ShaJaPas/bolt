@@ -204,8 +204,8 @@ public class BoltReceiver {
         else if (!p.forSender()) {
             // Only allow in here for DataPacket/Ack2/Shutdown
             statistics.beginReceive();
-            if (!p.isControlPacket() && LOG.isDebugEnabled()) {
-                LOG.debug("++ " + p + " queuesize=" + handOffQueue.size());
+            if (!p.isControlPacket() && LOG.isTraceEnabled()) {
+                LOG.trace("++ " + p + " queuesize=" + handOffQueue.size());
             }
             handOffQueue.offer(p);
             statistics.endReceive();
@@ -415,7 +415,7 @@ public class BoltReceiver {
         expCount++;
     }
 
-    private void processPacket(BoltPacket p) throws IOException {
+    private void processPacket(final BoltPacket p) throws IOException {
         // 3) Check the packet type and process it according to this.
         if (!p.isControlPacket()) {
             statistics.beginDataProcess();
@@ -432,8 +432,9 @@ public class BoltReceiver {
     }
 
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
+        n++;
 
-        if (!isReceivable()) {
+        if (isArtificialDrop()) {
             LOG.debug("Artificial packet loss, dropping packet");
             return;
         }
@@ -444,15 +445,18 @@ public class BoltReceiver {
             return;
         }
 
-        long currentDataPacketArrivalTime = Util.getCurrentTime();
+        final long currentDataPacketArrivalTime = Util.getCurrentTime();
         final int currentSequenceNumber = dp.getPacketSequenceNumber();
         statistics.incNumberOfReceivedDataPackets();
 
-        // 4) If the seqNo of the current data packet is 16n+1, record the time interval
-        // between this packet and the last data packet in the packet pair window.
-        if ((currentSequenceNumber % 16) == 1 && lastDataPacketArrivalTime > 0) {
-            long interval = currentDataPacketArrivalTime - lastDataPacketArrivalTime;
-            packetPairWindow.add(interval);
+        if (dp.isReliable()) {
+            // 4) If the seqNo of the current data packet is 16n+1, record the time interval
+            // between this packet and the last data packet in the packet pair window.
+            // TODO unreliable packets should also be measured?
+            if ((currentSequenceNumber % 16) == 1 && lastDataPacketArrivalTime > 0) {
+                final long interval = currentDataPacketArrivalTime - lastDataPacketArrivalTime;
+                packetPairWindow.add(interval);
+            }
         }
 
         // 5) Record the packet arrival time in the PKT History Window.
@@ -460,27 +464,30 @@ public class BoltReceiver {
         // Store current time
         lastDataPacketArrivalTime = currentDataPacketArrivalTime;
 
-        // 6) Number of detected lossed packet
-        if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber + 1) > 0) {
-            // 6.a) If the number of the current data packet is greater than LSRN + 1,
-            // put all the sequence numbers between (but excluding) these two values
-            // into the receiver's loss list and send them to the sender in an NAK packet
-            sendNAK(currentSequenceNumber);
-        }
-        else if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) < 0) {
-            // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
-            receiverLossList.remove(currentSequenceNumber);
+        if (dp.isReliable()) {
+            // 6) Number of detected lossed packet
+            if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber + 1) > 0) {
+                // 6.a) If the number of the current data packet is greater than LSRN + 1,
+                // put all the sequence numbers between (but excluding) these two values
+                // into the receiver's loss list and send them to the sender in an NAK packet
+                sendNAK(currentSequenceNumber);
+            }
+            else if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) < 0) {
+                // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
+                receiverLossList.remove(currentSequenceNumber);
+            }
+
+            // 7) Update the LRSN
+            if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) > 0) {
+                largestReceivedSeqNumber = currentSequenceNumber;
+            }
+
+            // 8) Need to send an ACK? Some cc algorithms use this.
+            if (ackInterval > 0) {
+                if (n % ackInterval == 0) processACKEvent(false);
+            }
         }
 
-        // 7) Update the LRSN
-        if (SequenceNumber.compare(currentSequenceNumber, largestReceivedSeqNumber) > 0) {
-            largestReceivedSeqNumber = currentSequenceNumber;
-        }
-
-        // 8) Need to send an ACK? Some cc algorithms use this.
-        if (ackInterval > 0) {
-            if (n % ackInterval == 0) processACKEvent(false);
-        }
     }
 
     /**
@@ -641,9 +648,9 @@ public class BoltReceiver {
         session.getSocket().getSender().stop();
     }
 
-    private boolean isReceivable() {
+    private boolean isArtificialDrop() {
         final float dropRate = config.getPacketDropRate();
-        return dropRate <= 0 || ++n % dropRate < 1f;
+        return dropRate > 0 && (n % dropRate < 1f);
     }
 
 

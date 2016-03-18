@@ -81,10 +81,10 @@ public class PacketUtil {
                 | (data[start + 3] & 0xFF);
     }
 
-    public static int decodeInt(byte[] data, int start, int startBit, int endBit) {
-        int decoded = decodeInt(data, start);
-        decoded = decoded >> startBit;
-        return decoded & ((int)Math.pow(2, endBit - startBit) - 1);
+    public static int decodeInt(byte[] data, int byteOffset, int startBitInclusive, int endBitExclusive) {
+        int decoded = decodeInt(data, byteOffset);
+        decoded = decoded >> startBitInclusive;
+        return decoded & ((int)Math.pow(2, endBitExclusive - startBitInclusive) - 1);
     }
 
     public static long decode(byte[] data, int start) {

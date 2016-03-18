@@ -9,7 +9,11 @@ import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
 import java.security.MessageDigest;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * some additional utilities useful for testing
@@ -27,6 +31,9 @@ public abstract class BoltTestBase {
     protected int nextClientPort() {
         return PortUtil.nextClientPort();
     }
+
+    protected final Set<Throwable> errors   = new HashSet<>();
+    protected final AtomicInteger  received = new AtomicInteger(0);
 
     // Get an array filled with random data
     protected byte[] getRandomData(final int size) {
@@ -53,8 +60,14 @@ public abstract class BoltTestBase {
 
     protected BoltClient runClient(final int serverPort, final Action1<BoltClient> onReady,
                                    final Action1<Throwable> onError) throws Exception {
+        return runClient(serverPort, onReady, onError, null);
+    }
+
+    protected BoltClient runClient(final int serverPort, final Action1<BoltClient> onReady,
+            final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
+        if (init != null) init.accept(client);
 
         client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())

@@ -31,9 +31,16 @@ public class TestBoltServer extends BoltTestBase {
 
     // Set an artificial loss rate.
     @Test
-    public void testWithLoss() throws Throwable {
+    public void testWithHighLoss() throws Throwable {
         num_packets = 100;
-        doTest(0.33334f);
+        doTest(0.5f);
+    }
+
+    // Set an artificial loss rate.
+    @Test
+    public void testWithLowLoss() throws Throwable {
+        num_packets = 100;
+        doTest(0.1f);
     }
 
     // Send even more data.

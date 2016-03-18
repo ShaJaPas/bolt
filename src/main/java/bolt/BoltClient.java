@@ -150,7 +150,7 @@ public class BoltClient implements Client {
         return clientSession.getStatistics();
     }
 
-    public XCoderRepository getxCoderRepository() {
+    public XCoderRepository xCoderRepository() {
         return xCoderRepository;
     }
 

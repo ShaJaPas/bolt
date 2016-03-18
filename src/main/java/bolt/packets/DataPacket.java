@@ -14,7 +14,7 @@ import java.util.Objects;
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |0|M|R|                Packet Sequence Number                   |
+ * |0|M|R|O|              Packet Sequence Number                   | TODO change M|R fields to 3 bit delivery type
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Destination Socket ID     |            Class ID           |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -46,9 +46,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private byte[] data;
 
-    private boolean reliable;
-
-    private boolean message;
+    private DeliveryType delivery;
 
     private int packetSequenceNumber;
 
@@ -83,21 +81,21 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     void decode(final byte[] encodedData, final int length) {
-        message = PacketUtil.isBitSet(encodedData[0], 6);
-        reliable = PacketUtil.isBitSet(encodedData[0], 5);
+        byte deliveryType = (byte) PacketUtil.decodeInt(encodedData, 0, 28, 31);
+        delivery = DeliveryType.fromId(deliveryType);
 
         packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
         destinationID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
         classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
         // If is message.
-        if (message) {
+        if (delivery.isMessage()) {
             finalMessageChunk = PacketUtil.isBitSet(encodedData[8], 7);
             messageChunkNumber = PacketUtil.decodeInt(encodedData, 8, 16, 31);
             messageId = PacketUtil.decodeInt(encodedData, 8, 0, 16);
         }
 
-        final int headerLength = message ? 12 : 8;
+        final int headerLength = delivery.isMessage() ? 12 : 8;
         dataLength = length - headerLength;
         data = new byte[dataLength];
         System.arraycopy(encodedData, headerLength, data, 0, dataLength);
@@ -149,18 +147,21 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
      * Complete header (12 bytes) + data packet for transmission
      */
     public byte[] getEncoded() {
-        final int headerLength = message ? 12 : 8;
+        final int headerLength = delivery.isMessage() ? 12 : 8;
         byte[] result = new byte[headerLength + dataLength];
 
         byte[] flagsAndSeqNum = PacketUtil.encodeInt(packetSequenceNumber);
         flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 7, false);
-        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 6, message);
-        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 5, reliable);
+
+        final byte delId = delivery.getId();
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 6, ((delId >> 2) & 1) == 1);
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 5, ((delId >> 1) & 1) == 1);
+        flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 4, (delId & 1) == 1);
 
         System.arraycopy(flagsAndSeqNum, 0, result, 0, 4);
         System.arraycopy(PacketUtil.encode(destinationID), 2, result, 4, 2);
         System.arraycopy(PacketUtil.encode(classID), 2, result, 6, 2);
-        if (message) {
+        if (delivery.isMessage()) {
             final byte[] messageBits = new byte[4];
             messageBits[0] = PacketUtil.setBit(messageBits[0], 7, finalMessageChunk);
             PacketUtil.encodeMapToBytes(messageChunkNumber, messageBits, 15, 15);
@@ -178,8 +179,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         setDestinationID(src.getDestinationID());
 
         setData(src.getData());
-        setMessage(src.isMessage());
-        setReliable(src.isReliable());
+        setDelivery(src.getDelivery());
         setFinalMessageChunk(src.isFinalMessageChunk());
         setMessageChunkNumber(src.getMessageChunkNumber());
         setMessageId(src.getMessageId());
@@ -206,19 +206,25 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     public boolean isReliable() {
-        return reliable;
+        return delivery.isReliable();
     }
 
-    public void setReliable(boolean reliable) {
-        this.reliable = reliable;
+    public boolean isOrdered() {
+        return delivery.isOrdered();
+    }
+
+    public void setDelivery(DeliveryType delivery)
+    {
+        this.delivery = delivery;
+    }
+
+    public DeliveryType getDelivery()
+    {
+        return delivery;
     }
 
     public boolean isMessage() {
-        return message;
-    }
-
-    public void setMessage(boolean message) {
-        this.message = message;
+        return delivery.isMessage();
     }
 
     public int getMessageChunkNumber() {
@@ -262,8 +268,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DataPacket that = (DataPacket) o;
-        return reliable == that.reliable &&
-                message == that.message &&
+        return delivery == that.delivery&&
                 packetSequenceNumber == that.packetSequenceNumber &&
                 finalMessageChunk == that.finalMessageChunk &&
                 messageChunkNumber == that.messageChunkNumber &&
@@ -275,15 +280,14 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     @Override
     public int hashCode() {
-        return Objects.hash(data, reliable, message, packetSequenceNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, classID);
+        return Objects.hash(data, delivery, packetSequenceNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, classID);
     }
 
     @Override
     public String toString() {
         return "DataPacket{" +
                 "classID=" + classID +
-                ", reliable=" + reliable +
-                ", message=" + message +
+                ", delivery=" + delivery +
                 ", packetSequenceNumber=" + packetSequenceNumber +
                 ", finalMessageChunk=" + finalMessageChunk +
                 ", messageChunkNumber=" + messageChunkNumber +

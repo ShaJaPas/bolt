@@ -1,6 +1,7 @@
 
 **TODO**
 - [ ] Reliable/Unreliable packets
+- [ ] In-order and out-of-order delivery
 - [X] Message assembly/disassembly
 - [ ] Delivery strategy (aggressive, on NACK)
 - [ ] Trim control and data packets
@@ -19,3 +20,4 @@
 - [ ] Review Javadoc
 - [ ] Add group to base of package (before bolt.*)
 - [ ] Separate to core and api packages
+- [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -20,12 +21,12 @@ public class TestPacketFactory {
         String test = "sdjfsdjfldskjflds";
 
         byte[] data = test.getBytes();
-        data[0] = (byte) (data[0] & 0x7f);
+        data[0] = (byte) (data[0] & 0x0F);
         BoltPacket p = PacketFactory.createPacket(data);
         DataPacket recv = (DataPacket) p;
-        String t = new String(recv.getEncoded());
+
         assertTrue(p instanceof DataPacket);
-        assertEquals(test, t);
+        assertArrayEquals(data, recv.getEncoded());
     }
 
     @Test

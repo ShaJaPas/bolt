@@ -12,12 +12,13 @@ public class TestDataPacket {
 
     private DataPacket createRandomPacket() {
         final Random r = new Random();
-        final byte[] encodedData = new byte[100 + r.nextInt(1300)];
+        final byte[] encodedData = new byte[100 + r.nextInt(1288)];
         r.nextBytes(encodedData);
+
+        encodedData[0] = (byte) ((r.nextInt(5) << 4) | (r.nextInt(9))); // Delivery Type | First 4 seq no digits
 
         return new DataPacket(encodedData);
     }
-
 
     @Test
     public void testCopyIsSymmetric() {
@@ -36,7 +37,7 @@ public class TestDataPacket {
         IntStream.range(0, 1000).parallel().forEach(__ -> {
             int messageChunkNum = r.nextInt(PacketUtil.MAX_MESSAGE_CHUNK_NUM);
             final DataPacket src = createRandomPacket();
-            src.setMessage(true);
+            src.setDelivery(DeliveryType.RELIABLE_ORDERED_MESSAGE);
             src.setMessageChunkNumber(messageChunkNum);
             final DataPacket cpy = new DataPacket(src.getEncoded());
 
@@ -70,7 +71,7 @@ public class TestDataPacket {
     @Test
     public void testEncoded() {
         DataPacket p = createRandomPacket();
-        p.setMessage(false);
+        p.setDelivery(DeliveryType.RELIABLE_ORDERED);
         p.setPacketSequenceNumber(1);
         byte[] data = "test".getBytes();
         p.setData(data);
@@ -86,7 +87,7 @@ public class TestDataPacket {
     @Test
     public void testDecode1() {
         DataPacket testPacket1 = createRandomPacket();
-        testPacket1.setMessage(false);
+        testPacket1.setDelivery(DeliveryType.RELIABLE_ORDERED);
         testPacket1.setPacketSequenceNumber(127);
         testPacket1.setDestinationID(1);
         byte[] data1 = "Hallo".getBytes();
@@ -113,7 +114,7 @@ public class TestDataPacket {
     public void testEncodeDecode1() {
         final DataPacket dp = createRandomPacket();
         dp.setPacketSequenceNumber(127);
-        dp.setMessage(true);
+        dp.setDelivery(DeliveryType.RELIABLE_ORDERED_MESSAGE);
         dp.setMessageId(35457);
         dp.setDestinationID(255);
         dp.setData("test".getBytes());

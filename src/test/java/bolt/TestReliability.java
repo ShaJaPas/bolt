@@ -1,10 +1,15 @@
 package bolt;
 
+import bolt.packets.DeliveryType;
+import bolt.xcoder.ObjectXCoder;
+import bolt.xcoder.PackageXCoder;
+import bolt.xcoder.XCoderChain;
 import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 
@@ -19,20 +24,36 @@ public class TestReliability extends BoltTestBase {
 
     @Test
     public void testUnreliableWithPacketLoss() throws Throwable {
+        final XCoderChain<String> stringXCoderChain = XCoderChain.of(new PackageXCoder<>(new ObjectXCoder<String>() {
+            @Override
+            public String decode(byte[] data)
+            {
+                return new String(data);
+            }
+
+            @Override
+            public byte[] encode(String object)
+            {
+                return object.getBytes();
+            }
+        }, DeliveryType.UNRELIABLE_UNORDERED));
+
         final float packetLoss = 0.1f;
         final int sendCount = 50;
         final int expectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss));
-        final BoltServer server = runServer(byte[].class, x -> deliveryCount.incrementAndGet(), errors::add);
+        final BoltServer server = runServer(String.class, x -> deliveryCount.incrementAndGet(), errors::add);
+        server.xCoderRepository().register(String.class, stringXCoderChain);
         server.config().setPacketLoss(packetLoss);
+
+        final Consumer<BoltClient> initRegisterXCoder = (c) -> c.xCoderRepository().register(String.class, stringXCoderChain);
 
         runClient(server.getPort(),
                 c -> {
-                    c.getxCoderRepository().getXCoder(byte[].class).setReliable(false);
                     // Send unreliable
-                    for (int i = 0; i < sendCount; i++) c.send(getRandomData(1000));
+                    for (int i = 0; i < sendCount; i++) c.send(new String(getRandomData(500)));
                     c.flush();
                 },
-                errors::add);
+                errors::add, initRegisterXCoder);
 
         while (deliveryCount.get() < expectedDeliveryCount) {
             if (!errors.isEmpty()) throw errors.iterator().next();

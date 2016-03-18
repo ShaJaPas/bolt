@@ -2,6 +2,7 @@ package bolt.xcoder;
 
 import bolt.BoltException;
 import bolt.packets.DataPacket;
+import bolt.packets.DeliveryType;
 import bolt.packets.PacketUtil;
 
 import java.util.ArrayList;
@@ -19,17 +20,17 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 
     private final ObjectXCoder<T> objectXCoder;
 
-    private boolean reliable;
+    private DeliveryType deliveryType;
 
     public PackageXCoder(final ObjectXCoder<T> objectXCoder)
     {
-        this(objectXCoder, true);
+        this(objectXCoder, DeliveryType.RELIABLE_ORDERED_MESSAGE);
     }
 
-    public PackageXCoder(final ObjectXCoder<T> objectXCoder, final boolean reliable) {
+    public PackageXCoder(final ObjectXCoder<T> objectXCoder, final DeliveryType deliveryType) {
         Objects.requireNonNull(objectXCoder);
         this.objectXCoder = objectXCoder;
-        this.reliable = reliable;
+        this.deliveryType = deliveryType;
     }
 
     /**
@@ -61,14 +62,12 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
     @Override
     public Collection<DataPacket> encode(final T object) throws BoltException {
         final byte[] bytes = objectXCoder.encode(object);
-        final boolean message = isMessage(bytes);
         final int chunkCount = (int) Math.ceil(bytes.length / (double)maxPacketSize);
+        final DeliveryType computedDeliveryType = computeDeliveryType(chunkCount);
 
-        if (chunkCount > PacketUtil.MAX_MESSAGE_CHUNK_NUM) {
-            throw new BoltException("Object is too large to chunk. Actual chunk count: " + chunkCount);
-        }
+        validateEncoding(chunkCount, computedDeliveryType);
 
-        final List<DataPacket> dataPackets = new ArrayList<>();
+        final List<DataPacket> dataPackets = new ArrayList<>(chunkCount);
         for (int i = 0; i < chunkCount; i++) {
             final int byteOffset = i * maxPacketSize;
             final int packetSize = Math.min(maxPacketSize, bytes.length - byteOffset);
@@ -77,28 +76,33 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
 
             final DataPacket packet = new DataPacket();
             packet.setData(packetData);
-            packet.setReliable(reliable);
+            packet.setDelivery(computedDeliveryType);
             packet.setClassID(objectXCoder.getClassId());
-            packet.setMessage(message);
-            if (message) {
+            if (computedDeliveryType.isMessage()) {
                 packet.setMessageChunkNumber(i);
                 packet.setFinalMessageChunk(i == (chunkCount - 1));
             }
             dataPackets.add(packet);
         }
+
         return dataPackets;
     }
 
-    protected final boolean isMessage(final byte[] packetData) {
-        return reliable && (packetData.length > maxPacketSize);
+    private void validateEncoding(int chunkCount, DeliveryType computedDeliveryType) throws BoltException {
+        if (chunkCount > PacketUtil.MAX_MESSAGE_CHUNK_NUM) {
+            throw new BoltException("Object is too large to chunk. Actual chunk count: " + chunkCount);
+        }
+        else if (chunkCount > 1 && (!computedDeliveryType.isMessage())) {
+            throw new BoltException("Packet over the maximum size and not a message. Chunk count: " + chunkCount);
+        }
+    }
+
+    private final DeliveryType computeDeliveryType(final int chunkCount) {
+        return (chunkCount > 1) ? deliveryType : deliveryType.toNonMessage();
     }
 
     public void setClassId(final int classId) {
         objectXCoder.setClassId(classId);
-    }
-
-    public void setReliable(boolean reliable) {
-        this.reliable = reliable;
     }
 
 }

@@ -50,7 +50,7 @@ public class UDPTest {
 
         for (int i = 0; i < num_packets; i++) {
             DataPacket p = new DataPacket();
-            p.setData(data);
+            p.setData(data); // FIXME this may fail due to delivery type decoding
             dp.setData(p.getEncoded());
             dgSendInterval.end();
             dgSendTime.begin();

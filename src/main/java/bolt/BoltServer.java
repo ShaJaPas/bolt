@@ -106,4 +106,8 @@ public class BoltServer implements Server {
         return config;
     }
 
+    public XCoderRepository xCoderRepository() {
+        return xCoderRepository;
+    }
+
 }

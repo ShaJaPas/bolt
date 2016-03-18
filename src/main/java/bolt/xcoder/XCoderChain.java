@@ -38,7 +38,7 @@ public class XCoderChain<T>
         return new XCoderChain<>(null, new PackageXCoder<>(byteXCoder));
     }
 
-    private static <T> XCoderChain<T> of(final PackageXCoder<T> PackageXCoder) {
+    public static <T> XCoderChain<T> of(final PackageXCoder<T> PackageXCoder) {
         return new XCoderChain<>(null, PackageXCoder);
     }
 
@@ -65,8 +65,5 @@ public class XCoderChain<T>
         packageXCoder.setClassId(classId);
     }
 
-    public void setReliable(boolean reliable) {
-        packageXCoder.setReliable(reliable);
-    }
 
 }

@@ -1,90 +1,49 @@
 package bolt.performance;
 
-import bolt.BoltClient;
 import bolt.BoltServer;
-import bolt.Config;
-import bolt.event.ConnectionReadyEvent;
-import bolt.receiver.RoutedData;
-import bolt.util.PortUtil;
+import bolt.BoltTestBase;
 import org.junit.Test;
-import rx.Subscription;
-import rx.observables.ConnectableObservable;
-import rx.schedulers.Schedulers;
 
-import java.net.InetAddress;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by keen on 26/02/16.
  */
-public class BulkPackTest {
+public class BulkPackTest extends BoltTestBase
+{
 
-    public static final int SERVER_PORT = PortUtil.nextServerPort();
-    private static long PACKET_COUNT = 1_000_000;
-    private static int SIZE = 1388;
+    private static final long PACKET_COUNT = 1_000_000;
+    private static final int SIZE = 1388;
 
 
     @Test
     public void testBulkPackets() throws Exception {
-        runServer();
-        runClient();
-    }
+        final BoltServer server = runServer(byte[].class,
+                x -> {
+                    if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
+                },
+                errors::add);
 
-    private void runClient() throws Exception {
-        final CountDownLatch clientReady = new CountDownLatch(1);
-        final BoltClient client = new BoltClient(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
-        final ConnectableObservable<?> o = client.connect(InetAddress.getByName("localhost"), SERVER_PORT)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.computation())
-                .publish();
+        final byte[] data = new byte[SIZE];
+        new Random().nextBytes(data);
 
-        Subscription clientSub = o.subscribe();
-
-        o.ofType(ConnectionReadyEvent.class)
-                .take(1)
-                .subscribe(x -> {
-                    try {
-                        byte[] data = new byte[SIZE];
-                        new Random().nextBytes(data);
-
-                        for (int i = 0; i < PACKET_COUNT; i++) {
-                            client.send(data);
-                            //            client.flush();
-                            if (i % 10000 == 0)
-                                System.out.println(i);
-                        }
-                        client.flush();
-                        client.shutdown();
+        runClient(server.getPort(),
+                c -> {
+                    for (int i = 0; i < PACKET_COUNT; i++) {
+                        c.send(data);
+                        if (i % 10000 == 0) System.out.println(i);
                     }
-                    finally {
-                        clientReady.countDown();
-                    }
-                });
+                    c.flush();
+                },
+                errors::add);
 
-        o.connect();
-        clientReady.await();
-        clientSub.unsubscribe();
+        while (received.get() < PACKET_COUNT && errors.isEmpty()) Thread.sleep(10);
+        if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
+
+        assertEquals(PACKET_COUNT, received.get());
     }
 
-    private void runServer() throws Exception {
-        final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), SERVER_PORT));
-        final AtomicInteger received = new AtomicInteger(0);
-        server.bind()
-                .subscribeOn(Schedulers.io())
-                .onBackpressureBuffer()
-                .observeOn(Schedulers.computation())
-                .ofType(RoutedData.class)
-                .subscribe(x -> {
-                            if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
-                        },
-                        ex -> {
-                            ex.printStackTrace();
-                            fail();
-                        });
-    }
 
 }
