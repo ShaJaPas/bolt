@@ -31,7 +31,11 @@ public class XCoderRepository {
         this.messageAssembleBuffer = messageAssembleBuffer;
     }
 
-    public static XCoderRepository create(final MessageAssembleBuffer messageAssembleBuffer) {
+    public static XCoderRepository create() {
+        return new XCoderRepository(new MessageAssembleBuffer());
+    }
+
+    public static XCoderRepository basic(final MessageAssembleBuffer messageAssembleBuffer) {
         XCoderRepository x = new XCoderRepository(messageAssembleBuffer);
         x.register(byte[].class, XCoderChain.rawBytePackageChain());
         return x;

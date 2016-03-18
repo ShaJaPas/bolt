@@ -20,6 +20,9 @@ import java.util.function.Consumer;
  */
 public abstract class BoltTestBase {
 
+    protected final Set<Throwable> errors = new HashSet<>();
+    protected final AtomicInteger received = new AtomicInteger(0);
+
     public static String hexString(MessageDigest digest) {
         return TestUtil.hexString(digest);
     }
@@ -31,9 +34,6 @@ public abstract class BoltTestBase {
     protected int nextClientPort() {
         return PortUtil.nextClientPort();
     }
-
-    protected final Set<Throwable> errors   = new HashSet<>();
-    protected final AtomicInteger  received = new AtomicInteger(0);
 
     // Get an array filled with random data
     protected byte[] getRandomData(final int size) {
@@ -64,7 +64,7 @@ public abstract class BoltTestBase {
     }
 
     protected BoltClient runClient(final int serverPort, final Action1<BoltClient> onReady,
-            final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
+                                   final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
         if (init != null) init.accept(client);
@@ -78,11 +78,17 @@ public abstract class BoltTestBase {
         return client;
     }
 
-    @SuppressWarnings("unchecked")
     protected <T> BoltServer runServer(final Class<T> ofType, final Action1<? super T> onNext,
                                        final Action1<Throwable> onError) throws Exception {
+        return runServer(ofType, onNext, onError, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T> BoltServer runServer(final Class<T> ofType, final Action1<? super T> onNext,
+                                       final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), nextServerPort()));
+        if (init != null) init.accept(server);
 
         server.bind()
                 .subscribeOn(Schedulers.io())

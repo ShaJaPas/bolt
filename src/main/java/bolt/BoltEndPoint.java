@@ -26,7 +26,7 @@ public class BoltEndPoint {
 
     public static final int DATAGRAM_SIZE = 1400;
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class.getName());
-    final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
+    private final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
     private final Config config;

@@ -28,7 +28,11 @@ public class BoltServer implements Server {
     private volatile int count;
 
     public BoltServer(final Config config) {
-        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        this(XCoderRepository.basic(new MessageAssembleBuffer()), config);
+    }
+
+    public BoltServer(final XCoderRepository xCoderRepository, final Config config) {
+        this.xCoderRepository = xCoderRepository;
         this.config = config;
     }
 

@@ -33,7 +33,7 @@ public class BoltClient implements Client {
 
     public BoltClient(final Config config) throws SocketException, UnknownHostException {
         this.config = config;
-        this.xCoderRepository = XCoderRepository.create(new MessageAssembleBuffer());
+        this.xCoderRepository = XCoderRepository.basic(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
         LOG.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }

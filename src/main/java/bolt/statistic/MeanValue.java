@@ -10,7 +10,7 @@ import java.util.Locale;
  */
 public class MeanValue {
 
-    private final NumberFormat format;
+    final NumberFormat format;
     private final String name;
     private double mean = 0;
     private double max = 0;
@@ -38,7 +38,7 @@ public class MeanValue {
     }
 
     String getFormattedMean() {
-        return format.format(getMean());
+        return format.format(getMean()) + " microseconds";
     }
 
     public String get() {

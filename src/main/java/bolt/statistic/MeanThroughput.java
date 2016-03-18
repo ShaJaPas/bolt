@@ -2,7 +2,7 @@ package bolt.statistic;
 
 
 /**
- * holds a floating mean value
+ * Holds a floating mean value.
  */
 public class MeanThroughput extends MeanValue {
 
@@ -18,5 +18,9 @@ public class MeanThroughput extends MeanValue {
         return packetSize / super.getMean();
     }
 
+    @Override
+    String getFormattedMean() {
+        return format.format(getMean());
+    }
 
 }

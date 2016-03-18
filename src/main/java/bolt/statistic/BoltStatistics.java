@@ -236,16 +236,6 @@ public class BoltStatistics {
         }
     }
 
-//    public void begin(final Metric metric) {
-//        final MeanValue v = metrics.get(metric);
-//        if (v != null) v.begin();
-//    }
-//
-//    public void end(final Metric metric) {
-//        final MeanValue v = metrics.get(metric);
-//        if (v != null) v.end();
-//    }
-
     public void beginSend() {
         dgSendInterval.end();
         dgSendTime.begin();
@@ -284,19 +274,5 @@ public class BoltStatistics {
         dgReceiveInterval.begin();
     }
 
-    public enum Metric {
-
-        // Receiver
-        DG_RECEIVE_INTERVAL,
-        DATA_PACKET_INTERVAL,
-        PROCESS_TIME,
-        DATA_PROCESS_TIME,
-
-        // Sender
-        DG_SEND_TIME,
-        DG_SEND_INTERVAL,
-        THROUGHPUT,;
-
-    }
 
 }
