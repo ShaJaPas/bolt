@@ -9,7 +9,8 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.*;
 
-public class TestFlowWindow {
+public class FlowWindowTest
+{
 
     volatile boolean read = true;
     volatile boolean write = true;

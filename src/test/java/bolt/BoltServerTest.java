@@ -9,7 +9,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestBoltServer extends BoltTestBase {
+public class BoltServerTest extends BoltTestBase {
 
     int num_packets = 32;
     long total = 0;
@@ -21,6 +21,11 @@ public class TestBoltServer extends BoltTestBase {
     public void testErrorTooManyChunks() throws Throwable {
         num_packets = 10_000;
         doTest(0);
+    }
+
+    @Test
+    public void testPortAlreadyBoundTo() throws Throwable {
+        // TODO write test
     }
 
     @Test

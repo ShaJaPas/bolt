@@ -16,86 +16,12 @@ import java.util.concurrent.PriorityBlockingQueue;
 import static org.junit.Assert.*;
 
 /**
- * Tests for the various list and queue classes.
+ * Tests for the various list and queue classes
  */
 public class TestList {
 
-    @Test
-    public void testCircularArray() {
-        final CircularArray<Integer> c = new CircularArray<>(5);
-        for (int i = 0; i < 5; i++) c.add(i);
-        assertEquals(5, c.size());
-        c.add(6);
-        assertEquals(5, c.size());
-        System.out.println(c);
-        c.add(7);
-        System.out.println(c);
-        for (int i = 8; i < 11; i++) c.add(i);
-        System.out.println(c);
-        c.add(11);
-        System.out.println(c);
-    }
 
-    @Test
-    public void testPacketHistoryWindow() {
-
-        PacketHistoryWindow packetHistoryWindow = new PacketHistoryWindow(16);
-        long offset = 1000000;
-        for (int i = 0; i < 28; i++) {
-            packetHistoryWindow.add(offset + i * 5000L);
-        }
-        // Packets arrive every 5 ms, so packet arrival rate is 200/sec
-        assertEquals(200, packetHistoryWindow.getPacketArrivalSpeed());
-    }
-
-    @Test
-    public void testPacketPairWindow() {
-        long[] values = {2, 4, 6};
-        PacketPairWindow p = new PacketPairWindow(16);
-        for (long value : values) p.add(value);
-
-        assertEquals(4.0d, p.computeMedianTimeInterval(), 0.001d);
-
-        long[] arrivaltimes = {12, 12, 12, 12};
-        PacketPairWindow p1 = new PacketPairWindow(16);
-        for (int i = 0; i < values.length; i++) {
-            p1.add(arrivaltimes[i]);
-        }
-        assertEquals(12.0d, p1.computeMedianTimeInterval(), 0.001d);
-    }
-
-    @Test
-    public void testAckHistoryWindow() {
-        AckHistoryEntry ackSeqNrA = new AckHistoryEntry(0, 1, 1263465050);
-        AckHistoryEntry ackSeqNrB = new AckHistoryEntry(1, 2, 1263465054);
-        AckHistoryEntry ackSeqNrC = new AckHistoryEntry(2, 3, 1263465058);
-
-        AckHistoryWindow recvWindow = new AckHistoryWindow(3);
-        recvWindow.add(ackSeqNrA);
-        recvWindow.add(ackSeqNrB);
-        recvWindow.add(ackSeqNrC);
-        AckHistoryEntry entryA = recvWindow.getEntry(1);
-        assertEquals(1263465050, entryA.getSentTime());
-    }
-
-    @Test
-    public void testSenderLossList1() {
-        Integer A = 7;
-        Integer B = 8;
-        Integer C = 1;
-        SenderLossList l = new SenderLossList();
-        l.insert(A);
-        l.insert(B);
-        l.insert(C);
-        assertEquals(3, l.size());
-        Integer oldest = l.getFirstEntry();
-        assertEquals(C, oldest);
-        oldest = l.getFirstEntry();
-        assertEquals(A, oldest);
-        oldest = l.getFirstEntry();
-        assertEquals(B, oldest);
-    }
-
+    // TODO is this class/test longer needed?
     @Test
     public void testReceiverInputQueue() {
         BlockingQueue<BoltPacket> q = new PriorityBlockingQueue<BoltPacket>(5);

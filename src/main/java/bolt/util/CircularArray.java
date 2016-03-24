@@ -1,6 +1,6 @@
 package bolt.util;
 
-import java.util.List;
+import java.util.Arrays;
 
 /**
  * Circular array: the most recent value overwrites the oldest one if there is no more free
@@ -43,7 +43,7 @@ public class CircularArray<T> {
     }
 
     public String toString() {
-        return circularArray.toString();
+        return Arrays.toString(circularArray);
     }
 
     protected Object[] getArray() {

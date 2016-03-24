@@ -3,6 +3,9 @@ package bolt.packets;
 import org.junit.Test;
 import bolt.packets.ControlPacket.ControlPacketType;
 
+import java.util.List;
+import java.util.stream.Stream;
+
 import static org.junit.Assert.assertEquals;
 
 public class TestControlPacketType {
@@ -34,4 +37,12 @@ public class TestControlPacketType {
         t = ControlPacketType.USER_DEFINED;
         assertEquals(7, t.getTypeId());
     }
+
+    @Test
+    public void testUniquePacketTypeIds() {
+        final long typeCount = ControlPacketType.values().length;
+        final long distinctTypeCount = Stream.of(ControlPacketType.values()).map(ControlPacketType::getTypeId).distinct().count();
+        assertEquals(typeCount, distinctTypeCount);
+    }
+
 }

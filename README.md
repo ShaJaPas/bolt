@@ -18,6 +18,7 @@
 - [ ] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
 - [ ] Review level of each log statement
 - [ ] Review Javadoc
+- [ ] Change Test classes names from (Test.*.java) to (.*Test.java)
 - [ ] Add group to base of package (before bolt.*)
 - [ ] Separate to core and api packages
 - [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic

@@ -7,7 +7,7 @@ public class DummyControlPacket extends ControlPacket{
 	}
 	
 	@Override
-	public byte[]encodeControlInformation(){
+	public byte[] encodeControlInformation(){
 		return null;
 	}
 }

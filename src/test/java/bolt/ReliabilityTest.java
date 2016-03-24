@@ -16,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 15/03/16.
  */
-public class TestReliability extends BoltTestBase {
+public class ReliabilityTest extends BoltTestBase {
 
 
     private final AtomicInteger deliveryCount = new AtomicInteger(0);
@@ -70,5 +70,11 @@ public class TestReliability extends BoltTestBase {
 
 //        final BoltClient client = runClient(server.getPort(), x -> , ex -> throw new RuntimeException(ex));
     }
+
+    @Test
+    public void testReliableWithPacketLoss() throws Throwable {
+
+    }
+
 
 }

@@ -6,7 +6,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestReceiverLossList {
+public class ReceiverLossListTest {
 
     @Test
     public void test1() {
