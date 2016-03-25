@@ -107,7 +107,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public void setData(byte[] data) {
         this.data = data;
-        dataLength = data.length;
+        this.dataLength = data.length;
     }
 
     public int getLength() {

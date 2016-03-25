@@ -2,15 +2,20 @@ package bolt.performance;
 
 import bolt.BoltClient;
 import bolt.BoltServer;
-import bolt.BoltTestBase;
 import bolt.packets.DeliveryType;
-import bolt.xcoder.*;
+import bolt.util.ClientUtil;
+import bolt.util.ServerUtil;
+import bolt.xcoder.ObjectXCoder;
+import bolt.xcoder.PackageXCoder;
+import bolt.xcoder.XCoderChain;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
@@ -18,11 +23,13 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 26/02/16.
  */
-public class BulkPackTest extends BoltTestBase
-{
+public class BulkPackTest {
 
     private static final long PACKET_COUNT = 1_000_000;
     private static final int SIZE = 1388;
+
+    private final Set<Throwable> errors = new HashSet<>();
+    private final AtomicInteger received = new AtomicInteger(0);
 
 
     @Test
@@ -51,7 +58,7 @@ public class BulkPackTest extends BoltTestBase
     private void doTest(boolean waitForDelivery, final Consumer<BoltServer> serverInit, final Consumer<BoltClient> clientInit) throws Exception {
         final AtomicBoolean sendComplete = new AtomicBoolean(false);
 
-        final BoltServer server = runServer(byte[].class,
+        final BoltServer server = ServerUtil.runServer(byte[].class,
                 x -> {
                     if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
                 },
@@ -61,7 +68,7 @@ public class BulkPackTest extends BoltTestBase
         final byte[] data = new byte[SIZE];
         new Random().nextBytes(data);
 
-        final BoltClient client = runClient(server.getPort(),
+        final BoltClient client = ClientUtil.runClient(server.getPort(),
                 c -> {
                     for (int i = 0; i < PACKET_COUNT; i++) {
                         c.send(data);

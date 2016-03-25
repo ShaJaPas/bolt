@@ -1,5 +1,8 @@
 package bolt;
 
+import bolt.util.ClientUtil;
+import bolt.util.ServerUtil;
+import bolt.util.TestData;
 import bolt.util.TestUtil;
 import org.junit.Test;
 
@@ -9,7 +12,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class BoltServerTest extends BoltTestBase {
+public class BoltServerTest {
 
     int num_packets = 32;
     long total = 0;
@@ -60,12 +63,12 @@ public class BoltServerTest extends BoltTestBase {
         server.config().setPacketLoss(packetLossPercentage);
 
         final int N = num_packets * 32768;
-        final byte[] data = getRandomData(N);
-        final String md5_sent = computeMD5(data);
+        final byte[] data = TestData.getRandomData(N);
+        final String md5_sent = TestData.computeMD5(data);
         final long start = System.currentTimeMillis();
         final Set<Throwable> errors = new HashSet<>();
 
-        final BoltClient client = runClient(server.getPort(),
+        final BoltClient client = ClientUtil.runClient(server.getPort(),
                 c -> {
                     System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
                     c.sendBlocking(data);
@@ -90,7 +93,7 @@ public class BoltServerTest extends BoltTestBase {
 
     private BoltServer runServer() throws Exception {
         serverMd5 = MessageDigest.getInstance("MD5");
-        return runServer(byte[].class, x -> {
+        return ServerUtil.runServer(byte[].class, x -> {
             serverMd5.update(x, 0, x.length);
             total += x.length;
         }, ex -> {

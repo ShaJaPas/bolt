@@ -1,6 +1,9 @@
 package bolt;
 
 import bolt.packets.DeliveryType;
+import bolt.util.ClientUtil;
+import bolt.util.ServerUtil;
+import bolt.util.TestData;
 import bolt.xcoder.ObjectXCoder;
 import bolt.xcoder.PackageXCoder;
 import bolt.xcoder.XCoderChain;
@@ -16,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 15/03/16.
  */
-public class ReliabilityTest extends BoltTestBase {
+public class ReliabilityTest {
 
 
     private final AtomicInteger deliveryCount = new AtomicInteger(0);
@@ -41,16 +44,16 @@ public class ReliabilityTest extends BoltTestBase {
         final float packetLoss = 0.1f;
         final int sendCount = 50;
         final int expectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss));
-        final BoltServer server = runServer(String.class, x -> deliveryCount.incrementAndGet(), errors::add);
+        final BoltServer server = ServerUtil.runServer(String.class, x -> deliveryCount.incrementAndGet(), errors::add);
         server.xCoderRepository().register(String.class, stringXCoderChain);
         server.config().setPacketLoss(packetLoss);
 
         final Consumer<BoltClient> initRegisterXCoder = (c) -> c.xCoderRepository().register(String.class, stringXCoderChain);
 
-        runClient(server.getPort(),
+        ClientUtil.runClient(server.getPort(),
                 c -> {
                     // Send unreliable
-                    for (int i = 0; i < sendCount; i++) c.send(new String(getRandomData(500)));
+                    for (int i = 0; i < sendCount; i++) c.send(new String(TestData.getRandomData(500)));
                     c.flush();
                 },
                 errors::add, initRegisterXCoder);

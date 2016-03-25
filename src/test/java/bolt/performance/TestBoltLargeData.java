@@ -2,7 +2,9 @@ package bolt.performance;
 
 import bolt.BoltClient;
 import bolt.BoltServer;
-import bolt.BoltTestBase;
+import bolt.util.ClientUtil;
+import bolt.util.ServerUtil;
+import bolt.util.TestData;
 import org.junit.Test;
 
 import java.security.MessageDigest;
@@ -14,7 +16,7 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class TestBoltLargeData extends BoltTestBase {
+public class TestBoltLargeData {
 
     private final NumberFormat format = NumberFormat.getNumberInstance();
 
@@ -46,9 +48,9 @@ public class TestBoltLargeData extends BoltTestBase {
 
         final long N = numPackets * size;
 
-        final byte[] data = getRandomData(12345, size);
+        final byte[] data = TestData.getRandomData(12345, size);
 
-        final BoltServer server = runServer(byte[].class,
+        final BoltServer server = ServerUtil.runServer(byte[].class,
                 x -> {
                     serverMD5.update(x, 0, x.length);
                     totalBytesReceived += x.length;
@@ -58,7 +60,7 @@ public class TestBoltLargeData extends BoltTestBase {
 
         System.out.println("Sending <" + numPackets + "> packets of <" + format.format(size / 1024.0 / 1024.0) + "> Mbytes each");
 
-        final BoltClient client = runClient(server.getPort(),
+        final BoltClient client = ClientUtil.runClient(server.getPort(),
                 c -> {
                     try {
                         for (int i = 0; i < numPackets; i++) {
@@ -90,8 +92,8 @@ public class TestBoltLargeData extends BoltTestBase {
         }
 
         long end = System.currentTimeMillis();
-        final String md5Sent = hexString(clientMD5);
-        final String md5Received = hexString(serverMD5);
+        final String md5Sent = TestData.hexString(clientMD5);
+        final String md5Received = TestData.hexString(serverMD5);
         System.out.println("Done. Sending " + N / 1024.0 / 1024.0 + " Mbytes took " + (end - start) + " ms");
         final double mbytes = N / (end - start) / 1024.0;
         System.out.println("Rate: " + format.format(mbytes) + " Mbytes/sec " + format.format(8 * mbytes) + " Mbit/sec");

@@ -10,11 +10,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TestPacketFactory {
+
+    private static void print(byte[] arr) {
+        System.out.print("[");
+        for (byte b : arr) {
+            System.out.print(" " + (b & 0xFF));
+        }
+        System.out.println(" ]");
+    }
 
     @Test
     public void testData() throws IOException {
@@ -178,14 +184,6 @@ public class TestPacketFactory {
         InetAddress i2 = PacketUtil.decodeInetAddress(enc, 0, false);
         System.out.println(i2);
         assertEquals(i, i2);
-    }
-
-    private static void print(byte[] arr) {
-        System.out.print("[");
-        for (byte b : arr) {
-            System.out.print(" " + (b & 0xFF));
-        }
-        System.out.println(" ]");
     }
 
 

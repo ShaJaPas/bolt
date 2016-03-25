@@ -10,14 +10,13 @@ import java.net.Socket;
 import java.util.Random;
 
 /**
- * send some data over a TCP connection and measure performance
+ * Send some data over a TCP connection and measure performance.
  */
 public class TCPTest {
 
-    int BUFSIZE = 1024;
-    int num_packets = 100 * 1000;
-
     private static final int SERVER_PORT = PortUtil.nextServerPort();
+    private volatile long total = 0;
+    private volatile boolean serverRunning = true;
 
     @Test
     public void test1() throws Exception {
@@ -25,6 +24,7 @@ public class TCPTest {
         // Client socket
         Socket clientSocket = new Socket("localhost", SERVER_PORT);
         OutputStream os = clientSocket.getOutputStream();
+        final int num_packets = 100 * 1000;
         int N = num_packets * 1024;
         byte[] data = new byte[N];
         new Random().nextBytes(data);
@@ -41,9 +41,6 @@ public class TCPTest {
         System.out.println("Server received: " + total);
     }
 
-    long total = 0;
-    volatile boolean serverRunning = true;
-
     private void runServer() throws Exception {
         // Server socket
         final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
@@ -58,7 +55,8 @@ public class TCPTest {
                     total += c;
                 }
                 serverRunning = false;
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 e.printStackTrace();
                 serverRunning = false;
             }

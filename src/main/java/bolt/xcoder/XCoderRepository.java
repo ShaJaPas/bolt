@@ -73,7 +73,7 @@ public class XCoderRepository {
         return encoded;
     }
 
-    public <T> XCoderChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
+    private <T> XCoderChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
         final XCoderChain<T> xCoder = (XCoderChain<T>) classXCoders.get(clazz);
         if (xCoder == null) throw new NoSuchElementException("Class not found for class " + clazz);
         return xCoder;
