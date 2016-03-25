@@ -134,7 +134,7 @@ public class BoltEndPoint {
                 final Destination peer = new Destination(dp.getAddress(), dp.getPort());
                 final int l = dp.getLength();
                 final BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
-                if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSequenceNumber());
+                if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
 
                 long dest = packet.getDestinationID();
                 final BoltSession session = sessions.get(dest);

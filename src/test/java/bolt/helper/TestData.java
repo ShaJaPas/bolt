@@ -1,4 +1,4 @@
-package bolt.util;
+package bolt.helper;
 
 import java.security.MessageDigest;
 import java.util.Random;
@@ -32,6 +32,14 @@ public class TestData {
     }
 
     public static String hexString(MessageDigest digest) {
-        return TestUtil.hexString(digest);
+        byte[] messageDigest = digest.digest();
+        StringBuilder hexString = new StringBuilder();
+        for (byte aMessageDigest : messageDigest) {
+            String hex = Integer.toHexString(0xFF & aMessageDigest);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
+
 }

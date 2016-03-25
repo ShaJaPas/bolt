@@ -3,8 +3,8 @@ package bolt.performance;
 import bolt.BoltClient;
 import bolt.BoltServer;
 import bolt.packets.DeliveryType;
-import bolt.util.ClientUtil;
-import bolt.util.ServerUtil;
+import bolt.helper.ClientUtil;
+import bolt.helper.ServerUtil;
 import bolt.xcoder.ObjectXCoder;
 import bolt.xcoder.PackageXCoder;
 import bolt.xcoder.XCoderChain;
@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 public class BulkPackTest {
 
     private static final long PACKET_COUNT = 1_000_000;
-    private static final int SIZE = 1388;
+    private static final int SIZE = 1386;
 
     private final Set<Throwable> errors = new HashSet<>();
     private final AtomicInteger received = new AtomicInteger(0);

@@ -35,7 +35,7 @@ public class AdvancedReceiveBuffer
 
     public AdvancedReceiveBuffer(final int size, final int initialSequenceNumber) {
         this.size = size;
-        this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriortyComparator());
+        this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriorityComparator());
         this.lock = new ReentrantLock(false);
         this.notEmpty = lock.newCondition();
         this.highestReadSequenceNumber = SequenceNumber.decrement(initialSequenceNumber);
@@ -57,8 +57,8 @@ public class AdvancedReceiveBuffer
         }
         lock.lock();
         try {
-            if (data.isOrdered()) {
-                final int seq = data.getPacketSequenceNumber();
+            if (data.isOrdered()) { // TODO potential to receive duplicate unordered packets?
+                final int seq = data.getPacketSeqNumber();
                 // If already have this chunk, discard it.
                 if (SequenceNumber.compare(seq, highestReadSequenceNumber) <= 0) {
                     return true;
@@ -116,7 +116,8 @@ public class AdvancedReceiveBuffer
     /**
      * Return a data chunk, guaranteed to be in-order.
      */
-    //TODO this needs to be heavily test with many combinations (reliability|ordering)
+    // TODO this needs to be heavily test with many combinations (reliability|ordering)
+    // TODO can be refactored for legibility
     public DataPacket poll() {
         if (numValidChunks.get() == 0) {
             return null;
@@ -125,7 +126,7 @@ public class AdvancedReceiveBuffer
         if (r != null) {
             // If packet is ordered, ensure that is it the next in the sequence to be read.
             if (r.isOrdered()) {
-                final int thisSeq = r.getPacketSequenceNumber();
+                final int thisSeq = r.getPacketSeqNumber();
                 final int comparison = SequenceNumber.seqOffset(highestReadSequenceNumber, thisSeq);
                 if (comparison == 1) {
                     highestReadSequenceNumber = thisSeq;
@@ -149,7 +150,7 @@ public class AdvancedReceiveBuffer
         return numValidChunks.get();
     }
 
-    private static class DataPacketPriortyComparator implements Comparator<DataPacket> {
+    private static class DataPacketPriorityComparator implements Comparator<DataPacket> {
 
         /**
          * Compares with the following priority:
@@ -165,9 +166,9 @@ public class AdvancedReceiveBuffer
         @Override
         public int compare(final DataPacket o1, final DataPacket o2)
         {
-            if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? -1 : 1);
+            if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? 1 : -1);
 
-            return o1.getPacketSequenceNumber() - o2.getPacketSequenceNumber();
+            return o1.getPacketSeqNumber() - o2.getPacketSeqNumber();
         }
     }
 

@@ -1,6 +1,6 @@
 package bolt.performance;
 
-import bolt.util.PortUtil;
+import bolt.helper.PortUtil;
 import org.junit.Test;
 
 import java.io.InputStream;

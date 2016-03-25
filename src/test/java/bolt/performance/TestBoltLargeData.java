@@ -2,9 +2,9 @@ package bolt.performance;
 
 import bolt.BoltClient;
 import bolt.BoltServer;
-import bolt.util.ClientUtil;
-import bolt.util.ServerUtil;
-import bolt.util.TestData;
+import bolt.helper.ClientUtil;
+import bolt.helper.ServerUtil;
+import bolt.helper.TestData;
 import org.junit.Test;
 
 import java.security.MessageDigest;

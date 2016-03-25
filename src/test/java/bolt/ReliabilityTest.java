@@ -1,20 +1,24 @@
 package bolt;
 
+import bolt.helper.TestPackets;
 import bolt.packets.DeliveryType;
-import bolt.util.ClientUtil;
-import bolt.util.ServerUtil;
-import bolt.util.TestData;
+import bolt.helper.ClientUtil;
+import bolt.helper.ServerUtil;
+import bolt.helper.TestData;
 import bolt.xcoder.ObjectXCoder;
 import bolt.xcoder.PackageXCoder;
 import bolt.xcoder.XCoderChain;
 import org.junit.Test;
 
+import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by keen on 15/03/16.
@@ -22,56 +26,53 @@ import static org.junit.Assert.assertEquals;
 public class ReliabilityTest {
 
 
-    private final AtomicInteger deliveryCount = new AtomicInteger(0);
+    private final AtomicInteger  deliveryCount = new AtomicInteger(0);
     private final Set<Throwable> errors = new HashSet<>();
+    private final AtomicBoolean  completed = new AtomicBoolean(false);
 
     @Test
     public void testUnreliableWithPacketLoss() throws Throwable {
-        final XCoderChain<String> stringXCoderChain = XCoderChain.of(new PackageXCoder<>(new ObjectXCoder<String>() {
-            @Override
-            public String decode(byte[] data)
-            {
-                return new String(data);
-            }
-
-            @Override
-            public byte[] encode(String object)
-            {
-                return object.getBytes();
-            }
-        }, DeliveryType.UNRELIABLE_UNORDERED));
 
         final float packetLoss = 0.1f;
         final int sendCount = 50;
-        final int expectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss));
-        final BoltServer server = ServerUtil.runServer(String.class, x -> deliveryCount.incrementAndGet(), errors::add);
-        server.xCoderRepository().register(String.class, stringXCoderChain);
-        server.config().setPacketLoss(packetLoss);
+        final int maxExpectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss));
+        final Consumer<BoltClient> onReady = c -> {
 
-        final Consumer<BoltClient> initRegisterXCoder = (c) -> c.xCoderRepository().register(String.class, stringXCoderChain);
+            // Send unreliable
+            for (int i = 0; i < sendCount; i++) c.send(TestPackets.unreliableUnordered(100));
+            try {
+                Thread.sleep(20L);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            c.sendBlocking(TestPackets.finished());
+        };
 
-        ClientUtil.runClient(server.getPort(),
-                c -> {
-                    // Send unreliable
-                    for (int i = 0; i < sendCount; i++) c.send(new String(TestData.getRandomData(500)));
-                    c.flush();
-                },
-                errors::add, initRegisterXCoder);
-
-        while (deliveryCount.get() < expectedDeliveryCount) {
-            if (!errors.isEmpty()) throw errors.iterator().next();
-            Thread.sleep(10);
-        }
-
-        assertEquals(expectedDeliveryCount, deliveryCount.get());
+        startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
     }
 
+
     @Test
-    public void testUnreliableAndReliableWithPacketLoss() {
+    public void testUnreliableAndReliableWithPacketLoss() throws Throwable {
+        final float packetLoss = 0.1f;
+        final int sendCount = 50;
+        final int maxExpectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss)) + (sendCount); // (unreliable) + (reliable)
+        final Consumer<BoltClient> onReady = c -> {
 
-//        final BoltServer server = runServer(byte[].class, x -> deliveryCount.incrementAndGet(), ex -> throw new RuntimeException(ex));
+            // Send unreliable
+            for (int i = 0; i < sendCount; i++) c.send(TestPackets.unreliableUnordered(100));
+            for (int i = 0; i < sendCount; i++) c.send(TestPackets.reliableUnordered(100)); // TODO unordered is sending more packets than expected
+            try {
+                Thread.sleep(20L);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            c.sendBlocking(TestPackets.finished());
+        };
 
-//        final BoltClient client = runClient(server.getPort(), x -> , ex -> throw new RuntimeException(ex));
+        startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
     }
 
     @Test
@@ -79,5 +80,31 @@ public class ReliabilityTest {
 
     }
 
+    private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable
+    {
+        final BoltServer server = ServerUtil.runServer(Object.class,
+                x -> {
+                    if (x instanceof TestPackets.BaseDataClass) {
+                        deliveryCount.incrementAndGet();
+                        System.out.println("RECEIVED " + deliveryCount.get());
+                    }
+                    else if (x instanceof TestPackets.Finished) {
+                        completed.set(true);
+                    }
+                },
+                errors::add);
+        server.config().setPacketLoss(packetLoss);
+
+        ClientUtil.runClient(server.getPort(), onReady::accept, errors::add);
+
+        while (!completed.get() && errors.isEmpty()) {
+            if (!errors.isEmpty()) throw errors.iterator().next();
+            Thread.sleep(10);
+        }
+
+        System.out.println(MessageFormat.format("Received a total of [{0}] packets of min/max [{1}/{2}].",
+                deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));
+        assertTrue(deliveryCount.get() <= maxExpectedDeliveryCount && deliveryCount.get() >= minExpectedDeliveryCount);
+    }
 
 }

@@ -20,6 +20,8 @@ import java.util.Objects;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |F|    Message Chunk Number     |           Message ID          |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |          Order Number         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
  * The data packet header starts with 0.
  * <p>
@@ -37,10 +39,15 @@ import java.util.Objects;
  * can be bound on the same UDP port and this Bolt socket ID is used to
  * differentiate the Bolt connections.
  * <p>
- * The next 32-bit field in the header is for the messaging. The first bit
- * "F" flags whether the packet is the last message chunk (1), or not (0).
+ * The next 32-bit field in the header is for the messaging. This field only
+ * exists if the M header flag is set to 1. The first bit "F" flags whether
+ * the packet is the last message chunk (1), or not (0).
  * The Message Chunk Number is the position of this packet in the message.
  * The Message ID uniquely identifies this message from others.
+ * <p>
+ * The next 16-bit field is the packet order number. This field only exists
+ * if the O flag is set to 1. The packet should be received and processed in
+ * this order.
  */
 public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
@@ -48,7 +55,11 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private DeliveryType delivery;
 
-    private int packetSequenceNumber;
+    private int packetSeqNumber;
+
+    private int destinationID;
+
+    private int classID;
 
     private boolean finalMessageChunk;
 
@@ -56,9 +67,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private int messageId;
 
-    private int destinationID;
-
-    private int classID;
+    private int orderSeqNumber;
 
     private int dataLength;
 
@@ -84,21 +93,30 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         byte deliveryType = (byte) PacketUtil.decodeInt(encodedData, 0, 28, 31);
         delivery = DeliveryType.fromId(deliveryType);
 
-        packetSequenceNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
+        packetSeqNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
         destinationID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
         classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
+        final int headerLength = DataPacket.computeHeaderLength(delivery);
         // If is message.
         if (delivery.isMessage()) {
             finalMessageChunk = PacketUtil.isBitSet(encodedData[8], 7);
             messageChunkNumber = PacketUtil.decodeInt(encodedData, 8, 16, 31);
             messageId = PacketUtil.decodeInt(encodedData, 8, 0, 16);
         }
+        if (delivery.isOrdered()) {
+            orderSeqNumber = PacketUtil.decodeShort(encodedData, headerLength - 2);
+        }
 
-        final int headerLength = delivery.isMessage() ? 12 : 8;
         dataLength = length - headerLength;
         data = new byte[dataLength];
         System.arraycopy(encodedData, headerLength, data, 0, dataLength);
+    }
+
+    public static int computeHeaderLength(final DeliveryType deliveryType) {
+        return 8
+                + (deliveryType.isMessage() ? 4 : 0)
+                + (deliveryType.isOrdered() ? 2 : 0);
     }
 
     public byte[] getData() {
@@ -118,12 +136,12 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         dataLength = length;
     }
 
-    public int getPacketSequenceNumber() {
-        return this.packetSequenceNumber;
+    public int getPacketSeqNumber() {
+        return this.packetSeqNumber;
     }
 
-    public void setPacketSequenceNumber(final int sequenceNumber) {
-        this.packetSequenceNumber = sequenceNumber;
+    public void setPacketSeqNumber(final int sequenceNumber) {
+        this.packetSeqNumber = sequenceNumber;
     }
 
 
@@ -143,14 +161,24 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.destinationID = destinationID;
     }
 
+    public int getOrderSeqNumber()
+    {
+        return orderSeqNumber;
+    }
+
+    public void setOrderSeqNumber(int orderSeqNumber)
+    {
+        this.orderSeqNumber = orderSeqNumber;
+    }
+
     /**
-     * Complete header (12 bytes) + data packet for transmission
+     * Complete header (8 - 14 bytes) + data packet for transmission
      */
     public byte[] getEncoded() {
-        final int headerLength = delivery.isMessage() ? 12 : 8;
+        final int headerLength = DataPacket.computeHeaderLength(delivery);
         byte[] result = new byte[headerLength + dataLength];
 
-        byte[] flagsAndSeqNum = PacketUtil.encodeInt(packetSequenceNumber);
+        byte[] flagsAndSeqNum = PacketUtil.encodeInt(packetSeqNumber);
         flagsAndSeqNum[0] = PacketUtil.setBit(flagsAndSeqNum[0], 7, false);
 
         final byte delId = delivery.getId();
@@ -168,13 +196,17 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
             PacketUtil.encodeMapToBytes(messageId, messageBits, 31, 16);
             System.arraycopy(messageBits, 0, result, 8, 4);
         }
+        if (delivery.isOrdered()) {
+            final byte[] orderSeqNumBits = PacketUtil.encodeShort(orderSeqNumber);
+            System.arraycopy(orderSeqNumBits, 0, result, headerLength - 2, 2);
+        }
         System.arraycopy(data, 0, result, headerLength, dataLength);
         return result;
     }
 
     public void copyFrom(final DataPacket src) {
         setClassID(src.getClassID());
-        setPacketSequenceNumber(src.getPacketSequenceNumber());
+        setPacketSeqNumber(src.getPacketSeqNumber());
         setSession(src.getSession());
         setDestinationID(src.getDestinationID());
 
@@ -183,6 +215,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         setFinalMessageChunk(src.isFinalMessageChunk());
         setMessageChunkNumber(src.getMessageChunkNumber());
         setMessageId(src.getMessageId());
+        setOrderSeqNumber(src.getOrderSeqNumber());
     }
 
     public int getClassID() {
@@ -256,7 +289,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     public int compareTo(BoltPacket other) {
-        return (getPacketSequenceNumber() - other.getPacketSequenceNumber());
+        return (getPacketSeqNumber() - other.getPacketSeqNumber());
     }
 
     public boolean isClassful() {
@@ -269,18 +302,19 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         if (o == null || getClass() != o.getClass()) return false;
         DataPacket that = (DataPacket) o;
         return delivery == that.delivery&&
-                packetSequenceNumber == that.packetSequenceNumber &&
+                packetSeqNumber == that.packetSeqNumber &&
                 finalMessageChunk == that.finalMessageChunk &&
                 messageChunkNumber == that.messageChunkNumber &&
                 messageId == that.messageId &&
                 destinationID == that.destinationID &&
                 classID == that.classID &&
+                orderSeqNumber == that.orderSeqNumber &&
                 Arrays.equals(data, that.data);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(data, delivery, packetSequenceNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, classID);
+        return Objects.hash(data, delivery, packetSeqNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, orderSeqNumber, classID);
     }
 
     @Override
@@ -288,11 +322,12 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return "DataPacket{" +
                 "classID=" + classID +
                 ", delivery=" + delivery +
-                ", packetSequenceNumber=" + packetSequenceNumber +
+                ", packetSeqNumber=" + packetSeqNumber +
                 ", finalMessageChunk=" + finalMessageChunk +
                 ", messageChunkNumber=" + messageChunkNumber +
                 ", messageId=" + messageId +
                 ", destinationID=" + destinationID +
+                ", orderSeqNumber=" + orderSeqNumber +
                 ", data=" + Arrays.toString(data) +
                 '}';
     }

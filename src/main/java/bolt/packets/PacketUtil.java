@@ -25,6 +25,11 @@ public class PacketUtil {
         return new byte[]{m4, m3, m2, m1};
     }
 
+    public static byte[] encodeShort(int value) {
+        byte m2 = (byte) (value >> 8);
+        byte m1 = (byte) (value);
+        return new byte[] { m2, m1 };
+    }
 
     public static byte[] encodeSetHighest(boolean highest, long value) {
         byte m4;
@@ -72,6 +77,11 @@ public class PacketUtil {
             data[byteIndex] = setBit(data[byteIndex], bitInByteIndex, bitSet);
         }
         return data;
+    }
+
+    public static int decodeShort(byte[] data, int start) {
+        return (data[start] & 0xFF) << 8
+                | (data[start + 1] & 0xFF);
     }
 
     public static int decodeInt(byte[] data, int start) {

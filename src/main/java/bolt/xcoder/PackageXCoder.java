@@ -97,7 +97,7 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
         }
     }
 
-    private final DeliveryType computeDeliveryType(final int chunkCount) {
+    private DeliveryType computeDeliveryType(final int chunkCount) {
         return (chunkCount > 1) ? deliveryType : deliveryType.toNonMessage();
     }
 

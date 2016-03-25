@@ -156,9 +156,9 @@ public class BoltSender {
                 // Store data for potential retransmit.
                 final DataPacket buffered = new DataPacket();
                 buffered.copyFrom(dp);
-                sendBuffer.put(dp.getPacketSequenceNumber(), buffered);
+                sendBuffer.put(dp.getPacketSeqNumber(), buffered);
                 unacknowledged.incrementAndGet();
-                largestSentSequenceNumber = dp.getPacketSequenceNumber();
+                largestSentSequenceNumber = dp.getPacketSeqNumber();
             }
         }
         statistics.incNumberOfSentDataPackets();
@@ -178,7 +178,7 @@ public class BoltSender {
         if (!started) start();
         src.setSession(session);
         src.setDestinationID(session.getDestination().getSocketID());
-        src.setPacketSequenceNumber(src.isReliable() ? getNextSequenceNumber() : 0);
+        src.setPacketSeqNumber(src.isReliable() ? getNextSequenceNumber() : 0);
 
         boolean complete = false;
         while (!complete) {
@@ -359,7 +359,7 @@ public class BoltSender {
                 }
             }
 
-            // Wait
+            // Wait     TODO this will only take into account reliable packets. Should be for all?
             if (largestSentSequenceNumber % 16 != 0) {
                 long snd = (long) session.getCongestionControl().getSendInterval();
                 long passed = Util.getCurrentTime() - iterationStart;
@@ -389,7 +389,7 @@ public class BoltSender {
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
-                retransmit.setPacketSequenceNumber(seqNumber);
+                retransmit.setPacketSeqNumber(seqNumber);
                 retransmit.setSession(session);
                 retransmit.setDestinationID(session.getDestination().getSocketID());
                 endpoint.doSend(retransmit);

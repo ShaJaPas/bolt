@@ -214,12 +214,12 @@ public abstract class ControlPacket implements BoltPacket {
         this.session = session;
     }
 
-    public int getPacketSequenceNumber() {
+    public int getPacketSeqNumber() {
         return -1;
     }
 
     public int compareTo(BoltPacket other) {
-        return (getPacketSequenceNumber() - other.getPacketSequenceNumber());
+        return (getPacketSeqNumber() - other.getPacketSeqNumber());
     }
 
     public enum ControlPacketType {

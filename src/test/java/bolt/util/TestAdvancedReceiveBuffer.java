@@ -1,6 +1,7 @@
 package bolt.util;
 
 import bolt.packets.DataPacket;
+import bolt.packets.DeliveryType;
 import org.junit.Test;
 
 import java.util.concurrent.*;
@@ -9,20 +10,26 @@ import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-public class TestReceiveBuffer {
+public class TestAdvancedReceiveBuffer
+{
 
     volatile boolean poll = false;
 
     private DataPacket sequencedDataPacket(int seqNo, byte[] data) {
+        return sequencedDataPacket(seqNo, data, DeliveryType.RELIABLE_ORDERED);
+    }
+
+    private DataPacket sequencedDataPacket(int seqNo, byte[] data, DeliveryType deliveryType) {
         final DataPacket p = new DataPacket();
         p.setData(data);
-        p.setPacketSequenceNumber(seqNo);
+        p.setPacketSeqNumber(seqNo);
+        p.setDelivery(deliveryType);
         return p;
     }
 
     @Test
     public void testInOrder() {
-        final ReceiveBuffer b = new ReceiveBuffer(16, 1);
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -33,7 +40,7 @@ public class TestReceiveBuffer {
 
         for (int i = 0; i < 3; i++) {
             final DataPacket a = b.poll();
-            assertEquals(1 + i, a.getPacketSequenceNumber());
+            assertEquals(1 + i, a.getPacketSeqNumber());
         }
 
         assertNull(b.poll());
@@ -41,7 +48,7 @@ public class TestReceiveBuffer {
 
     @Test
     public void testOutOfOrder() {
-        ReceiveBuffer b = new ReceiveBuffer(16, 1);
+        AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -53,7 +60,7 @@ public class TestReceiveBuffer {
 
         for (int i = 0; i < 3; i++) {
             final DataPacket a = b.poll();
-            assertEquals(1 + i, a.getPacketSequenceNumber());
+            assertEquals(1 + i, a.getPacketSeqNumber());
         }
 
         assertNull(b.poll());
@@ -61,7 +68,7 @@ public class TestReceiveBuffer {
 
     @Test
     public void testInterleaved() {
-        final ReceiveBuffer b = new ReceiveBuffer(16, 1);
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -71,41 +78,41 @@ public class TestReceiveBuffer {
         b.offer(sequencedDataPacket(1, test1));
 
         DataPacket a = b.poll();
-        assertEquals(1, a.getPacketSequenceNumber());
+        assertEquals(1, a.getPacketSeqNumber());
 
         assertNull(b.poll());
 
         b.offer(sequencedDataPacket(2, test2));
 
         a = b.poll();
-        assertEquals(2, a.getPacketSequenceNumber());
+        assertEquals(2, a.getPacketSeqNumber());
 
         a = b.poll();
-        assertEquals(3, a.getPacketSequenceNumber());
+        assertEquals(3, a.getPacketSeqNumber());
     }
 
     @Test
     public void testOverflow() {
-        ReceiveBuffer b = new ReceiveBuffer(4, 1);
+        AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
 
         for (int i = 0; i < 3; i++) {
             b.offer(sequencedDataPacket(i + 1, "test".getBytes()));
         }
         for (int i = 0; i < 3; i++) {
-            assertEquals(i + 1, b.poll().getPacketSequenceNumber());
+            assertEquals(i + 1, b.poll().getPacketSeqNumber());
         }
 
         for (int i = 0; i < 3; i++) {
             b.offer(sequencedDataPacket(i + 4, "test".getBytes()));
         }
         for (int i = 0; i < 3; i++) {
-            assertEquals(i + 4, b.poll().getPacketSequenceNumber());
+            assertEquals(i + 4, b.poll().getPacketSeqNumber());
         }
     }
 
     @Test
     public void testTimedPoll() throws Exception {
-        final ReceiveBuffer b = new ReceiveBuffer(4, 1);
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
 
         final Runnable write = () -> {
             try {
@@ -145,7 +152,7 @@ public class TestReceiveBuffer {
 
     @Test
     public void testTimedPoll2() throws Exception {
-        final ReceiveBuffer b = new ReceiveBuffer(4, 1);
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
 
         Runnable write = () -> {
             try {
@@ -186,4 +193,35 @@ public class TestReceiveBuffer {
         res.get();
         es.shutdownNow();
     }
+
+    @Test
+    public void testDuplicateUnordered() {
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        byte[] test1 = "test1".getBytes();
+        byte[] test2 = "test2".getBytes();
+
+        b.offer(sequencedDataPacket(1, test1, DeliveryType.RELIABLE_UNORDERED));
+        b.offer(sequencedDataPacket(1, test1, DeliveryType.RELIABLE_UNORDERED));
+        b.offer(sequencedDataPacket(2, test2, DeliveryType.RELIABLE_UNORDERED));
+
+        assertEquals(1, b.poll().getPacketSeqNumber());
+        assertNull(b.poll());
+        assertEquals(2, b.poll().getPacketSeqNumber());
+    }
+
+    @Test
+    public void testDuplicateUnorderedAndOrdered() {
+        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+
+        b.offer(sequencedDataPacket(1, "test1".getBytes(), DeliveryType.RELIABLE_UNORDERED));   // Read 2nd
+        b.offer(sequencedDataPacket(2, "test2".getBytes(), DeliveryType.RELIABLE_ORDERED));     // Read 4th
+        b.offer(sequencedDataPacket(3, "test3".getBytes(), DeliveryType.UNRELIABLE_UNORDERED)); // Read 3rd
+        b.offer(sequencedDataPacket(4, "test4".getBytes(), DeliveryType.RELIABLE_UNORDERED));   // Read 1st
+        b.offer(sequencedDataPacket(5, "test5".getBytes(), DeliveryType.RELIABLE_ORDERED));     // Read 5th
+
+        assertEquals(0, b.poll().getPacketSeqNumber());
+        assertNull(b.poll());
+        assertEquals(2, b.poll().getPacketSeqNumber());
+    }
+
 }

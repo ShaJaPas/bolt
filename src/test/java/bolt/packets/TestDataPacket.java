@@ -58,7 +58,7 @@ public class TestDataPacket {
     @Test
     public void testSequenceNumber1() {
         DataPacket p = createRandomPacket();
-        p.setPacketSequenceNumber(1);
+        p.setPacketSeqNumber(1);
         p.setData(new byte[0]);
         byte[] x = p.getEncoded();
         byte highest = x[0];
@@ -72,7 +72,7 @@ public class TestDataPacket {
     public void testEncoded() {
         DataPacket p = createRandomPacket();
         p.setDelivery(DeliveryType.RELIABLE_ORDERED);
-        p.setPacketSequenceNumber(1);
+        p.setPacketSeqNumber(1);
         byte[] data = "test".getBytes();
         p.setData(data);
         byte[] encoded = p.getEncoded();
@@ -88,7 +88,7 @@ public class TestDataPacket {
     public void testDecode1() {
         DataPacket testPacket1 = createRandomPacket();
         testPacket1.setDelivery(DeliveryType.RELIABLE_ORDERED);
-        testPacket1.setPacketSequenceNumber(127);
+        testPacket1.setPacketSeqNumber(127);
         testPacket1.setDestinationID(1);
         byte[] data1 = "Hallo".getBytes();
         testPacket1.setData(data1);
@@ -107,13 +107,13 @@ public class TestDataPacket {
         // Create a new DataPacket from the encoded data
         DataPacket testPacket2 = new DataPacket(encodedData);
 
-        assertEquals(127, testPacket2.getPacketSequenceNumber());
+        assertEquals(127, testPacket2.getPacketSeqNumber());
     }
 
     @Test
     public void testEncodeDecode1() {
         final DataPacket dp = createRandomPacket();
-        dp.setPacketSequenceNumber(127);
+        dp.setPacketSeqNumber(127);
         dp.setDelivery(DeliveryType.RELIABLE_ORDERED_MESSAGE);
         dp.setMessageId(35457);
         dp.setDestinationID(255);
@@ -123,7 +123,7 @@ public class TestDataPacket {
 
         final DataPacket dp2 = new DataPacket(encodedData1);
         assertEquals(true, dp2.isMessage());
-        assertEquals(127, dp2.getPacketSequenceNumber());
+        assertEquals(127, dp2.getPacketSeqNumber());
         assertEquals(35457, dp2.getMessageId());
         assertEquals(255, dp2.getDestinationID());
         assertEquals("test", new String(dp2.getData()));

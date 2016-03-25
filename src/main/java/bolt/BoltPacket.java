@@ -30,6 +30,6 @@ public interface BoltPacket extends Comparable<BoltPacket> {
 
     BoltSession getSession();
 
-    int getPacketSequenceNumber();
+    int getPacketSeqNumber();
 
 }

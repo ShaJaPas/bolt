@@ -1,9 +1,9 @@
 package bolt;
 
 import bolt.packets.Destination;
-import bolt.util.ClientUtil;
-import bolt.util.PortUtil;
-import bolt.util.TestData;
+import bolt.helper.ClientUtil;
+import bolt.helper.PortUtil;
+import bolt.helper.TestData;
 import org.junit.Test;
 import rx.Subscription;
 import rx.schedulers.Schedulers;

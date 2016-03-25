@@ -1,4 +1,4 @@
-package bolt.util;
+package bolt.helper;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

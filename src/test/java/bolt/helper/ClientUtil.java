@@ -1,4 +1,4 @@
-package bolt.util;
+package bolt.helper;
 
 import bolt.BoltClient;
 import bolt.Config;
@@ -24,6 +24,7 @@ public class ClientUtil {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
         if (init != null) init.accept(client);
+        TestPackets.registerAll(client.xCoderRepository());
 
         client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())

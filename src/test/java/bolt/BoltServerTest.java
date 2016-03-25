@@ -1,9 +1,8 @@
 package bolt;
 
-import bolt.util.ClientUtil;
-import bolt.util.ServerUtil;
-import bolt.util.TestData;
-import bolt.util.TestUtil;
+import bolt.helper.ClientUtil;
+import bolt.helper.ServerUtil;
+import bolt.helper.TestData;
 import org.junit.Test;
 
 import java.security.MessageDigest;
@@ -77,7 +76,7 @@ public class BoltServerTest {
         while (total < N && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw errors.iterator().next();
 
-        md5_received = TestUtil.hexString(serverMd5);
+        md5_received = TestData.hexString(serverMd5);
         long end = System.currentTimeMillis();
         System.out.println("Shutdown client.");
         System.out.println("Done. Sending " + N / 1024 + " Kbytes took " + (end - start) + " ms");

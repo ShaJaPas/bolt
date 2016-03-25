@@ -446,7 +446,7 @@ public class BoltReceiver {
         }
 
         final long currentDataPacketArrivalTime = Util.getCurrentTime();
-        final int currentSequenceNumber = dp.getPacketSequenceNumber();
+        final int currentSequenceNumber = dp.getPacketSeqNumber();
         statistics.incNumberOfReceivedDataPackets();
 
         if (dp.isReliable()) {

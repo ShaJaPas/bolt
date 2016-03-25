@@ -3,7 +3,7 @@ package echo;
 import bolt.BoltClient;
 import bolt.event.ConnectionReadyEvent;
 import bolt.receiver.RoutedData;
-import bolt.util.PortUtil;
+import bolt.helper.PortUtil;
 import junit.framework.Assert;
 import org.junit.Test;
 import rx.Subscription;
