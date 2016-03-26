@@ -18,18 +18,20 @@ public class DuplicateDetector {
 
     public boolean checkDuplicatePacket(final DataPacket data) {
         final int dupNum = data.getPacketSeqNumber() % MAX_DUP_BUFFER;
-        if (received.get(dupNum)) return true;
+        if (received.get(dupNum)) {
+            return true;
+        }
         received.set(dupNum, true);
 
         // Check segment reset
         if (lastDupNum >= 0) {
-            final int lastSegmentSeqNum = lastDupNum / SEGMENTS;
-            final int segmentSeqNum = dupNum / SEGMENTS;
+            final int lastSegmentSeqNum = lastDupNum / ITEMS_PER_SEGMENT;
+            final int segmentSeqNum = dupNum / ITEMS_PER_SEGMENT;
 
             if (lastSegmentSeqNum != segmentSeqNum) {
                 final int segmentToReset = (segmentSeqNum + 2) % SEGMENTS;
                 final int start = segmentToReset * ITEMS_PER_SEGMENT;
-                received.set(start, start + ITEMS_PER_SEGMENT);
+                received.set(start, start + ITEMS_PER_SEGMENT, false);
             }
 
         }

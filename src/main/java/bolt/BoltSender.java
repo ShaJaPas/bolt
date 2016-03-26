@@ -68,13 +68,19 @@ public class BoltSender {
     private final ReentrantLock ackLock = new ReentrantLock();
     private final Condition ackCondition = ackLock.newCondition();
 
-    /** For generating data packet sequence numbers. */
+    /**
+     * For generating data packet sequence numbers.
+     */
     private volatile int currentSequenceNumber = 0;
 
-    /** For generating reliability sequence numbers. */
+    /**
+     * For generating reliability sequence numbers.
+     */
     private volatile int currentReliabilitySequenceNumber = 0;
 
-    /** For generating order sequence numbers. */
+    /**
+     * For generating order sequence numbers.
+     */
     private volatile int currentOrderSequenceNumber = 0;
 
     /**
@@ -103,7 +109,7 @@ public class BoltSender {
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
 
-        this.lastAckReliabilitySequenceNumber = session.getInitialSequenceNumber();
+        this.lastAckReliabilitySequenceNumber = 0; // TODO is this correct to init to 0?
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
 
         final int chunkSize = session.getDatagramSize() - 24;
@@ -253,8 +259,8 @@ public class BoltSender {
         boolean removed;
         for (int s = lastAckReliabilitySequenceNumber; s < ackNumber; s++) {
             synchronized (sendLock) {
-                removed = sendBuffer.remove(s) != null; // TODO send buffer uses relSeqNo
-                senderLossList.remove(s); // TODO also use relSeqNo
+                removed = sendBuffer.remove(s) != null;
+                senderLossList.remove(s);
             }
             if (removed) {
                 unacknowledged.decrementAndGet();

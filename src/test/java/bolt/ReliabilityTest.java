@@ -86,7 +86,7 @@ public class ReliabilityTest {
                 x -> {
                     if (x instanceof TestPackets.BaseDataClass) {
                         deliveryCount.incrementAndGet();
-                        System.out.println("RECEIVED " + deliveryCount.get());
+                        System.out.println("RECEIVED " + x.getClass().getSimpleName() + " " + deliveryCount.get());
                     }
                     else if (x instanceof TestPackets.Finished) {
                         completed.set(true);
