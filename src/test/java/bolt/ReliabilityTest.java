@@ -1,23 +1,17 @@
 package bolt;
 
-import bolt.helper.TestPackets;
-import bolt.packets.DeliveryType;
 import bolt.helper.ClientUtil;
 import bolt.helper.ServerUtil;
-import bolt.helper.TestData;
-import bolt.xcoder.ObjectXCoder;
-import bolt.xcoder.PackageXCoder;
-import bolt.xcoder.XCoderChain;
+import bolt.helper.TestPackets;
 import org.junit.Test;
 
-import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.assertEquals;
+import static java.text.MessageFormat.format;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -86,7 +80,7 @@ public class ReliabilityTest {
                 x -> {
                     if (x instanceof TestPackets.BaseDataClass) {
                         deliveryCount.incrementAndGet();
-                        System.out.println("RECEIVED " + x.getClass().getSimpleName() + " " + deliveryCount.get());
+                        System.out.println(format("Recv {0} {1}", x.getClass().getSimpleName(), deliveryCount.get()));
                     }
                     else if (x instanceof TestPackets.Finished) {
                         completed.set(true);
@@ -102,7 +96,7 @@ public class ReliabilityTest {
             Thread.sleep(10);
         }
 
-        System.out.println(MessageFormat.format("Received a total of [{0}] packets of min/max [{1}/{2}].",
+        System.out.println(format("Received a total of [{0}] packets of min/max [{1}/{2}].",
                 deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));
         assertTrue(deliveryCount.get() <= maxExpectedDeliveryCount && deliveryCount.get() >= minExpectedDeliveryCount);
     }

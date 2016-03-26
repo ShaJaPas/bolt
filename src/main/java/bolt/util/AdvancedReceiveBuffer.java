@@ -29,6 +29,7 @@ public class AdvancedReceiveBuffer
     /** The size of the buffer. */
     private final int size;
 
+    private static final int MAX_DUP_BUFFER = 100_000;
     private final DuplicateDetector duplicateDetector;
 
     /** The highest order sequence number already read by the application. */
@@ -40,7 +41,7 @@ public class AdvancedReceiveBuffer
         this.lock = new ReentrantLock(false);
         this.notEmpty = lock.newCondition();
         this.highestReadOrderNumber = 0;
-        this.duplicateDetector = new DuplicateDetector();
+        this.duplicateDetector = DuplicateDetector.ofSize(MAX_DUP_BUFFER);
     }
 
     /**

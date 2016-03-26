@@ -9,34 +9,54 @@ import java.util.BitSet;
  */
 public class DuplicateDetector {
 
-    private static final int MAX_DUP_BUFFER = 100_000;
-    private static final int SEGMENTS = 8;
-    private static final int ITEMS_PER_SEGMENT = MAX_DUP_BUFFER / SEGMENTS;
-    private final BitSet received = new BitSet(MAX_DUP_BUFFER);
+    static final int DEFAULT_SEGMENT_COUNT = 8;
+
+    private final int segments;
+    private final int itemsPerSegment;
+    private final BitSet received;
 
     private int lastDupNum = -1;
 
+    private DuplicateDetector(int segments, int itemsPerSegment, BitSet received) {
+        this.segments = segments;
+        this.itemsPerSegment = itemsPerSegment;
+        this.received = received;
+    }
+
+    public static DuplicateDetector ofSize(final int size) {
+        final BitSet set = new BitSet(size);
+        return fromBitSet(set);
+    }
+
+    public static DuplicateDetector fromBitSet(final BitSet set) {
+        return new DuplicateDetector(DEFAULT_SEGMENT_COUNT, set.size() / DEFAULT_SEGMENT_COUNT, set);
+    }
+
     public boolean checkDuplicatePacket(final DataPacket data) {
-        final int dupNum = data.getPacketSeqNumber() % MAX_DUP_BUFFER;
-        if (received.get(dupNum)) {
+        final int duplicationId = getDuplicationId(data);
+        if (received.get(duplicationId)) {
             return true;
         }
-        received.set(dupNum, true);
+        received.set(duplicationId, true);
 
         // Check segment reset
         if (lastDupNum >= 0) {
-            final int lastSegmentSeqNum = lastDupNum / ITEMS_PER_SEGMENT;
-            final int segmentSeqNum = dupNum / ITEMS_PER_SEGMENT;
+            final int lastSegmentSeqNum = lastDupNum / itemsPerSegment;
+            final int segmentSeqNum = duplicationId / itemsPerSegment;
 
             if (lastSegmentSeqNum != segmentSeqNum) {
-                final int segmentToReset = (segmentSeqNum + 2) % SEGMENTS;
-                final int start = segmentToReset * ITEMS_PER_SEGMENT;
-                received.set(start, start + ITEMS_PER_SEGMENT, false);
+                final int segmentToReset = (segmentSeqNum + (segments / 2)) % segments;
+                final int start = segmentToReset * itemsPerSegment;
+                received.set(start, start + itemsPerSegment, false);
             }
 
         }
-        lastDupNum = dupNum;
+        lastDupNum = duplicationId;
         return false;
+    }
+
+    private int getDuplicationId(DataPacket data) {
+        return data.getPacketSeqNumber() % received.size();
     }
 
 }
