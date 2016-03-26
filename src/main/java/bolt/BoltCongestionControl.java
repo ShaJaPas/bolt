@@ -230,6 +230,7 @@ public class BoltCongestionControl implements CongestionControl {
             return;
         }
 
+        // TODO may need to change currentSeqNo to currentReliabilitySeqNo and according logic
         long currentMaxSequenceNumber = session.getSocket().getSender().getCurrentSequenceNumber();
         // 2) If this NAK starts a new congestion epoch
         if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {

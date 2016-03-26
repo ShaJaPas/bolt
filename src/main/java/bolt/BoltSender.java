@@ -40,7 +40,7 @@ public class BoltSender {
     private final BoltStatistics statistics;
 
     /**
-     * Stores the seq numbers of lost packets fed back by the receiver through NAK packets
+     * Stores the reliability seq numbers of lost packets fed back by the receiver through NAK packets
      */
     private final SenderLossList senderLossList;
 
@@ -68,10 +68,14 @@ public class BoltSender {
     private final ReentrantLock ackLock = new ReentrantLock();
     private final Condition ackCondition = ackLock.newCondition();
 
-    /**
-     * For generating data packet sequence numbers.
-     */
+    /** For generating data packet sequence numbers. */
     private volatile int currentSequenceNumber = 0;
+
+    /** For generating reliability sequence numbers. */
+    private volatile int currentReliabilitySequenceNumber = 0;
+
+    /** For generating order sequence numbers. */
+    private volatile int currentOrderSequenceNumber = 0;
 
     /**
      * The largest data packet sequence number that has actually been sent out.
@@ -81,7 +85,7 @@ public class BoltSender {
     /**
      * Last acknowledge number, initialised to the initial sequence number.
      */
-    private volatile int lastAckSequenceNumber;
+    private volatile int lastAckReliabilitySequenceNumber;
     private volatile boolean started = false;
     private volatile boolean stopped = false;
 
@@ -99,7 +103,7 @@ public class BoltSender {
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
 
-        this.lastAckSequenceNumber = session.getInitialSequenceNumber();
+        this.lastAckReliabilitySequenceNumber = session.getInitialSequenceNumber();
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
 
         final int chunkSize = session.getDatagramSize() - 24;
@@ -156,10 +160,10 @@ public class BoltSender {
                 // Store data for potential retransmit.
                 final DataPacket buffered = new DataPacket();
                 buffered.copyFrom(dp);
-                sendBuffer.put(dp.getPacketSeqNumber(), buffered);
+                sendBuffer.put(dp.getReliabilitySeqNumber(), buffered);
                 unacknowledged.incrementAndGet();
-                largestSentSequenceNumber = dp.getPacketSeqNumber();
             }
+            largestSentSequenceNumber = dp.getPacketSeqNumber();
         }
         statistics.incNumberOfSentDataPackets();
     }
@@ -178,7 +182,9 @@ public class BoltSender {
         if (!started) start();
         src.setSession(session);
         src.setDestinationID(session.getDestination().getSocketID());
-        src.setPacketSeqNumber(src.isReliable() ? getNextSequenceNumber() : 0);
+        src.setPacketSeqNumber(nextPacketSequenceNumber());
+        src.setReliabilitySeqNumber(src.isReliable() ? nextReliabilitySequenceNumber() : 0);
+        src.setOrderSeqNumber(src.isOrdered() ? nextOrderSequenceNumber() : 0);
 
         boolean complete = false;
         while (!complete) {
@@ -227,13 +233,13 @@ public class BoltSender {
         ackLock.unlock();
 
         CongestionControl cc = session.getCongestionControl();
-        long rtt = acknowledgement.getRoundTripTime();
+        final long rtt = acknowledgement.getRoundTripTime();
         if (rtt > 0) {
             long rttVar = acknowledgement.getRoundTripTimeVar();
             cc.setRTT(rtt, rttVar);
             statistics.setRTT(rtt, rttVar);
         }
-        long rate = acknowledgement.getPacketReceiveRate();
+        final long rate = acknowledgement.getPacketReceiveRate();
         if (rate > 0) {
             long linkCapacity = acknowledgement.getEstimatedLinkCapacity();
             cc.updatePacketArrivalRate(rate, linkCapacity);
@@ -245,16 +251,16 @@ public class BoltSender {
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
         // Need to remove all sequence numbers up the ACK number from the sendBuffer.
         boolean removed;
-        for (int s = lastAckSequenceNumber; s < ackNumber; s++) {
+        for (int s = lastAckReliabilitySequenceNumber; s < ackNumber; s++) {
             synchronized (sendLock) {
-                removed = sendBuffer.remove(s) != null;
-                senderLossList.remove(s);
+                removed = sendBuffer.remove(s) != null; // TODO send buffer uses relSeqNo
+                senderLossList.remove(s); // TODO also use relSeqNo
             }
             if (removed) {
                 unacknowledged.decrementAndGet();
             }
         }
-        lastAckSequenceNumber = Math.max(lastAckSequenceNumber, ackNumber);
+        lastAckReliabilitySequenceNumber = Math.max(lastAckReliabilitySequenceNumber, ackNumber);
         // Send ACK2 packet to the receiver.
         sendAck2(ackNumber);
         statistics.incNumberOfACKReceived();
@@ -380,16 +386,15 @@ public class BoltSender {
     /**
      * Re-transmit an entry from the sender loss list.
      *
-     * @param seqNumber
+     * @param relSeqNumber
      */
-    protected void handleRetransmit(final Integer seqNumber) {
+    protected void handleRetransmit(final Integer relSeqNumber) {
         try {
             // Retransmit the packet and remove it from the list.
-            final DataPacket data = sendBuffer.get(seqNumber);
+            final DataPacket data = sendBuffer.get(relSeqNumber);
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
-                retransmit.setPacketSeqNumber(seqNumber);
                 retransmit.setSession(session);
                 retransmit.setDestinationID(session.getDestination().getSocketID());
                 endpoint.doSend(retransmit);
@@ -416,16 +421,36 @@ public class BoltSender {
      * The next sequence number for data packets.
      * The initial sequence number is "0".
      */
-    public int getNextSequenceNumber() {
+    public int nextPacketSequenceNumber() {
         return currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
+    }
+
+    /**
+     * The next sequence number for data packets.
+     * The initial sequence number is "0".
+     */
+    public int nextReliabilitySequenceNumber() {
+        return currentReliabilitySequenceNumber = SequenceNumber.increment16(currentReliabilitySequenceNumber);
+    }
+
+    /**
+     * The next sequence number for data packets.
+     * The initial sequence number is "0".
+     */
+    public int nextOrderSequenceNumber() {
+        return currentOrderSequenceNumber = SequenceNumber.increment16(currentOrderSequenceNumber);
+    }
+
+    public int getCurrentReliabilitySequenceNumber() {
+        return currentReliabilitySequenceNumber;
     }
 
     public int getCurrentSequenceNumber() {
         return currentSequenceNumber;
     }
 
-    boolean haveAcknowledgementFor(int sequenceNumber) {
-        return SequenceNumber.compare(sequenceNumber, lastAckSequenceNumber) <= 0;
+    boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
+        return SequenceNumber.compare(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
     }
 
     boolean isSentOut(int sequenceNumber) {
@@ -441,8 +466,8 @@ public class BoltSender {
      *
      * @throws InterruptedException
      */
-    public void waitForAck(int sequenceNumber) throws InterruptedException {
-        while (!session.isShutdown() && !haveAcknowledgementFor(sequenceNumber)) {
+    public void waitForAck(int relSequenceNumber) throws InterruptedException {
+        while (!session.isShutdown() && !haveAcknowledgementFor(relSequenceNumber)) {
             ackLock.lock();
             try {
                 ackCondition.await(100, TimeUnit.MICROSECONDS);

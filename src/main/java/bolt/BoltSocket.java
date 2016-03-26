@@ -2,7 +2,6 @@ package bolt;
 
 import bolt.packets.DataPacket;
 import bolt.util.AdvancedReceiveBuffer;
-import bolt.util.ReceiveBuffer;
 import rx.Observable;
 import rx.schedulers.Schedulers;
 
@@ -38,6 +37,7 @@ public class BoltSocket {
         this.sender = new BoltSender(session, endpoint);
 
         final int capacity = 2 * session.getFlowWindowSize();
+
         this.receiveBuffer = new AdvancedReceiveBuffer(capacity, session.getInitialSequenceNumber());
     }
 
@@ -91,14 +91,16 @@ public class BoltSocket {
      */
     protected void flush() throws InterruptedException, IllegalStateException {
         if (!active) return;
+        // TODO change to reliability seq number. Also, logic needs careful looking over.
         final int seqNo = sender.getCurrentSequenceNumber();
+        final int relSeqNo = sender.getCurrentReliabilitySequenceNumber();
         if (seqNo < 0) throw new IllegalStateException();
         while (active && !sender.isSentOut(seqNo)) {
             Thread.sleep(5);
         }
         if (seqNo > -1) {
             // Wait until data has been sent out and acknowledged.
-            while (active && !sender.haveAcknowledgementFor(seqNo)) {
+            while (active && !sender.haveAcknowledgementFor(relSeqNo)) {
                 sender.waitForAck(seqNo);
             }
         }

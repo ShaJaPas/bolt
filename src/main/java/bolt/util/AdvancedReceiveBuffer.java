@@ -2,8 +2,7 @@ package bolt.util;
 
 import bolt.packets.DataPacket;
 
-import java.util.Comparator;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,7 +19,7 @@ public class AdvancedReceiveBuffer
 
     private final Queue<DataPacket> buffer;
 
-    /** Number of chunks.. */
+    /** Number of chunks. */
     private final AtomicInteger numValidChunks = new AtomicInteger(0);
 
     /** Lock and condition for poll() with timeout. */
@@ -30,15 +29,18 @@ public class AdvancedReceiveBuffer
     /** The size of the buffer. */
     private final int size;
 
-    /** The highest sequence number already read by the application. */
-    private int highestReadSequenceNumber;
+    private final DuplicateDetector duplicateDetector;
 
-    public AdvancedReceiveBuffer(final int size, final int initialSequenceNumber) {
+    /** The highest order sequence number already read by the application. */
+    private int highestReadOrderNumber;
+
+    public AdvancedReceiveBuffer(final int size, final int initialOrderNumber) {
         this.size = size;
         this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriorityComparator());
         this.lock = new ReentrantLock(false);
         this.notEmpty = lock.newCondition();
-        this.highestReadSequenceNumber = SequenceNumber.decrement(initialSequenceNumber);
+        this.highestReadOrderNumber = 0;
+        this.duplicateDetector = new DuplicateDetector();
     }
 
     /**
@@ -57,13 +59,16 @@ public class AdvancedReceiveBuffer
         }
         lock.lock();
         try {
-            if (data.isOrdered()) { // TODO potential to receive duplicate unordered packets?
-                final int seq = data.getPacketSeqNumber();
-                // If already have this chunk, discard it.
-                if (SequenceNumber.compare(seq, highestReadSequenceNumber) <= 0) {
-                    return true;
-                }
+            if (duplicateDetector.checkDuplicatePacket(data)) {
+                return false;
             }
+//            if (data.isOrdered()) { // FIXME potential to receive duplicate unordered packets?
+//                final int seq = data.getOrderSeqNumber();
+//                // If already have this chunk, discard it.
+//                if (SequenceNumber.compare16(seq, highestReadOrderNumber) <= 0) {
+//                    return true;
+//                }
+//            }
             // Else compute insert position.
             buffer.offer(data);
             numValidChunks.incrementAndGet();
@@ -126,19 +131,34 @@ public class AdvancedReceiveBuffer
         if (r != null) {
             // If packet is ordered, ensure that is it the next in the sequence to be read.
             if (r.isOrdered()) {
-                final int thisSeq = r.getPacketSeqNumber();
-                final int comparison = SequenceNumber.seqOffset(highestReadSequenceNumber, thisSeq);
+                final int thisSeq = r.getOrderSeqNumber();
+                // TODO What about order number overflow?
+                final int comparison = SequenceNumber.seqOffset16(highestReadOrderNumber, thisSeq);
                 if (comparison == 1) {
-                    highestReadSequenceNumber = thisSeq;
-                }
-                else if (comparison <= 0) {
-                    buffer.remove(r);
-                    numValidChunks.decrementAndGet();
-                    return null;
+                    highestReadOrderNumber = thisSeq;
                 }
                 else {
+                    if (comparison <= 0) {
+                        buffer.remove(r);
+                        numValidChunks.decrementAndGet();
+                    }
                     return null;
                 }
+            }
+
+            // If unordered
+            else {
+                /*
+                Circular array
+                LinkedHashSet bounded
+                Queue w/sorting
+                BitSet
+                 */
+
+                // If packet sequence number has been read before:
+                //      remove from buffer and return null
+                // else:
+                //      remove from buffer and mark read and return packet
             }
             numValidChunks.decrementAndGet();
             buffer.remove(r);
@@ -168,7 +188,7 @@ public class AdvancedReceiveBuffer
         {
             if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? 1 : -1);
 
-            return o1.getPacketSeqNumber() - o2.getPacketSeqNumber();
+            return SequenceNumber.compare(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
         }
     }
 

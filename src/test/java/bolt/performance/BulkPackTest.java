@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 public class BulkPackTest {
 
     private static final long PACKET_COUNT = 1_000_000;
-    private static final int SIZE = 1386;
+    private static final int SIZE = 1384;
 
     private final Set<Throwable> errors = new HashSet<>();
     private final AtomicInteger received = new AtomicInteger(0);

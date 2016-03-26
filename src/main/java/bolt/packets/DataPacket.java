@@ -18,10 +18,10 @@ import java.util.Objects;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Destination Socket ID     |            Class ID           |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  Reliability Sequence Number  |     Order Sequence Number     |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |F|    Message Chunk Number     |           Message ID          |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |          Order Number         |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
  * The data packet header starts with 0.
  * <p>
@@ -34,20 +34,26 @@ import java.util.Objects;
  * by 1 for each sent data packet in the order of packet sending. Sequence
  * number is wrapped after it is increased to the maximum number (2^29 - 1).
  * <p>
- * Following is the 32-bit Destination Socket ID.
+ * Following is the 16-bit Destination Socket ID.
  * The Destination ID is used for UDP multiplexer. Multiple Bolt socket
  * can be bound on the same UDP port and this Bolt socket ID is used to
  * differentiate the Bolt connections.
+ * <p>
+ * The 16-bit Class ID is used to identify the type of packet being received.
+ * An ID of 0 means the packet is not class-ful - it just contains raw data.
+ * <p>
+ * The next 16-bit field is the reliability order number. This field only exists
+ * if the R flag is set to 1.
+ * <p>
+ * The next 16-bit field is the packet order number. This field only exists
+ * if the O flag is set to 1. The packet should be received and processed in
+ * this order.
  * <p>
  * The next 32-bit field in the header is for the messaging. This field only
  * exists if the M header flag is set to 1. The first bit "F" flags whether
  * the packet is the last message chunk (1), or not (0).
  * The Message Chunk Number is the position of this packet in the message.
  * The Message ID uniquely identifies this message from others.
- * <p>
- * The next 16-bit field is the packet order number. This field only exists
- * if the O flag is set to 1. The packet should be received and processed in
- * this order.
  */
 public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
@@ -68,6 +74,8 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     private int messageId;
 
     private int orderSeqNumber;
+
+    private int reliabilitySeqNumber;
 
     private int dataLength;
 
@@ -98,14 +106,18 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
         final int headerLength = DataPacket.computeHeaderLength(delivery);
-        // If is message.
-        if (delivery.isMessage()) {
-            finalMessageChunk = PacketUtil.isBitSet(encodedData[8], 7);
-            messageChunkNumber = PacketUtil.decodeInt(encodedData, 8, 16, 31);
-            messageId = PacketUtil.decodeInt(encodedData, 8, 0, 16);
+        if (delivery.isReliable()) {
+            reliabilitySeqNumber = PacketUtil.decodeShort(encodedData, 8);
         }
         if (delivery.isOrdered()) {
-            orderSeqNumber = PacketUtil.decodeShort(encodedData, headerLength - 2);
+            orderSeqNumber = PacketUtil.decodeShort(encodedData, 10);
+        }
+        // If is message.
+        if (delivery.isMessage()) {
+            final int headerPos = delivery.isOrdered() ? 12 : 10;
+            finalMessageChunk = PacketUtil.isBitSet(encodedData[headerPos], 7);
+            messageChunkNumber = PacketUtil.decodeInt(encodedData, headerPos, 16, 31);
+            messageId = PacketUtil.decodeInt(encodedData, headerPos, 0, 16);
         }
 
         dataLength = length - headerLength;
@@ -115,8 +127,9 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public static int computeHeaderLength(final DeliveryType deliveryType) {
         return 8
-                + (deliveryType.isMessage() ? 4 : 0)
-                + (deliveryType.isOrdered() ? 2 : 0);
+                + (deliveryType.isMessage()  ? 4 : 0)
+                + (deliveryType.isOrdered()  ? 2 : 0)
+                + (deliveryType.isReliable() ? 2 : 0);
     }
 
     public byte[] getData() {
@@ -171,6 +184,14 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.orderSeqNumber = orderSeqNumber;
     }
 
+    public int getReliabilitySeqNumber() {
+        return reliabilitySeqNumber;
+    }
+
+    public void setReliabilitySeqNumber(int reliabilitySeqNumber) {
+        this.reliabilitySeqNumber = reliabilitySeqNumber;
+    }
+
     /**
      * Complete header (8 - 14 bytes) + data packet for transmission
      */
@@ -189,16 +210,21 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         System.arraycopy(flagsAndSeqNum, 0, result, 0, 4);
         System.arraycopy(PacketUtil.encode(destinationID), 2, result, 4, 2);
         System.arraycopy(PacketUtil.encode(classID), 2, result, 6, 2);
+
+        if (delivery.isReliable()) {
+            final byte[] reliabilitySeqNumBits = PacketUtil.encodeShort(reliabilitySeqNumber);
+            System.arraycopy(reliabilitySeqNumBits, 0, result, 8, 2);
+        }
+        if (delivery.isOrdered()) {
+            final byte[] orderSeqNumBits = PacketUtil.encodeShort(orderSeqNumber);
+            System.arraycopy(orderSeqNumBits, 0, result, 10, 2);
+        }
         if (delivery.isMessage()) {
             final byte[] messageBits = new byte[4];
             messageBits[0] = PacketUtil.setBit(messageBits[0], 7, finalMessageChunk);
             PacketUtil.encodeMapToBytes(messageChunkNumber, messageBits, 15, 15);
             PacketUtil.encodeMapToBytes(messageId, messageBits, 31, 16);
-            System.arraycopy(messageBits, 0, result, 8, 4);
-        }
-        if (delivery.isOrdered()) {
-            final byte[] orderSeqNumBits = PacketUtil.encodeShort(orderSeqNumber);
-            System.arraycopy(orderSeqNumBits, 0, result, headerLength - 2, 2);
+            System.arraycopy(messageBits, 0, result, headerLength - 4, 4);
         }
         System.arraycopy(data, 0, result, headerLength, dataLength);
         return result;
@@ -216,6 +242,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         setMessageChunkNumber(src.getMessageChunkNumber());
         setMessageId(src.getMessageId());
         setOrderSeqNumber(src.getOrderSeqNumber());
+        setReliabilitySeqNumber(src.getReliabilitySeqNumber());
     }
 
     public int getClassID() {
@@ -309,12 +336,13 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
                 destinationID == that.destinationID &&
                 classID == that.classID &&
                 orderSeqNumber == that.orderSeqNumber &&
+                reliabilitySeqNumber == that.reliabilitySeqNumber &&
                 Arrays.equals(data, that.data);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(data, delivery, packetSeqNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, orderSeqNumber, classID);
+        return Objects.hash(data, delivery, packetSeqNumber, finalMessageChunk, messageChunkNumber, messageId, destinationID, orderSeqNumber, reliabilitySeqNumber, classID);
     }
 
     @Override
@@ -328,6 +356,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
                 ", messageId=" + messageId +
                 ", destinationID=" + destinationID +
                 ", orderSeqNumber=" + orderSeqNumber +
+                ", reliabilitySeqNumber=" + reliabilitySeqNumber +
                 ", data=" + Arrays.toString(data) +
                 '}';
     }
