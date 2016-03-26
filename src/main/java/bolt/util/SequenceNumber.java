@@ -47,7 +47,7 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    private static int compare(int seq1, int seq2, int maxOffset) {
+    static int compare(int seq1, int seq2, int maxOffset) {
         return (Math.abs(seq1 - seq2) < maxOffset) ? (seq1 - seq2) : (seq2 - seq1);
     }
 
