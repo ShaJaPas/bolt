@@ -10,10 +10,10 @@ import java.util.Random;
 public class SequenceNumber {
 
 
-    public final static int MAX_SEQ_NUM = (int) (Math.pow(2, 28) - 1);
-    private final static int MAX_OFFSET = MAX_SEQ_NUM / 2;
+    public final static int MAX_PACKET_SEQ_NUM = (int) (Math.pow(2, 28) - 1);
+    private final static int MAX_PACKET_OFFSET = MAX_PACKET_SEQ_NUM / 2;
 
-    private final static int MAX_SEQ_NUM_16_BIT = (int) (Math.pow(2, 16) - 1);
+    public final static int MAX_SEQ_NUM_16_BIT = (int) (Math.pow(2, 16) - 1);
     private final static int MAX_OFFSET_16_BIT = MAX_SEQ_NUM_16_BIT / 2;
 
     private final static Random rand = new Random();
@@ -25,8 +25,8 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    public static int compare(int seq1, int seq2) {
-        return compare(seq1, seq2, MAX_OFFSET);
+    public static int comparePacketSeqNum(int seq1, int seq2) {
+        return compare(seq1, seq2, MAX_PACKET_OFFSET);
     }
 
     /**
@@ -47,7 +47,7 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    public static int compare(int seq1, int seq2, int maxOffset) {
+    private static int compare(int seq1, int seq2, int maxOffset) {
         return (Math.abs(seq1 - seq2) < maxOffset) ? (seq1 - seq2) : (seq2 - seq1);
     }
 
@@ -55,7 +55,7 @@ public class SequenceNumber {
      * length from the first to the second sequence number, including both
      */
     public static int length(int seq1, int seq2) {
-        return (seq1 <= seq2) ? (seq2 - seq1 + 1) : (seq2 - seq1 + MAX_SEQ_NUM + 2);
+        return (seq1 <= seq2) ? (seq2 - seq1 + 1) : (seq2 - seq1 + MAX_PACKET_SEQ_NUM + 2);
     }
 
     /**
@@ -64,15 +64,15 @@ public class SequenceNumber {
      * @param seq1
      * @param seq2
      */
-    public static int seqOffset(int seq1, int seq2) {
-        return seqOffset(seq1, seq2, MAX_OFFSET, MAX_SEQ_NUM);
+    public static int seqOffsetPacketSeqNum(int seq1, int seq2) {
+        return seqOffset(seq1, seq2, MAX_PACKET_OFFSET, MAX_PACKET_SEQ_NUM);
     }
 
     public static int seqOffset16(int seq1, int seq2) {
         return seqOffset(seq1, seq2, MAX_OFFSET_16_BIT, MAX_SEQ_NUM_16_BIT);
     }
 
-    public static int seqOffset(int seq1, int seq2, int maxOffset, int maxSeqNum) {
+    private static int seqOffset(int seq1, int seq2, int maxOffset, int maxSeqNum) {
         if (Math.abs(seq1 - seq2) < maxOffset)
             return seq2 - seq1;
 
@@ -87,8 +87,8 @@ public class SequenceNumber {
      *
      * @param seq
      */
-    public static int increment(int seq) {
-        return (seq == MAX_SEQ_NUM) ? 0 : seq + 1;
+    public static int incrementPacketSeqNum(int seq) {
+        return (seq == MAX_PACKET_SEQ_NUM) ? 0 : seq + 1;
     }
 
     /**
@@ -115,14 +115,18 @@ public class SequenceNumber {
      * @param seq
      */
     public static int decrement(int seq) {
-        return (seq == 0) ? MAX_SEQ_NUM : seq - 1;
+        return (seq == 0) ? MAX_PACKET_SEQ_NUM : seq - 1;
     }
 
     /**
-     * Generates a random number between 1 and {@value MAX_OFFSET} (inclusive).
+     * Generates a random number between 1 and {@value MAX_PACKET_OFFSET} (inclusive).
      */
-    public static int random() {
-        return 1 + rand.nextInt(MAX_OFFSET);
+    public static int randomPacketSeqNum() {
+        return 1 + rand.nextInt(MAX_PACKET_OFFSET);
+    }
+
+    public static int randomInt() {
+        return rand.nextInt();
     }
 
 }

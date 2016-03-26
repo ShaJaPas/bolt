@@ -49,7 +49,7 @@ public class TestPacketFactory {
         p1.setSocketID(1);
         p1.setBoltVersion(4);
         p1.setAddress(InetAddress.getLocalHost());
-        p1.setCookie(SequenceNumber.random());
+        p1.setCookie(SequenceNumber.randomInt());
 
         byte[] p1_data = p1.getEncoded();
 

@@ -217,7 +217,7 @@ public abstract class BoltSession {
 
     public synchronized int getInitialSequenceNumber() {
         if (initialSequenceNumber == null) {
-            initialSequenceNumber = SequenceNumber.random();
+            initialSequenceNumber = SequenceNumber.randomPacketSeqNum();
         }
         return initialSequenceNumber;
     }

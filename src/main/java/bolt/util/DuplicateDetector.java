@@ -5,7 +5,15 @@ import bolt.packets.DataPacket;
 import java.util.BitSet;
 
 /**
- * Created by keen on 26/03/16.
+ * Prevent replaying of previously-received packets.
+ * <p>
+ * A bounded circular buffer holds the packet sequence numbers
+ * of previously received packets. This will guarantee at-most-once
+ * delivery within a limit. This limit is determined by the specified
+ * size of the bounded buffer. The larger the buffer, the less chance
+ * of a duplicate packet being missed.
+ *
+ * @author Cian O'Mahony
  */
 public class DuplicateDetector {
 

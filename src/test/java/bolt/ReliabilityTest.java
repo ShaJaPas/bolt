@@ -74,6 +74,11 @@ public class ReliabilityTest {
 
     }
 
+    @Test
+    public void testSendingReliablePacketsWithSequenceNumberOverflow() {
+
+    }
+
     private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable
     {
         final BoltServer server = ServerUtil.runServer(Object.class,

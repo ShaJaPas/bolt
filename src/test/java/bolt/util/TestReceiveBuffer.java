@@ -4,39 +4,22 @@ import bolt.packets.DataPacket;
 import bolt.packets.DeliveryType;
 import org.junit.Test;
 
-import java.util.concurrent.*;
+import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-public class TestAdvancedReceiveBuffer {
-
-    private DataPacket dataPacket(int seqNo, byte[] data) {
-        return dataPacket(seqNo, data, DeliveryType.RELIABLE_ORDERED);
-    }
-
-    private DataPacket dataPacket(int seqNo, byte[] data, DeliveryType deliveryType) {
-        return dataPacket(seqNo, -1, data, deliveryType);
-    }
-
-    private DataPacket orderedDataPacket(int seqNo, int orderSeqNo, byte[] data) {
-        return dataPacket(seqNo, orderSeqNo, data, DeliveryType.RELIABLE_ORDERED);
-    }
-
-    private DataPacket dataPacket(int seqNo, int orderSeqNo, byte[] data, DeliveryType deliveryType) {
-        final DataPacket p = new DataPacket();
-        p.setData(data);
-        p.setPacketSeqNumber(seqNo);
-        p.setDelivery(deliveryType);
-        p.setOrderSeqNumber(orderSeqNo);
-        return p;
-    }
+public class TestReceiveBuffer {
 
     @Test
     public void testInOrder() {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(16);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -55,7 +38,7 @@ public class TestAdvancedReceiveBuffer {
 
     @Test
     public void testOutOfOrder() {
-        AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        ReceiveBuffer b = new ReceiveBuffer(16);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -75,7 +58,7 @@ public class TestAdvancedReceiveBuffer {
 
     @Test
     public void testInterleaved() {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(16);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
         byte[] test3 = "test3".getBytes();
@@ -99,8 +82,8 @@ public class TestAdvancedReceiveBuffer {
     }
 
     @Test
-    public void testOverflow() {
-        AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
+    public void testBufferOverflow() {
+        ReceiveBuffer b = new ReceiveBuffer(4);
 
         for (int i = 0; i < 3; i++) {
             b.offer(orderedDataPacket(i + 1, i + 1, "test".getBytes()));
@@ -119,9 +102,9 @@ public class TestAdvancedReceiveBuffer {
 
     @Test
     public void testTimedPoll() throws Exception {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(4);
 
-        final Runnable write = () -> {
+        CompletableFuture.runAsync(() -> {
             try {
                 for (int i = 0; i < 5; i++) {
                     Thread.sleep(50);
@@ -132,9 +115,9 @@ public class TestAdvancedReceiveBuffer {
                 e.printStackTrace();
                 fail();
             }
-        };
+        });
 
-        final Callable<String> reader = () -> {
+        CompletableFuture.supplyAsync(() -> {
             for (int i = 0; i < 5; i++) {
                 DataPacket r = null;
                 do {
@@ -148,22 +131,16 @@ public class TestAdvancedReceiveBuffer {
                 while (r == null);
             }
             return "OK.";
-        };
-
-        ScheduledExecutorService es = Executors.newScheduledThreadPool(2);
-        es.execute(write);
-        Future<String> res = es.submit(reader);
-        res.get();
-        es.shutdownNow();
+        }).join();
     }
 
     @Test
     public void testTimedPoll2() throws Exception {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(4, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(4);
 
         final AtomicBoolean poll = new AtomicBoolean(false);
 
-        Runnable write = () -> {
+        CompletableFuture.runAsync(() -> {
             try {
                 Thread.sleep(297);
                 System.out.println("PUT");
@@ -175,9 +152,9 @@ public class TestAdvancedReceiveBuffer {
                 e.printStackTrace();
                 fail();
             }
-        };
+        });
 
-        Callable<String> reader = () -> {
+        CompletableFuture.supplyAsync(() -> {
             DataPacket r = null;
             do {
                 try {
@@ -194,18 +171,12 @@ public class TestAdvancedReceiveBuffer {
             }
             while (r == null);
             return "OK.";
-        };
-
-        ScheduledExecutorService es = Executors.newScheduledThreadPool(2);
-        es.execute(write);
-        Future<String> res = es.submit(reader);
-        res.get();
-        es.shutdownNow();
+        }).join();
     }
 
     @Test
     public void testDuplicateUnordered() {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(16);
         byte[] test1 = "test1".getBytes();
         byte[] test2 = "test2".getBytes();
 
@@ -220,7 +191,7 @@ public class TestAdvancedReceiveBuffer {
 
     @Test
     public void testDuplicateUnorderedAndOrdered() {
-        final AdvancedReceiveBuffer b = new AdvancedReceiveBuffer(16, 1);
+        final ReceiveBuffer b = new ReceiveBuffer(16);
 
         b.offer(dataPacket(1, "test1".getBytes(), DeliveryType.RELIABLE_UNORDERED));   // Read 1st
         b.offer(orderedDataPacket(2, 1, "test2".getBytes()));     // Read 4th
@@ -233,6 +204,61 @@ public class TestAdvancedReceiveBuffer {
         assertEquals(4, b.poll().getPacketSeqNumber());
         assertEquals(2, b.poll().getPacketSeqNumber());
         assertEquals(5, b.poll().getPacketSeqNumber());
+    }
+
+    @Test
+    public void testOrderSequenceOverflow() {
+        int orderSeqNum = SequenceNumber.MAX_SEQ_NUM_16_BIT - 2;
+        final ReceiveBuffer b = new ReceiveBuffer(16, orderSeqNum);
+
+        for (int i = 0; i < 5; i++) {
+            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            b.offer(orderedDataPacket(i + 1, orderSeqNum, ("test" + i).getBytes()));
+            DataPacket d = b.poll();
+            assertEquals(i + 1, d.getPacketSeqNumber());
+            assertEquals(orderSeqNum, d.getOrderSeqNumber());
+        }
+
+        assertEquals(2, orderSeqNum);
+    }
+
+    @Test
+    public void testOrderSequenceOverflow2() {
+        final int initialOrderSeqNum = SequenceNumber.MAX_SEQ_NUM_16_BIT - 2;
+        final ReceiveBuffer b = new ReceiveBuffer(16, initialOrderSeqNum);
+
+        int orderSeqNum = initialOrderSeqNum;
+        for (int i = 0; i < 5; i++) {
+            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            b.offer(orderedDataPacket(i + 1, orderSeqNum, ("test" + i).getBytes()));
+        }
+
+        orderSeqNum = initialOrderSeqNum;
+        for (int i = 0; i < 5; i++) {
+            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            DataPacket d = b.poll();
+            assertEquals(i + 1, d.getPacketSeqNumber());
+            assertEquals(orderSeqNum, d.getOrderSeqNumber());
+        }
+
+        assertEquals(2, orderSeqNum);
+    }
+
+    private DataPacket dataPacket(int seqNo, byte[] data, DeliveryType deliveryType) {
+        return dataPacket(seqNo, -1, data, deliveryType);
+    }
+
+    private DataPacket orderedDataPacket(int seqNo, int orderSeqNo, byte[] data) {
+        return dataPacket(seqNo, orderSeqNo, data, DeliveryType.RELIABLE_ORDERED);
+    }
+
+    private DataPacket dataPacket(int seqNo, int orderSeqNo, byte[] data, DeliveryType deliveryType) {
+        final DataPacket p = new DataPacket();
+        p.setData(data);
+        p.setPacketSeqNumber(seqNo);
+        p.setDelivery(deliveryType);
+        p.setOrderSeqNumber(orderSeqNo);
+        return p;
     }
 
 }

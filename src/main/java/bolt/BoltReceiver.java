@@ -465,19 +465,19 @@ public class BoltReceiver {
         if (dp.isReliable()) {
             final int relSeqNum = dp.getReliabilitySeqNumber();
             // 6) Number of detected lossed packet
-            if (SequenceNumber.compare(relSeqNum, largestReceivedRelSeqNumber + 1) > 0) {
+            if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber + 1) > 0) {
                 // 6.a) If the number of the current data packet is greater than LSRN + 1,
                 // put all the sequence numbers between (but excluding) these two values
                 // into the receiver's loss list and send them to the sender in an NAK packet
                 sendNAK(relSeqNum);
             }
-            else if (SequenceNumber.compare(relSeqNum, largestReceivedRelSeqNumber) < 0) {
+            else if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber) < 0) {
                 // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
                 receiverLossList.remove(relSeqNum);
             }
 
             // 7) Update the LRSN
-            if (SequenceNumber.compare(relSeqNum, largestReceivedRelSeqNumber) > 0) {
+            if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber) > 0) {
                 largestReceivedRelSeqNumber = relSeqNum;
             }
 

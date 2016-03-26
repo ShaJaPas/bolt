@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Cian O'Mahony
  */
-public class AdvancedReceiveBuffer
+public class ReceiveBuffer
 {
 
     private final Queue<DataPacket> buffer;
@@ -35,12 +35,15 @@ public class AdvancedReceiveBuffer
     /** The highest order sequence number already read by the application. */
     private int highestReadOrderNumber;
 
-    public AdvancedReceiveBuffer(final int size, final int initialOrderNumber) {
+    public ReceiveBuffer(final int size) {
+        this(size, 0);
+    }
+    public ReceiveBuffer(final int size, final int initialOrderNumber) {
         this.size = size;
         this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriorityComparator());
         this.lock = new ReentrantLock(false);
         this.notEmpty = lock.newCondition();
-        this.highestReadOrderNumber = 0;
+        this.highestReadOrderNumber = initialOrderNumber;
         this.duplicateDetector = DuplicateDetector.ofSize(MAX_DUP_BUFFER);
     }
 
@@ -189,7 +192,11 @@ public class AdvancedReceiveBuffer
         {
             if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? 1 : -1);
 
-            return SequenceNumber.compare(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
+            else if (o1.isOrdered() && o2.isOrdered()) {
+                return SequenceNumber.compare16(o1.getOrderSeqNumber(), o2.getOrderSeqNumber());
+            }
+
+            return SequenceNumber.comparePacketSeqNum(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
         }
     }
 

@@ -143,7 +143,7 @@ public class ServerSession extends BoltSession {
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        sessionCookie = SequenceNumber.random(); // TODO use long generation method?
+        sessionCookie = SequenceNumber.randomInt();
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());

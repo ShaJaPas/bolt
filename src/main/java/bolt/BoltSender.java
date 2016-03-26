@@ -428,7 +428,7 @@ public class BoltSender {
      * The initial sequence number is "0".
      */
     public int nextPacketSequenceNumber() {
-        return currentSequenceNumber = SequenceNumber.increment(currentSequenceNumber);
+        return currentSequenceNumber = SequenceNumber.incrementPacketSeqNum(currentSequenceNumber);
     }
 
     /**
@@ -456,11 +456,11 @@ public class BoltSender {
     }
 
     boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
-        return SequenceNumber.compare(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
+        return SequenceNumber.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
     }
 
     boolean isSentOut(int sequenceNumber) {
-        return SequenceNumber.compare(largestSentSequenceNumber, sequenceNumber) >= 0;
+        return SequenceNumber.comparePacketSeqNum(largestSentSequenceNumber, sequenceNumber) >= 0;
     }
 
     boolean haveLostPackets() {

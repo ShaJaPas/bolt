@@ -101,7 +101,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         byte deliveryType = (byte) PacketUtil.decodeInt(encodedData, 0, 28, 31);
         delivery = DeliveryType.fromId(deliveryType);
 
-        packetSeqNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_SEQ_NUM;
+        packetSeqNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_PACKET_SEQ_NUM;
         destinationID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
         classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
