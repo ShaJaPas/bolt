@@ -22,7 +22,7 @@
 - [ ] Review level of each log statement
 - [ ] Review Javadoc
 - [X] Change Test classes names from (Test.*.java) to (.*Test.java)
-- [ ] Add group to base of package (before bolt.*)
+- [X] Add group to base of package (before bolt.*)
 - [ ] Separate to core and api packages
 - [ ] Reduce 1+ second startup of local client/server
 - [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic
