@@ -1,6 +1,6 @@
 package bolt.sender;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import org.junit.Test;
 
 import java.util.Random;

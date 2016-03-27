@@ -1,6 +1,6 @@
-package bolt.packets;
+package bolt.packet;
 
-import bolt.packets.ControlPacket.ControlPacketType;
+import bolt.packet.ControlPacket.ControlPacketType;
 import org.junit.Test;
 
 import java.util.stream.Stream;

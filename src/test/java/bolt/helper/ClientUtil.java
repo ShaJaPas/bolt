@@ -24,7 +24,7 @@ public class ClientUtil {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
         if (init != null) init.accept(client);
-        TestPackets.registerAll(client.xCoderRepository());
+        TestPackets.registerAll(client.codecs());
 
         client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())

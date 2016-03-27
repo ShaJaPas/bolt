@@ -25,7 +25,7 @@ public class ServerUtil {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), PortUtil.nextServerPort()));
         if (init != null) init.accept(server);
-        TestPackets.registerAll(server.xCoderRepository());
+        TestPackets.registerAll(server.codecs());
 
         server.bind()
                 .subscribeOn(Schedulers.io())

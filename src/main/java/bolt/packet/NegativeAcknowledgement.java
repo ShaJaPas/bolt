@@ -1,4 +1,4 @@
-package bolt.packets;
+package bolt.packet;
 
 import bolt.util.SeqNum;
 

@@ -1,4 +1,4 @@
-package bolt.packets;
+package bolt.packet;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Objects;

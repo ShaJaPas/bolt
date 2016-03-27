@@ -1,9 +1,8 @@
 package bolt.sender;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 /**
  * Holds a fixed number of {@link DataPacket} instances which are sent out.<br/>

@@ -1,7 +1,7 @@
 package bolt;
 
-import bolt.packets.ConnectionHandshake;
-import bolt.packets.Destination;
+import bolt.packet.ConnectionHandshake;
+import bolt.packet.Destination;
 import bolt.statistic.BoltStatistics;
 import bolt.util.SeqNum;
 import org.slf4j.Logger;

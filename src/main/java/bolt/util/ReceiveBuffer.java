@@ -1,6 +1,6 @@
 package bolt.util;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 
 import java.util.Comparator;
 import java.util.Queue;

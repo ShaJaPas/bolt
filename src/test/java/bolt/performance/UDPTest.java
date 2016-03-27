@@ -1,7 +1,7 @@
 package bolt.performance;
 
 import bolt.BoltEndPoint;
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import bolt.statistic.MeanValue;
 import bolt.helper.PortUtil;
 import org.junit.Test;

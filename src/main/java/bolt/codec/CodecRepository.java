@@ -1,8 +1,6 @@
-package bolt.xcoder;
+package bolt.codec;
 
-import bolt.packets.DataPacket;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import bolt.packet.DataPacket;
 
 import java.util.Collection;
 import java.util.List;
@@ -16,10 +14,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by keen on 27/02/16.
  */
 @SuppressWarnings("unchecked")
-public class XCoderRepository {
+public class CodecRepository {
 
 
-    private final Map<Class<?>, XCoderChain<?>> classXCoders = new ConcurrentHashMap<>();
+    private final Map<Class<?>, CodecChain<?>> classXCoders = new ConcurrentHashMap<>();
 
     private final Map<Integer, Class<?>> idsToClass = new ConcurrentHashMap<>();
 
@@ -27,25 +25,25 @@ public class XCoderRepository {
 
     private final MessageAssembleBuffer messageAssembleBuffer;
 
-    private XCoderRepository(final MessageAssembleBuffer messageAssembleBuffer) {
+    private CodecRepository(final MessageAssembleBuffer messageAssembleBuffer) {
         this.messageAssembleBuffer = messageAssembleBuffer;
     }
 
-    public static XCoderRepository create() {
-        return new XCoderRepository(new MessageAssembleBuffer());
+    public static CodecRepository create() {
+        return new CodecRepository(new MessageAssembleBuffer());
     }
 
-    public static XCoderRepository basic(final MessageAssembleBuffer messageAssembleBuffer) {
-        XCoderRepository x = new XCoderRepository(messageAssembleBuffer);
-        x.register(byte[].class, XCoderChain.rawBytePackageChain(messageAssembleBuffer));
+    public static CodecRepository basic(final MessageAssembleBuffer messageAssembleBuffer) {
+        CodecRepository x = new CodecRepository(messageAssembleBuffer);
+        x.register(byte[].class, CodecChain.rawBytePackageChain(messageAssembleBuffer));
         return x;
     }
 
-    public <T> int register(final Class<T> clazz, final PackageXCoder<T> xCoder) throws IllegalArgumentException {
-        return register(clazz, XCoderChain.of(messageAssembleBuffer, xCoder));
+    public <T> int register(final Class<T> clazz, final PacketCodec<T> xCoder) throws IllegalArgumentException {
+        return register(clazz, CodecChain.of(messageAssembleBuffer, xCoder));
     }
 
-    public <T> int register(final Class<T> clazz, final XCoderChain<T> xCoder) throws IllegalArgumentException {
+    public <T> int register(final Class<T> clazz, final CodecChain<T> xCoder) throws IllegalArgumentException {
         if (classXCoders.containsKey(clazz)) throw new IllegalArgumentException("Class is already registered " + clazz);
 
         final Integer classId = idSeq.getAndIncrement();
@@ -59,24 +57,24 @@ public class XCoderRepository {
         final List<DataPacket> readyForDecode = messageAssembleBuffer.addChunk(data);
         if (!readyForDecode.isEmpty()) {
             final int classId = data.getClassID();
-            final XCoderChain<T> xCoder = getXCoder(classId);
+            final CodecChain<T> xCoder = getXCoder(classId);
             return xCoder.decode(readyForDecode);
         }
         return null;
     }
 
     public <T> Collection<DataPacket> encode(final T object) throws NoSuchElementException {
-        final XCoderChain<T> xCoder = (XCoderChain<T>) getXCoder(object.getClass());
+        final CodecChain<T> xCoder = (CodecChain<T>) getXCoder(object.getClass());
         return xCoder.encode(object);
     }
 
-    private <T> XCoderChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
-        final XCoderChain<T> xCoder = (XCoderChain<T>) classXCoders.get(clazz);
+    private <T> CodecChain<T> getXCoder(final Class<T> clazz) throws NoSuchElementException {
+        final CodecChain<T> xCoder = (CodecChain<T>) classXCoders.get(clazz);
         if (xCoder == null) throw new NoSuchElementException("Class not found for class " + clazz);
         return xCoder;
     }
 
-    public <T> XCoderChain<T> getXCoder(final int classId) throws NoSuchElementException {
+    public <T> CodecChain<T> getXCoder(final int classId) throws NoSuchElementException {
         final Class<T> clazz = (Class<T>) idsToClass.get(classId);
         if (clazz == null) throw new NoSuchElementException("Class not found for id " + classId);
         return getXCoder(clazz);

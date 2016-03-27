@@ -1,9 +1,9 @@
-package bolt.xcoder;
+package bolt.codec;
 
 /**
  * Created by keen on 27/02/16.
  */
-public interface XCoder<D, E> {
+public interface Codec<D, E> {
 
     /**
      * Decodes an arbitrary-length array of bytes into its original

@@ -1,6 +1,6 @@
 package bolt.util;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import org.junit.Before;
 import org.junit.Test;
 

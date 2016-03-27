@@ -1,7 +1,7 @@
-package bolt.packets;
+package bolt.packet;
 
 import bolt.BoltPacket;
-import bolt.packets.ControlPacket.ControlPacketType;
+import bolt.packet.ControlPacket.ControlPacketType;
 
 import java.io.IOException;
 

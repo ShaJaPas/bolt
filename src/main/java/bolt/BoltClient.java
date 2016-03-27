@@ -1,12 +1,12 @@
 package bolt;
 
-import bolt.packets.DataPacket;
-import bolt.packets.Destination;
-import bolt.packets.Shutdown;
+import bolt.packet.DataPacket;
+import bolt.packet.Destination;
+import bolt.packet.Shutdown;
 import bolt.receiver.RoutedData;
 import bolt.statistic.BoltStatistics;
-import bolt.xcoder.MessageAssembleBuffer;
-import bolt.xcoder.XCoderRepository;
+import bolt.codec.MessageAssembleBuffer;
+import bolt.codec.CodecRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -23,7 +23,7 @@ public class BoltClient implements Client {
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
     private final BoltEndPoint clientEndpoint;
-    private final XCoderRepository xCoderRepository;
+    private final CodecRepository codecs;
     private final Config config;
     private ClientSession clientSession;
 
@@ -33,7 +33,7 @@ public class BoltClient implements Client {
 
     public BoltClient(final Config config) throws SocketException, UnknownHostException {
         this.config = config;
-        this.xCoderRepository = XCoderRepository.basic(new MessageAssembleBuffer());
+        this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
         LOG.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
     }
@@ -49,7 +49,7 @@ public class BoltClient implements Client {
                         final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
                         if (packet != null) {
-                            final Object decoded = xCoderRepository.decode(packet);
+                            final Object decoded = codecs.decode(packet);
                             if (decoded != null) {
                                 subscriber.onNext(new RoutedData(clientSession.getSocketID(), decoded));
                             }
@@ -71,7 +71,7 @@ public class BoltClient implements Client {
     }
 
     public void send(final Object obj) throws BoltException {
-        final Collection<DataPacket> data = xCoderRepository.encode(obj);
+        final Collection<DataPacket> data = codecs.encode(obj);
         for (final DataPacket dp : data) {
             try {
                 send(dp);
@@ -150,8 +150,8 @@ public class BoltClient implements Client {
         return clientSession.getStatistics();
     }
 
-    public XCoderRepository xCoderRepository() {
-        return xCoderRepository;
+    public CodecRepository codecs() {
+        return codecs;
     }
 
     public Config config() {

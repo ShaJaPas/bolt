@@ -1,4 +1,4 @@
-package bolt.xcoder;
+package bolt.codec;
 
 import java.util.Collection;
 

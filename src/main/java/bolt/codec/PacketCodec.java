@@ -1,10 +1,10 @@
-package bolt.xcoder;
+package bolt.codec;
 
 import bolt.BoltEndPoint;
 import bolt.BoltException;
-import bolt.packets.DataPacket;
-import bolt.packets.DeliveryType;
-import bolt.packets.PacketUtil;
+import bolt.packet.DataPacket;
+import bolt.packet.DeliveryType;
+import bolt.packet.PacketUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,24 +13,24 @@ import java.util.Objects;
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
+public class PacketCodec<T> implements Codec<T, List<DataPacket>>
 {
 
     // TODO consider changing 1400 to a variable MTU
     private final int maxPacketSize = BoltEndPoint.DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
 
-    private final ObjectXCoder<T> objectXCoder;
+    private final ObjectCodec<T> objectCodec;
 
     private DeliveryType deliveryType;
 
-    public PackageXCoder(final ObjectXCoder<T> objectXCoder)
+    public PacketCodec(final ObjectCodec<T> objectCodec)
     {
-        this(objectXCoder, DeliveryType.RELIABLE_ORDERED_MESSAGE);
+        this(objectCodec, DeliveryType.RELIABLE_ORDERED_MESSAGE);
     }
 
-    public PackageXCoder(final ObjectXCoder<T> objectXCoder, final DeliveryType deliveryType) {
-        Objects.requireNonNull(objectXCoder);
-        this.objectXCoder = objectXCoder;
+    public PacketCodec(final ObjectCodec<T> objectCodec, final DeliveryType deliveryType) {
+        Objects.requireNonNull(objectCodec);
+        this.objectCodec = objectCodec;
         this.deliveryType = deliveryType;
     }
 
@@ -51,7 +51,7 @@ public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
             return acc + x.length;
         }, (a, b) -> a + b);
 
-        return objectXCoder.decode(bytes);
+        return objectCodec.decode(bytes);
     }
 
     /**
@@ -62,7 +62,7 @@ public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
      */
     @Override
     public List<DataPacket> encode(final T object) throws BoltException {
-        final byte[] bytes = objectXCoder.encode(object);
+        final byte[] bytes = objectCodec.encode(object);
         final int chunkCount = (int) Math.ceil(bytes.length / (double)maxPacketSize);
         final DeliveryType computedDeliveryType = computeDeliveryType(chunkCount);
 
@@ -78,7 +78,7 @@ public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
             final DataPacket packet = new DataPacket();
             packet.setData(packetData);
             packet.setDelivery(computedDeliveryType);
-            packet.setClassID(objectXCoder.getClassId());
+            packet.setClassID(objectCodec.getClassId());
             if (computedDeliveryType.isMessage()) {
                 packet.setMessageChunkNumber(i);
                 packet.setFinalMessageChunk(i == (chunkCount - 1));
@@ -103,7 +103,7 @@ public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
     }
 
     public void setClassId(final int classId) {
-        objectXCoder.setClassId(classId);
+        objectCodec.setClassId(classId);
     }
 
 }

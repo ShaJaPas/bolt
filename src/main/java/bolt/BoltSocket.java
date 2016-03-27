@@ -1,6 +1,6 @@
 package bolt;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import bolt.util.ReceiveBuffer;
 import rx.Observable;
 import rx.schedulers.Schedulers;

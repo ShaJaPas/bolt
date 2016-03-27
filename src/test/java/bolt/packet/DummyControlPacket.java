@@ -1,4 +1,4 @@
-package bolt.packets;
+package bolt.packet;
 
 public class DummyControlPacket extends ControlPacket {
 

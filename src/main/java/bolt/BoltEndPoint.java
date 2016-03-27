@@ -1,9 +1,9 @@
 package bolt;
 
 import bolt.event.ConnectionReadyEvent;
-import bolt.packets.ConnectionHandshake;
-import bolt.packets.Destination;
-import bolt.packets.PacketFactory;
+import bolt.packet.ConnectionHandshake;
+import bolt.packet.Destination;
+import bolt.packet.PacketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;

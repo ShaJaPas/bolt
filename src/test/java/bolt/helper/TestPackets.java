@@ -1,10 +1,10 @@
 package bolt.helper;
 
-import bolt.packets.DeliveryType;
-import bolt.packets.PacketUtil;
-import bolt.xcoder.ObjectXCoder;
-import bolt.xcoder.PackageXCoder;
-import bolt.xcoder.XCoderRepository;
+import bolt.codec.PacketCodec;
+import bolt.packet.DeliveryType;
+import bolt.packet.PacketUtil;
+import bolt.codec.ObjectCodec;
+import bolt.codec.CodecRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +17,8 @@ import java.util.stream.IntStream;
  */
 public class TestPackets {
 
-    public static void registerAll(final XCoderRepository xcoding) {
-        final PackageXCoder<Finished> finishedXCoderChain = new PackageXCoder<>(new ObjectXCoder<Finished>() {
+    public static void registerAll(final CodecRepository xcoding) {
+        final PacketCodec<Finished> finishedXCoderChain = new PacketCodec<>(new ObjectCodec<Finished>() {
             @Override
             public Finished decode(byte[] data) {
                 return new Finished();
@@ -62,8 +62,8 @@ public class TestPackets {
         return new Finished();
     }
 
-    private static <T extends BaseDataClass> PackageXCoder<T> createDataChain(final DeliveryType deliveryType, final Function<List<Integer>, T> constructor) {
-        final ObjectXCoder<T> o = new ObjectXCoder<T>() {
+    private static <T extends BaseDataClass> PacketCodec<T> createDataChain(final DeliveryType deliveryType, final Function<List<Integer>, T> constructor) {
+        final ObjectCodec<T> o = new ObjectCodec<T>() {
             @Override
             public T decode(byte[] data) {
                 final List<Integer> ints = new ArrayList<>();
@@ -80,7 +80,7 @@ public class TestPackets {
                 return encoded;
             }
         };
-        return new PackageXCoder<>(o, deliveryType);
+        return new PacketCodec<>(o, deliveryType);
     }
 
     public static class BaseDataClass {

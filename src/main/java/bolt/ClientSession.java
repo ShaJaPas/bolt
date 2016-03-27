@@ -1,8 +1,8 @@
 package bolt;
 
-import bolt.packets.ConnectionHandshake;
-import bolt.packets.Destination;
-import bolt.packets.Shutdown;
+import bolt.packet.ConnectionHandshake;
+import bolt.packet.Destination;
+import bolt.packet.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;

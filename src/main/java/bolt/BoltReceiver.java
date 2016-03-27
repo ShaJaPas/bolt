@@ -1,8 +1,8 @@
 package bolt;
 
-import bolt.packets.*;
-import bolt.packets.ControlPacket.ControlPacketType;
-import bolt.packets.Shutdown;
+import bolt.packet.*;
+import bolt.packet.ControlPacket.ControlPacketType;
+import bolt.packet.Shutdown;
 import bolt.receiver.*;
 import bolt.statistic.BoltStatistics;
 import bolt.util.ReceiveBuffer;

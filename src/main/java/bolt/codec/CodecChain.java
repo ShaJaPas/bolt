@@ -1,6 +1,6 @@
-package bolt.xcoder;
+package bolt.codec;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,15 +12,15 @@ import java.util.stream.Collectors;
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class XCoderChain<T> {
+public class CodecChain<T> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(XCoderChain.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CodecChain.class);
 
     private final ObjectSpliterator<T> spliterator;
     private final MessageAssembleBuffer messageAssembleBuffer;
-    private final PackageXCoder<T> packageXCoder;
+    private final PacketCodec<T> packageXCoder;
 
-    private XCoderChain(final MessageAssembleBuffer messageAssembleBuffer, final ObjectSpliterator<T> spliterator, final PackageXCoder<T> packageXCoder) {
+    private CodecChain(final MessageAssembleBuffer messageAssembleBuffer, final ObjectSpliterator<T> spliterator, final PacketCodec<T> packageXCoder) {
         Objects.requireNonNull(messageAssembleBuffer);
         Objects.requireNonNull(packageXCoder);
         this.messageAssembleBuffer = messageAssembleBuffer;
@@ -28,8 +28,8 @@ public class XCoderChain<T> {
         this.packageXCoder = packageXCoder;
     }
 
-    public static XCoderChain rawBytePackageChain(final MessageAssembleBuffer assembler) {
-        ObjectXCoder<byte[]> byteXCoder = new ObjectXCoder<byte[]>() {
+    public static CodecChain rawBytePackageChain(final MessageAssembleBuffer assembler) {
+        ObjectCodec<byte[]> byteXCoder = new ObjectCodec<byte[]>() {
             @Override
             public byte[] decode(byte[] data) {
                 return data;
@@ -40,11 +40,11 @@ public class XCoderChain<T> {
                 return object;
             }
         };
-        return new XCoderChain<>(assembler, null, new PackageXCoder<>(byteXCoder));
+        return new CodecChain<>(assembler, null, new PacketCodec<>(byteXCoder));
     }
 
-    public static <T> XCoderChain<T> of(final MessageAssembleBuffer assembler, final PackageXCoder<T> PackageXCoder) {
-        return new XCoderChain<>(assembler, null, PackageXCoder);
+    public static <T> CodecChain<T> of(final MessageAssembleBuffer assembler, final PacketCodec<T> PackageXCoder) {
+        return new CodecChain<>(assembler, null, PackageXCoder);
     }
 
     public T decode(final List<DataPacket> readyForDecode) {

@@ -1,4 +1,4 @@
-package bolt.packets;
+package bolt.packet;
 
 import bolt.BoltReceiver;
 import bolt.BoltSender;

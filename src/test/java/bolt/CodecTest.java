@@ -1,11 +1,11 @@
 package bolt;
 
-import bolt.packets.DataPacket;
-import bolt.packets.DeliveryType;
-import bolt.packets.PacketUtil;
-import bolt.xcoder.ObjectXCoder;
-import bolt.xcoder.PackageXCoder;
-import bolt.xcoder.XCoderRepository;
+import bolt.codec.PacketCodec;
+import bolt.packet.DataPacket;
+import bolt.packet.DeliveryType;
+import bolt.packet.PacketUtil;
+import bolt.codec.ObjectCodec;
+import bolt.codec.CodecRepository;
 import org.junit.Test;
 
 import java.util.*;
@@ -17,13 +17,13 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by omahoc9 on 3/24/16.
  */
-public class XCoderTest {
+public class CodecTest {
 
-    private XCoderRepository xCoderRepository;
+    private CodecRepository codecRepository;
 
     public void setUp(final DeliveryType deliveryType) throws Exception {
-        xCoderRepository = XCoderRepository.create();
-        xCoderRepository.register(XCodable.class, new PackageXCoder<>(new XCodableObjectXCoder(), deliveryType));
+        codecRepository = CodecRepository.create();
+        codecRepository.register(XCodable.class, new PacketCodec<>(new XCodableObjectCodec(), deliveryType));
     }
 
     @Test
@@ -33,9 +33,9 @@ public class XCoderTest {
 
         // When
         final XCodable original = new XCodable(1, 2);
-        final Collection<DataPacket> encoded = xCoderRepository.encode(original);
+        final Collection<DataPacket> encoded = codecRepository.encode(original);
         final DataPacket single = encoded.stream().findFirst().orElse(null);
-        final XCodable decoded = xCoderRepository.decode(single);
+        final XCodable decoded = codecRepository.decode(single);
 
         // Then
         assertEquals(1, encoded.size());
@@ -45,24 +45,24 @@ public class XCoderTest {
 
     @Test(expected = NoSuchElementException.class)
     public void testEncode_ErrorNoEncoder() throws Throwable {
-        // Given (don't register any XCoder)
-        xCoderRepository = XCoderRepository.create();
+        // Given (don't register any Codec)
+        codecRepository = CodecRepository.create();
 
         // When
-        xCoderRepository.encode(new XCodable(1, 2));
+        codecRepository.encode(new XCodable(1, 2));
     }
 
     @Test(expected = NoSuchElementException.class)
     public void testDecode_ErrorNoDecoder() throws Throwable {
-        // Given (don't register any XCoder)
-        xCoderRepository = XCoderRepository.create();
+        // Given (don't register any Codec)
+        codecRepository = CodecRepository.create();
         final DataPacket dp = new DataPacket();
         dp.setClassID(1);
         dp.setData(new byte[8]);
         dp.setDelivery(DeliveryType.RELIABLE_ORDERED);
 
         // When
-        xCoderRepository.decode(dp);
+        codecRepository.decode(dp);
     }
 
     @Test(expected = BoltException.class)
@@ -71,10 +71,10 @@ public class XCoderTest {
         setUp(DeliveryType.RELIABLE_ORDERED);
 
         // When
-        xCoderRepository.encode(new XCodable(IntStream.range(0, 1000).boxed().collect(Collectors.toList())));
+        codecRepository.encode(new XCodable(IntStream.range(0, 1000).boxed().collect(Collectors.toList())));
     }
 
-    private static class XCodableObjectXCoder extends ObjectXCoder<XCodable> {
+    private static class XCodableObjectCodec extends ObjectCodec<XCodable> {
 
         @Override
         public XCodable decode(byte[] data) {

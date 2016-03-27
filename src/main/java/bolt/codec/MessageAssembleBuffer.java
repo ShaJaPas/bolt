@@ -1,7 +1,7 @@
-package bolt.xcoder;
+package bolt.codec;
 
-import bolt.packets.DataPacket;
-import bolt.packets.PacketUtil;
+import bolt.packet.DataPacket;
+import bolt.packet.PacketUtil;
 import bolt.util.SeqNum;
 
 import java.util.*;

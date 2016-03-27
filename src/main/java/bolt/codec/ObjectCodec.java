@@ -1,9 +1,9 @@
-package bolt.xcoder;
+package bolt.codec;
 
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public abstract class ObjectXCoder<T> implements XCoder<T, byte[]>
+public abstract class ObjectCodec<T> implements Codec<T, byte[]>
 {
 
     private int classId;

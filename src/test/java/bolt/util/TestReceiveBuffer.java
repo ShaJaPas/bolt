@@ -1,7 +1,7 @@
 package bolt.util;
 
-import bolt.packets.DataPacket;
-import bolt.packets.DeliveryType;
+import bolt.packet.DataPacket;
+import bolt.packet.DeliveryType;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;

@@ -1,9 +1,9 @@
 package bolt;
 
-import bolt.packets.ConnectionHandshake;
-import bolt.packets.Destination;
-import bolt.packets.KeepAlive;
-import bolt.packets.Shutdown;
+import bolt.packet.ConnectionHandshake;
+import bolt.packet.Destination;
+import bolt.packet.KeepAlive;
+import bolt.packet.Shutdown;
 import bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

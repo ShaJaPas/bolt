@@ -1,10 +1,10 @@
 package bolt;
 
-import bolt.packets.DataPacket;
+import bolt.packet.DataPacket;
 import bolt.receiver.RoutedData;
 import bolt.util.Util;
-import bolt.xcoder.MessageAssembleBuffer;
-import bolt.xcoder.XCoderRepository;
+import bolt.codec.MessageAssembleBuffer;
+import bolt.codec.CodecRepository;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class BoltServer implements Server {
 
-    private final XCoderRepository xCoderRepository;
+    private final CodecRepository codecs;
 
     private final Config config;
 
@@ -28,11 +28,11 @@ public class BoltServer implements Server {
     private volatile int count;
 
     public BoltServer(final Config config) {
-        this(XCoderRepository.basic(new MessageAssembleBuffer()), config);
+        this(CodecRepository.basic(new MessageAssembleBuffer()), config);
     }
 
-    public BoltServer(final XCoderRepository xCoderRepository, final Config config) {
-        this.xCoderRepository = xCoderRepository;
+    public BoltServer(final CodecRepository codecs, final Config config) {
+        this.codecs = codecs;
         this.config = config;
     }
 
@@ -70,7 +70,7 @@ public class BoltServer implements Server {
                     final DataPacket packet = session.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
                     if (packet != null) {
-                        final Object decoded = xCoderRepository.decode(packet);
+                        final Object decoded = codecs.decode(packet);
                         if (decoded != null) {
                             subscriber.onNext(new RoutedData(session.getSocketID(), decoded));
                         }
@@ -92,7 +92,7 @@ public class BoltServer implements Server {
     public void send(final Object obj, final long destId) throws IOException {
         final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
         if (session != null) {
-            final Collection<DataPacket> data = xCoderRepository.encode(obj);
+            final Collection<DataPacket> data = codecs.encode(obj);
             for (final DataPacket dp : data) {
                 session.getSocket().doWrite(dp);
             }
@@ -110,8 +110,8 @@ public class BoltServer implements Server {
         return config;
     }
 
-    public XCoderRepository xCoderRepository() {
-        return xCoderRepository;
+    public CodecRepository codecs() {
+        return codecs;
     }
 
 }

@@ -1,6 +1,6 @@
 package bolt;
 
-import bolt.packets.Destination;
+import bolt.packet.Destination;
 import bolt.helper.ClientUtil;
 import bolt.helper.PortUtil;
 import bolt.helper.TestData;
