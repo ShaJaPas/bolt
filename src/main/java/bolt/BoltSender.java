@@ -1,6 +1,6 @@
 package bolt;
 
-import bolt.packets.*;
+import bolt.packet.*;
 import bolt.sender.FlowWindow;
 import bolt.sender.SenderLossList;
 import bolt.statistic.BoltStatistics;
