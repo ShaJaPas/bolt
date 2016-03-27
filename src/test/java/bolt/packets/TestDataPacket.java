@@ -77,7 +77,7 @@ public class TestDataPacket {
         p.setData(data);
         byte[] encoded = p.getEncoded();
         byte[] encData = new byte[data.length];
-        System.arraycopy(encoded, 8, encData, 0, data.length);
+        System.arraycopy(encoded, DataPacket.computeHeaderLength(p.getDelivery()), encData, 0, data.length);
         String s = new String(encData);
         assertEquals("test", s);
         System.out.println("String s = " + s);
@@ -96,7 +96,7 @@ public class TestDataPacket {
         // Get the encoded data
         byte[] encodedData = testPacket1.getEncoded();
 
-        int headerLength = 8;
+        int headerLength = 8 + 2 + 2;
         assertEquals(data1.length + headerLength, encodedData.length);
 
         byte[] payload = new byte[data1.length];

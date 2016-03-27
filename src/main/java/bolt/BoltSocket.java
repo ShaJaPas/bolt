@@ -63,7 +63,7 @@ public class BoltSocket {
      *
      * @param packet
      */
-    protected boolean haveNewData(final DataPacket packet) throws IOException {
+    protected ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
         return receiveBuffer.offer(packet);
     }
 

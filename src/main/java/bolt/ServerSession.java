@@ -4,7 +4,7 @@ import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.packets.KeepAlive;
 import bolt.packets.Shutdown;
-import bolt.util.SequenceNumber;
+import bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Subscriber;
@@ -143,7 +143,7 @@ public class ServerSession extends BoltSession {
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        sessionCookie = SequenceNumber.randomInt();
+        sessionCookie = SeqNum.randomInt();
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());

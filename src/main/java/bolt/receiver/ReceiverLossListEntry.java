@@ -1,5 +1,6 @@
 package bolt.receiver;
 
+import bolt.util.SeqNum;
 import bolt.util.Util;
 
 import java.util.Objects;
@@ -19,9 +20,9 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      * @param sequenceNumber sequence number lost.
      */
     public ReceiverLossListEntry(final int sequenceNumber) {
-        if (sequenceNumber <= 0) {
-            throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
-        }
+//        if (sequenceNumber <= 0) {
+//            throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
+//        }
         this.sequenceNumber = sequenceNumber;
         this.lastFeedbackTime = Util.getCurrentTime();
     }
@@ -56,7 +57,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      * Order by increasing sequence number.
      */
     public int compareTo(ReceiverLossListEntry o) {
-        return sequenceNumber - o.sequenceNumber;
+        return SeqNum.compare16(sequenceNumber, o.sequenceNumber);
     }
 
 

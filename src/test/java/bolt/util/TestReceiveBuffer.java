@@ -4,12 +4,9 @@ import bolt.packets.DataPacket;
 import bolt.packets.DeliveryType;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -208,11 +205,11 @@ public class TestReceiveBuffer {
 
     @Test
     public void testOrderSequenceOverflow() {
-        int orderSeqNum = SequenceNumber.MAX_SEQ_NUM_16_BIT - 2;
+        int orderSeqNum = SeqNum.MAX_SEQ_NUM_16_BIT - 2;
         final ReceiveBuffer b = new ReceiveBuffer(16, orderSeqNum);
 
         for (int i = 0; i < 5; i++) {
-            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            orderSeqNum = SeqNum.increment16(orderSeqNum);
             b.offer(orderedDataPacket(i + 1, orderSeqNum, ("test" + i).getBytes()));
             DataPacket d = b.poll();
             assertEquals(i + 1, d.getPacketSeqNumber());
@@ -224,18 +221,18 @@ public class TestReceiveBuffer {
 
     @Test
     public void testOrderSequenceOverflow2() {
-        final int initialOrderSeqNum = SequenceNumber.MAX_SEQ_NUM_16_BIT - 2;
+        final int initialOrderSeqNum = SeqNum.MAX_SEQ_NUM_16_BIT - 2;
         final ReceiveBuffer b = new ReceiveBuffer(16, initialOrderSeqNum);
 
         int orderSeqNum = initialOrderSeqNum;
         for (int i = 0; i < 5; i++) {
-            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            orderSeqNum = SeqNum.increment16(orderSeqNum);
             b.offer(orderedDataPacket(i + 1, orderSeqNum, ("test" + i).getBytes()));
         }
 
         orderSeqNum = initialOrderSeqNum;
         for (int i = 0; i < 5; i++) {
-            orderSeqNum = SequenceNumber.increment16(orderSeqNum);
+            orderSeqNum = SeqNum.increment16(orderSeqNum);
             DataPacket d = b.poll();
             assertEquals(i + 1, d.getPacketSeqNumber());
             assertEquals(orderSeqNum, d.getOrderSeqNumber());

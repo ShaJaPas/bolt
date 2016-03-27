@@ -14,6 +14,8 @@ public class Config
 
     private int localPort;
 
+    private boolean sessionsExpirable = true;
+
 //    private final int datagramSize = 1400;
 
     /**
@@ -55,5 +57,12 @@ public class Config
         return this;
     }
 
+    public boolean isSessionsExpirable() {
+        return sessionsExpirable;
+    }
+
+    public void setSessionsExpirable(final boolean sessionsExpirable) {
+        this.sessionsExpirable = sessionsExpirable;
+    }
 
 }

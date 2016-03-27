@@ -2,12 +2,11 @@ package bolt.performance;
 
 import bolt.BoltClient;
 import bolt.BoltServer;
-import bolt.packets.DeliveryType;
 import bolt.helper.ClientUtil;
 import bolt.helper.ServerUtil;
+import bolt.packets.DeliveryType;
 import bolt.xcoder.ObjectXCoder;
 import bolt.xcoder.PackageXCoder;
-import bolt.xcoder.XCoderChain;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -39,7 +38,7 @@ public class BulkPackTest {
 
     @Test
     public void testBulkPackets_unreliable() throws Exception {
-        final XCoderChain<byte[]> chain = XCoderChain.of(new PackageXCoder<>(new ObjectXCoder<byte[]>() {
+        final PackageXCoder<byte[]> chain = new PackageXCoder<>(new ObjectXCoder<byte[]>() {
             @Override
             public byte[] decode(byte[] data) {
                 return data;
@@ -49,7 +48,7 @@ public class BulkPackTest {
             public byte[] encode(byte[] object) {
                 return object;
             }
-        }, DeliveryType.UNRELIABLE_UNORDERED));
+        }, DeliveryType.UNRELIABLE_UNORDERED);
 
         doTest(false, s -> s.xCoderRepository().register(byte[].class, chain),
                 c -> c.xCoderRepository().register(byte[].class, chain));
@@ -64,6 +63,7 @@ public class BulkPackTest {
                 },
                 errors::add,
                 serverInit);
+        server.config().setSessionsExpirable(false);
 
         final byte[] data = new byte[SIZE];
         new Random().nextBytes(data);
@@ -79,6 +79,7 @@ public class BulkPackTest {
                 },
                 errors::add,
                 clientInit);
+        client.config().setSessionsExpirable(false);
 
         final Supplier<Boolean> done = waitForDelivery
                 ? () -> received.get() < PACKET_COUNT

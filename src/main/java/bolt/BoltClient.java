@@ -154,4 +154,8 @@ public class BoltClient implements Client {
         return xCoderRepository;
     }
 
+    public Config config() {
+        return config;
+    }
+
 }

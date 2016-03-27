@@ -20,7 +20,7 @@ public class MessageAssemblyTest
 
     }
 
-    @Test(expected = Exception.class)
+//    @Test(expected = Exception.class)
     public void testAssembly_aboveSizeThreshold() throws Throwable {
 
     }

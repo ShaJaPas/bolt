@@ -1,5 +1,7 @@
 package bolt.sender;
 
+import bolt.util.SeqNum;
+
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
@@ -15,7 +17,7 @@ public class SenderLossList {
      * Create a new sender lost list.
      */
     public SenderLossList() {
-        backingList = new ConcurrentSkipListSet<>();
+        backingList = new ConcurrentSkipListSet<>(this::compareLosses);
     }
 
     public void insert(final Integer obj) {
@@ -43,6 +45,10 @@ public class SenderLossList {
 
     public String toString() {
         return backingList.toString();
+    }
+
+    private int compareLosses(final int o1, final int o2) {
+        return SeqNum.compare16(o1, o2);
     }
 
 }

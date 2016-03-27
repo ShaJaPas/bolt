@@ -2,7 +2,8 @@ package bolt.util;
 
 import bolt.packets.DataPacket;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +39,7 @@ public class ReceiveBuffer
     public ReceiveBuffer(final int size) {
         this(size, 0);
     }
+
     public ReceiveBuffer(final int size, final int initialOrderNumber) {
         this.size = size;
         this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriorityComparator());
@@ -57,27 +59,33 @@ public class ReceiveBuffer
      * successfully stored the packet; false if the buffer was too full to receive
      * the packet.
      */
-    public boolean offer(final DataPacket data) {
+    public OfferResult offer(final DataPacket data) {
         if (numValidChunks.get() == size) {
-            return false;
+            return OfferResult.ERROR_BUFFER_FULL;
         }
         lock.lock();
         try {
-            if (duplicateDetector.checkDuplicatePacket(data)) {
-                return false;
+            if (data.isOrdered()) { // FIXME potential to receive duplicate unordered packets?
+                // If already have this chunk, discard it.
+                final int cmp = SeqNum.compare16(data.getOrderSeqNumber(), highestReadOrderNumber);
+                if (cmp <= 0) {
+                    return OfferResult.OK_ACCEPTED;
+                }
+                // Prevent buffering packets that are too far ahead as the buffer
+                // may become too full to except the next packet in order.
+                final int offset = SeqNum.seqOffset16(highestReadOrderNumber, data.getOrderSeqNumber());
+                if (offset >= size / 2) {
+                    return OfferResult.ERROR_LOOKAHEAD;
+                }
             }
-//            if (data.isOrdered()) { // FIXME potential to receive duplicate unordered packets?
-//                final int seq = data.getOrderSeqNumber();
-//                // If already have this chunk, discard it.
-//                if (SequenceNumber.compare16(seq, highestReadOrderNumber) <= 0) {
-//                    return true;
-//                }
-//            }
+            if (duplicateDetector.checkDuplicatePacket(data)) {
+                return OfferResult.ERROR_DUPLICATE;
+            }
             // Else compute insert position.
             buffer.offer(data);
             numValidChunks.incrementAndGet();
             notEmpty.signal();
-            return true;
+            return OfferResult.OK_ACCEPTED;
         }
         finally {
             lock.unlock();
@@ -137,7 +145,7 @@ public class ReceiveBuffer
             if (r.isOrdered()) {
                 final int thisSeq = r.getOrderSeqNumber();
                 // TODO What about order number overflow?
-                final int comparison = SequenceNumber.seqOffset16(highestReadOrderNumber, thisSeq);
+                final int comparison = SeqNum.seqOffset16(highestReadOrderNumber, thisSeq);
                 if (comparison == 1) {
                     highestReadOrderNumber = thisSeq;
                 }
@@ -192,11 +200,26 @@ public class ReceiveBuffer
         {
             if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? 1 : -1);
 
-            else if (o1.isOrdered() && o2.isOrdered()) {
-                return SequenceNumber.compare16(o1.getOrderSeqNumber(), o2.getOrderSeqNumber());
-            }
+//            else if (o1.isOrdered() && o2.isOrdered()) {
+//                return SeqNum.compare16(o1.getOrderSeqNumber(), o2.getOrderSeqNumber());
+//            }
 
-            return SequenceNumber.comparePacketSeqNum(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
+            return SeqNum.comparePacketSeqNum(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
+        }
+    }
+
+    public enum OfferResult {
+        OK_ACCEPTED("", true),
+        ERROR_DUPLICATE("Duplicate packet", false),
+        ERROR_LOOKAHEAD("Packet too far ahead to buffer", false),
+        ERROR_BUFFER_FULL("Buffer is at capacity", false);
+
+        public final String message;
+        public final boolean success;
+
+        OfferResult(String message, boolean success) {
+            this.message = message;
+            this.success = success;
         }
     }
 

@@ -7,7 +7,7 @@ import java.util.Random;
  * Handle sequence numbers, taking the range of 0 - (2^31 - 1) into account<br/>
  */
 
-public class SequenceNumber {
+public class SeqNum {
 
 
     public final static int MAX_PACKET_SEQ_NUM = (int) (Math.pow(2, 28) - 1);

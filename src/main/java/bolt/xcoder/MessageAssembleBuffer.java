@@ -2,7 +2,7 @@ package bolt.xcoder;
 
 import bolt.packets.DataPacket;
 import bolt.packets.PacketUtil;
-import bolt.util.SequenceNumber;
+import bolt.util.SeqNum;
 
 import java.util.*;
 
@@ -16,12 +16,12 @@ public class MessageAssembleBuffer
 
     private Map<Integer, Message> messageMap = new HashMap<>();
 
-    public Collection<DataPacket> addChunk(final DataPacket dataPacket) {
+    public List<DataPacket> addChunk(final DataPacket dataPacket) {
         if (!dataPacket.isMessage()) {
             return Collections.singletonList(dataPacket);
         }
         else {
-            Collection<DataPacket> result = getOrCreate(dataPacket.getMessageId()).addChunk(dataPacket);
+            List<DataPacket> result = getOrCreate(dataPacket.getMessageId()).addChunk(dataPacket);
             if (!result.isEmpty()) messageMap.remove(dataPacket.getMessageId());  // remove if complete.
             return result;
         }
@@ -33,7 +33,7 @@ public class MessageAssembleBuffer
     }
 
     public int nextMessageId() {
-        return messageId = SequenceNumber.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
+        return messageId = SeqNum.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
     }
 
 
@@ -41,7 +41,7 @@ public class MessageAssembleBuffer
         private final Map<Integer, DataPacket> received = new HashMap<>();
         private int totalChunks;
 
-        private Collection<DataPacket> addChunk(final DataPacket packet) {
+        private List<DataPacket> addChunk(final DataPacket packet) {
             received.put(packet.getMessageChunkNumber(), packet);
             if (packet.isFinalMessageChunk()) {
                 totalChunks = packet.getMessageChunkNumber() + 1;

@@ -1,5 +1,7 @@
 package bolt.packets;
 
+import bolt.util.SeqNum;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -56,7 +58,9 @@ public class NegativeAcknowledgement extends ControlPacket {
                 // Get the end of the interval
                 int end = bb.getInt();
                 // And add all lost numbers to the result list
-                for (int i = lost; i <= end; i++) {
+                // TODO what about overflow? lost = 65536, end = 0
+                for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
+//                for (int i = lost; i <= end; i++) {
                     lostSequenceNumbers.add(i);
                 }
             } else {
@@ -143,6 +147,9 @@ public class NegativeAcknowledgement extends ControlPacket {
     @Override
     public byte[] encodeControlInformation() {
         try {
+            if (lossInfo.size() == 0) {
+                System.out.println("BLAH");
+            }
             return lossInfo.toByteArray();
         } catch (Exception e) {
             // can't happen

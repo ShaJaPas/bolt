@@ -5,7 +5,8 @@ import bolt.packets.ControlPacket.ControlPacketType;
 import bolt.packets.Shutdown;
 import bolt.receiver.*;
 import bolt.statistic.BoltStatistics;
-import bolt.util.SequenceNumber;
+import bolt.util.ReceiveBuffer;
+import bolt.util.SeqNum;
 import bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -330,15 +331,13 @@ public class BoltReceiver {
      * </ol>
      */
     private void processACKEvent(boolean isTriggeredByTimer) throws IOException {
-        // 1) Find the sequence number *prior to which* all the packets have been received
-        final int ackNumber;
-        ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
-        if (entry == null) {
-            ackNumber = largestReceivedRelSeqNumber + 1;
-        }
-        else {
-            ackNumber = entry.getSequenceNumber();
-        }
+        // 1) Find the sequence number prior to which all the packets have been received
+        final ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
+
+        final int ackNumber = (entry == null)
+            ? SeqNum.increment16(largestReceivedRelSeqNumber)
+            : entry.getSequenceNumber();
+
         // 2a) If ackNumber equals to the largest sequence number ever acknowledged by ACK2
         if (ackNumber == largestAcknowledgedAckNumber) {
             // Do not send this ACK
@@ -346,14 +345,14 @@ public class BoltReceiver {
         }
         else if (ackNumber == lastAckNumber) {
             // Or it is equals to the ackNumber in the last ACK and the time interval
-            // between these two ACK packets is less than 2 RTTs,do not send(stop).
+            // between these two ACK packets is less than 2 RTTs, do not send(stop).
             long timeOfLastSentAck = ackHistoryWindow.getTime(lastAckNumber);
             if (Util.getCurrentTime() - timeOfLastSentAck < 2 * roundTripTime) {
                 return;
             }
         }
         final long ackSeqNumber;
-        // If this ACK is not triggered by ACK timers,send out a light Ack and stop.
+        // If this ACK is not triggered by ACK timers, send out a light Ack and stop.
         if (!isTriggeredByTimer) {
             ackSeqNumber = sendLightAcknowledgment(ackNumber);
             return;
@@ -402,11 +401,11 @@ public class BoltReceiver {
         final BoltSender sender = session.getSocket().getSender();
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
-        if (expCount > 16 && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT) {
+        if (config.isSessionsExpirable() && expCount > 16 && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT) {
             if (!stopped) {
                 sendShutdown();
                 stop();
-                LOG.info("Session " + session + " expired.");
+                LOG.info("Session {} expired.", session);
                 return;
             }
         }
@@ -435,14 +434,20 @@ public class BoltReceiver {
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
         n++;
 
+        // TODO remove sout
+//        if (dp.isReliable() && dp.getPacketSeqNumber() % 20 == 0) {
+//            System.out.println("Received  " + dp.getReliabilitySeqNumber() + " \t\t" + dp.getPacketSeqNumber());
+//        }
         if (isArtificialDrop()) {
             LOG.debug("Artificial packet loss, dropping packet");
             return;
         }
 
-        boolean OK = session.getSocket().haveNewData(dp);
-        if (!OK) {
-            LOG.warn("Need to drop packet");
+        ReceiveBuffer.OfferResult OK = session.getSocket().haveNewData(dp);
+        if (!OK.success) {
+            // TODO revert to old warn
+            LOG.info("Need to drop packet  {}  {}  reason: [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
+//            LOG.warn("Need to drop packet {}", dp.getPacketSeqNumber());
             return;
         }
 
@@ -465,19 +470,19 @@ public class BoltReceiver {
         if (dp.isReliable()) {
             final int relSeqNum = dp.getReliabilitySeqNumber();
             // 6) Number of detected lossed packet
-            if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber + 1) > 0) {
+            if (SeqNum.compare16(relSeqNum, SeqNum.increment16(largestReceivedRelSeqNumber)) > 0) {
                 // 6.a) If the number of the current data packet is greater than LSRN + 1,
                 // put all the sequence numbers between (but excluding) these two values
                 // into the receiver's loss list and send them to the sender in an NAK packet
                 sendNAK(relSeqNum);
             }
-            else if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber) < 0) {
+            else if (SeqNum.compare16(relSeqNum, largestReceivedRelSeqNumber) < 0) {
                 // 6.b) If the sequence number is less than LRSN, remove it from the receiver's loss list.
                 receiverLossList.remove(relSeqNum);
             }
 
             // 7) Update the LRSN
-            if (SequenceNumber.compare16(relSeqNum, largestReceivedRelSeqNumber) > 0) {
+            if (SeqNum.compare16(relSeqNum, largestReceivedRelSeqNumber) > 0) {
                 largestReceivedRelSeqNumber = relSeqNum;
             }
 
@@ -496,13 +501,15 @@ public class BoltReceiver {
      * @param currentRelSequenceNumber the currently received sequence number
      * @throws IOException
      */
-    private void sendNAK(long currentRelSequenceNumber) throws IOException {
+    private void sendNAK(final int currentRelSequenceNumber) throws IOException {
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
-        nAckPacket.addLossInfo(largestReceivedRelSeqNumber + 1, currentRelSequenceNumber);
+        nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
         nAckPacket.setSession(session);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
-        for (int i = largestReceivedRelSeqNumber + 1; i < currentRelSequenceNumber; i++) {
+        for (int i = SeqNum.increment16(largestReceivedRelSeqNumber);
+             SeqNum.compare16(i, currentRelSequenceNumber) < 0;
+             i = SeqNum.increment16(i)) {
             final ReceiverLossListEntry detectedLossSeqNumber = new ReceiverLossListEntry(i);
             receiverLossList.insert(detectedLossSeqNumber);
         }
@@ -584,7 +591,7 @@ public class BoltReceiver {
             if (roundTripTime > 0) roundTripTime = (roundTripTime * 7 + rtt) / 8;
             else roundTripTime = rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
-            ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
+            ackTimerInterval = Math.min(10_000, 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime());
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }

@@ -5,7 +5,6 @@ import bolt.packets.DeliveryType;
 import bolt.packets.PacketUtil;
 import bolt.xcoder.ObjectXCoder;
 import bolt.xcoder.PackageXCoder;
-import bolt.xcoder.XCoderChain;
 import bolt.xcoder.XCoderRepository;
 import org.junit.Test;
 
@@ -24,7 +23,7 @@ public class XCoderTest {
 
     public void setUp(final DeliveryType deliveryType) throws Exception {
         xCoderRepository = XCoderRepository.create();
-        xCoderRepository.register(XCodable.class, XCoderChain.of(new PackageXCoder<>(new XCodableObjectXCoder(), deliveryType)));
+        xCoderRepository.register(XCodable.class, new PackageXCoder<>(new XCodableObjectXCoder(), deliveryType));
     }
 
     @Test
@@ -80,7 +79,7 @@ public class XCoderTest {
         @Override
         public XCodable decode(byte[] data) {
             final List<Integer> ints = new ArrayList<>();
-            for (int i = 0; i < data.length; i+= 4) ints.add(PacketUtil.decodeInt(data, i));
+            for (int i = 0; i < data.length; i += 4) ints.add(PacketUtil.decodeInt(data, i));
             return new XCodable(ints);
         }
 
@@ -97,9 +96,10 @@ public class XCoderTest {
     private static class XCodable {
         private final List<Integer> ints;
 
-        private XCodable(Integer...ints) {
+        private XCodable(Integer... ints) {
             this(Arrays.asList(ints));
         }
+
         private XCodable(List<Integer> ints) {
             this.ints = new ArrayList<>(ints);
         }

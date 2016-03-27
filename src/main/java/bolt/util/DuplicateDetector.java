@@ -42,25 +42,33 @@ public class DuplicateDetector {
 
     public boolean checkDuplicatePacket(final DataPacket data) {
         final int duplicationId = getDuplicationId(data);
-        if (received.get(duplicationId)) {
-            return true;
-        }
-        received.set(duplicationId, true);
 
-        // Check segment reset
+        final boolean isDuplicate = received.get(duplicationId);
+
+        if (!isDuplicate) {
+
+            // Mark id as received.
+            received.set(duplicationId, true);
+
+            // Check segment reset
+            checkSegmentReset(duplicationId);
+
+            lastDupNum = duplicationId;
+        }
+        return isDuplicate;
+    }
+
+    private void checkSegmentReset(final int currentDuplicationId) {
         if (lastDupNum >= 0) {
             final int lastSegmentSeqNum = lastDupNum / itemsPerSegment;
-            final int segmentSeqNum = duplicationId / itemsPerSegment;
+            final int segmentSeqNum = currentDuplicationId / itemsPerSegment;
 
             if (lastSegmentSeqNum != segmentSeqNum) {
                 final int segmentToReset = (segmentSeqNum + (segments / 2)) % segments;
                 final int start = segmentToReset * itemsPerSegment;
                 received.set(start, start + itemsPerSegment, false);
             }
-
         }
-        lastDupNum = duplicationId;
-        return false;
     }
 
     private int getDuplicationId(DataPacket data) {

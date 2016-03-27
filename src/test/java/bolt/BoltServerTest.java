@@ -15,6 +15,7 @@ public class BoltServerTest {
 
     int num_packets = 32;
     long total = 0;
+    private volatile long totalReceived = 0;
     private volatile boolean serverRunning = true;
     private volatile String md5_received = null;
     protected MessageDigest serverMd5;
@@ -93,6 +94,8 @@ public class BoltServerTest {
     private BoltServer runServer() throws Exception {
         serverMd5 = MessageDigest.getInstance("MD5");
         return ServerUtil.runServer(byte[].class, x -> {
+            totalReceived++;
+            if (totalReceived % 10_000 == 0) System.out.println("Received: " + totalReceived);
             serverMd5.update(x, 0, x.length);
             total += x.length;
         }, ex -> {

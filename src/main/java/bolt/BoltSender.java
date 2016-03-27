@@ -4,7 +4,7 @@ import bolt.packets.*;
 import bolt.sender.FlowWindow;
 import bolt.sender.SenderLossList;
 import bolt.statistic.BoltStatistics;
-import bolt.util.SequenceNumber;
+import bolt.util.SeqNum;
 import bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,7 +238,8 @@ public class BoltSender {
         ackCondition.signal();
         ackLock.unlock();
 
-        CongestionControl cc = session.getCongestionControl();
+        // TODO this method needs to perform better.
+        final CongestionControl cc = session.getCongestionControl();
         final long rtt = acknowledgement.getRoundTripTime();
         if (rtt > 0) {
             long rttVar = acknowledgement.getRoundTripTimeVar();
@@ -252,12 +253,14 @@ public class BoltSender {
             statistics.setPacketArrivalRate(cc.getPacketArrivalRate(), cc.getEstimatedLinkCapacity());
         }
 
-        int ackNumber = acknowledgement.getAckNumber();
+        final int ackNumber = acknowledgement.getAckNumber();
         cc.onACK(ackNumber);
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
         // Need to remove all sequence numbers up the ACK number from the sendBuffer.
         boolean removed;
-        for (int s = lastAckReliabilitySequenceNumber; s < ackNumber; s++) {
+        for (int s = lastAckReliabilitySequenceNumber;
+             SeqNum.compare16(s, ackNumber) < 0;
+             s = SeqNum.increment16(s)) {
             synchronized (sendLock) {
                 removed = sendBuffer.remove(s) != null;
                 senderLossList.remove(s);
@@ -266,7 +269,9 @@ public class BoltSender {
                 unacknowledged.decrementAndGet();
             }
         }
-        lastAckReliabilitySequenceNumber = Math.max(lastAckReliabilitySequenceNumber, ackNumber);
+        lastAckReliabilitySequenceNumber = SeqNum.compare16(lastAckReliabilitySequenceNumber, ackNumber) > 0
+                ? lastAckReliabilitySequenceNumber
+                : ackNumber;
         // Send ACK2 packet to the receiver.
         sendAck2(ackNumber);
         statistics.incNumberOfACKReceived();
@@ -371,7 +376,7 @@ public class BoltSender {
                 }
             }
 
-            // Wait     TODO this will only take into account reliable packets. Should be for all?
+            // Wait
             if (largestSentSequenceNumber % 16 != 0) {
                 long snd = (long) session.getCongestionControl().getSendInterval();
                 long passed = Util.getCurrentTime() - iterationStart;
@@ -405,6 +410,13 @@ public class BoltSender {
                 retransmit.setDestinationID(session.getDestination().getSocketID());
                 endpoint.doSend(retransmit);
                 statistics.incNumberOfRetransmittedDataPackets();
+                // TODO remove below
+//                if (data.getPacketSeqNumber() % 20 == 0) {
+//                    System.out.println("Retransmit  " + data.getReliabilitySeqNumber());
+//                }
+            }
+            else {
+                LOG.warn("Did not find expected data in sendBuffer");
             }
         }
         catch (Exception e) {
@@ -428,7 +440,7 @@ public class BoltSender {
      * The initial sequence number is "0".
      */
     public int nextPacketSequenceNumber() {
-        return currentSequenceNumber = SequenceNumber.incrementPacketSeqNum(currentSequenceNumber);
+        return currentSequenceNumber = SeqNum.incrementPacketSeqNum(currentSequenceNumber);
     }
 
     /**
@@ -436,7 +448,7 @@ public class BoltSender {
      * The initial sequence number is "0".
      */
     public int nextReliabilitySequenceNumber() {
-        return currentReliabilitySequenceNumber = SequenceNumber.increment16(currentReliabilitySequenceNumber);
+        return currentReliabilitySequenceNumber = SeqNum.increment16(currentReliabilitySequenceNumber);
     }
 
     /**
@@ -444,7 +456,7 @@ public class BoltSender {
      * The initial sequence number is "0".
      */
     public int nextOrderSequenceNumber() {
-        return currentOrderSequenceNumber = SequenceNumber.increment16(currentOrderSequenceNumber);
+        return currentOrderSequenceNumber = SeqNum.increment16(currentOrderSequenceNumber);
     }
 
     public int getCurrentReliabilitySequenceNumber() {
@@ -456,11 +468,11 @@ public class BoltSender {
     }
 
     boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
-        return SequenceNumber.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
+        return SeqNum.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
     }
 
     boolean isSentOut(int sequenceNumber) {
-        return SequenceNumber.comparePacketSeqNum(largestSentSequenceNumber, sequenceNumber) >= 0;
+        return SeqNum.comparePacketSeqNum(largestSentSequenceNumber, sequenceNumber) >= 0;
     }
 
     boolean haveLostPackets() {

@@ -54,6 +54,9 @@ public class PacketFactory {
         }
         else if (ControlPacketType.NAK.getTypeId() == pktType) {
             packet = new NegativeAcknowledgement(controlInformation);
+            if (((NegativeAcknowledgement)packet).getDecodedLossInfo().isEmpty()) {
+                System.out.println("NO");
+            }
         }
         else if (ControlPacketType.SHUTDOWN.getTypeId() == pktType) {
             packet = new Shutdown();

@@ -3,7 +3,7 @@ package bolt;
 import bolt.packets.ConnectionHandshake;
 import bolt.packets.Destination;
 import bolt.statistic.BoltStatistics;
-import bolt.util.SequenceNumber;
+import bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Subscriber;
@@ -217,7 +217,7 @@ public abstract class BoltSession {
 
     public synchronized int getInitialSequenceNumber() {
         if (initialSequenceNumber == null) {
-            initialSequenceNumber = SequenceNumber.randomPacketSeqNum();
+            initialSequenceNumber = SeqNum.randomPacketSeqNum();
         }
         return initialSequenceNumber;
     }

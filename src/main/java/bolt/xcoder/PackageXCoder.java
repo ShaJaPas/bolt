@@ -1,22 +1,23 @@
 package bolt.xcoder;
 
+import bolt.BoltEndPoint;
 import bolt.BoltException;
 import bolt.packets.DataPacket;
 import bolt.packets.DeliveryType;
 import bolt.packets.PacketUtil;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
+public class PackageXCoder<T> implements XCoder<T, List<DataPacket>>
 {
 
-    private final int maxPacketSize = 1400 - 12; // Minus 12 for header.
+    // TODO consider changing 1400 to a variable MTU
+    private final int maxPacketSize = BoltEndPoint.DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
 
     private final ObjectXCoder<T> objectXCoder;
 
@@ -40,7 +41,7 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
      * @return decoded object, or null if packet was a chunk of a yet incomplete message.
      */
     @Override
-    public T decode(final Collection<DataPacket> data)
+    public T decode(final List<DataPacket> data)
     {
         // TODO this method needs testing (include performance testing).
         final int byteCount = data.stream().map(d -> d.getData().length).reduce(0, (acc, x) -> acc + x);
@@ -60,7 +61,7 @@ public class PackageXCoder<T> implements XCoder<T, Collection<DataPacket>>
      * @return a collection of data packets.
      */
     @Override
-    public Collection<DataPacket> encode(final T object) throws BoltException {
+    public List<DataPacket> encode(final T object) throws BoltException {
         final byte[] bytes = objectXCoder.encode(object);
         final int chunkCount = (int) Math.ceil(bytes.length / (double)maxPacketSize);
         final DeliveryType computedDeliveryType = computeDeliveryType(chunkCount);

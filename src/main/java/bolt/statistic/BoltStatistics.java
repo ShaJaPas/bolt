@@ -28,6 +28,15 @@ public class BoltStatistics {
     private final String componentDescription;
     //    private final Map<Metric, MeanValue> metrics = new HashMap<>();
     private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
+    // Sender metrics
+    private final MeanValue dgSendTime = new MeanValue("SENDER: Datagram send time");
+    private final MeanValue dgSendInterval = new MeanValue("SENDER: Datagram send interval");
+    private final MeanThroughput throughput;
+    // Receiver metrics
+    private final MeanValue dgReceiveInterval = new MeanValue("RECEIVER: Bolt receive interval");
+    private final MeanValue dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
+    private final MeanValue processTime = new MeanValue("RECEIVER: Bolt packet process time");
+    private final MeanValue dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
     private boolean first = true;
     private volatile long roundTripTime;
     private volatile long roundTripTimeVariance;
@@ -36,17 +45,6 @@ public class BoltStatistics {
     private volatile double sendPeriod;
     private volatile long congestionWindowSize;
     private long initialTime;
-
-    // Sender metrics
-    private final MeanValue dgSendTime = new MeanValue("SENDER: Datagram send time");
-    private final MeanValue dgSendInterval = new MeanValue("SENDER: Datagram send interval");
-    private final MeanThroughput throughput;
-
-    // Receiver metrics
-    private final MeanValue dgReceiveInterval = new MeanValue("RECEIVER: Bolt receive interval");
-    private final MeanValue dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
-    private final MeanValue processTime = new MeanValue("RECEIVER: Bolt packet process time");
-    private final MeanValue dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
 
 
     public BoltStatistics(final String componentDescription, final int datagramSize) {
@@ -210,14 +208,12 @@ public class BoltStatistics {
      */
     public void storeParameters() {
         final List<MeanValue> metrics = getMetrics();
-        synchronized (statsHistory) {
-            if (first) {
-                first = false;
-                statsHistory.add(new StatisticsHistoryEntry(true, 0, metrics));
-                initialTime = System.currentTimeMillis();
-            }
-            statsHistory.add(new StatisticsHistoryEntry(false, System.currentTimeMillis() - initialTime, metrics));
+        if (first) {
+            first = false;
+            statsHistory.add(new StatisticsHistoryEntry(true, 0, metrics));
+            initialTime = System.currentTimeMillis();
         }
+        statsHistory.add(new StatisticsHistoryEntry(false, System.currentTimeMillis() - initialTime, metrics));
     }
 
     /**
@@ -227,11 +223,9 @@ public class BoltStatistics {
      */
     public void writeParameterHistory(File toFile) throws IOException {
         try (final FileWriter fos = new FileWriter(toFile)) {
-            synchronized (statsHistory) {
-                for (StatisticsHistoryEntry s : new ArrayList<>(statsHistory)) {
-                    fos.write(s.toString());
-                    fos.write('\n');
-                }
+            for (StatisticsHistoryEntry s : new ArrayList<>(statsHistory)) {
+                fos.write(s.toString());
+                fos.write('\n');
             }
         }
     }

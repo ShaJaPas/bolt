@@ -104,7 +104,7 @@ public class FlowWindow {
      *
      * @return true if window is full, otherwise false.
      */
-    public boolean isFull() {
+    boolean isFull() {
         return isFull;
     }
 

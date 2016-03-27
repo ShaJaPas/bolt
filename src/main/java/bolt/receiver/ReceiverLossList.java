@@ -38,8 +38,8 @@ public class ReceiverLossList {
         }
     }
 
-    public void remove(int seqNo) {
-        backingList.remove(new ReceiverLossListEntry(seqNo));
+    public void remove(int relSeqNo) {
+        backingList.remove(new ReceiverLossListEntry(relSeqNo));
     }
 
     public boolean contains(ReceiverLossListEntry obj) {

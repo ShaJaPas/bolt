@@ -2,7 +2,7 @@ package bolt.packets;
 
 import bolt.BoltPacket;
 import bolt.BoltSession;
-import bolt.util.SequenceNumber;
+import bolt.util.SeqNum;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -57,6 +57,8 @@ import java.util.Objects;
  */
 public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
+    public static final int MAX_HEADER_SIZE = 8 + 2 + 2 + 4;  // Base + relSeqNum + orderSeqNum + messaging
+
     private byte[] data;
 
     private DeliveryType delivery;
@@ -101,7 +103,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         byte deliveryType = (byte) PacketUtil.decodeInt(encodedData, 0, 28, 31);
         delivery = DeliveryType.fromId(deliveryType);
 
-        packetSeqNumber = PacketUtil.decodeInt(encodedData, 0) & SequenceNumber.MAX_PACKET_SEQ_NUM;
+        packetSeqNumber = PacketUtil.decodeInt(encodedData, 0) & SeqNum.MAX_PACKET_SEQ_NUM;
         destinationID = PacketUtil.decodeInt(encodedData, 4, 16, 32);
         classID = PacketUtil.decodeInt(encodedData, 4, 0, 16);
 
@@ -349,14 +351,14 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     public String toString() {
         return "DataPacket{" +
                 "classID=" + classID +
-                ", delivery=" + delivery +
                 ", packetSeqNumber=" + packetSeqNumber +
+                ", orderSeqNumber=" + orderSeqNumber +
+                ", reliabilitySeqNumber=" + reliabilitySeqNumber +
+                ", delivery=" + delivery +
                 ", finalMessageChunk=" + finalMessageChunk +
                 ", messageChunkNumber=" + messageChunkNumber +
                 ", messageId=" + messageId +
                 ", destinationID=" + destinationID +
-                ", orderSeqNumber=" + orderSeqNumber +
-                ", reliabilitySeqNumber=" + reliabilitySeqNumber +
                 ", data=" + Arrays.toString(data) +
                 '}';
     }
