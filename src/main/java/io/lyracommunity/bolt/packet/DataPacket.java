@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.packet;
 
 import io.lyracommunity.bolt.BoltPacket;
-import io.lyracommunity.bolt.BoltSession;
 import io.lyracommunity.bolt.util.SeqNum;
 
 import java.util.Arrays;
@@ -14,7 +13,7 @@ import java.util.Objects;
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |0|M|R|O|              Packet Sequence Number                   | TODO change M|R fields to 3 bit delivery type
+ * |0| DLV |              Packet Sequence Number                   |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Destination Socket ID     |            Class ID           |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -25,14 +24,16 @@ import java.util.Objects;
  * </pre>
  * The data packet header starts with 0.
  * <p>
- * M signifies whether the packet is a message.
- * <p>
- * R signifies whether delivery is reliable.
+ * DLV signifies the delivery type. There are 3 bits allocated to this.
  * <p>
  * Packet sequence number uses the following 29 bits after the flag bits.
  * Bolt uses packet-based sequencing, i.e., the sequence number is increased
  * by 1 for each sent data packet in the order of packet sending. Sequence
  * number is wrapped after it is increased to the maximum number (2^29 - 1).
+ * <p>
+ * The 32 bit checksum enhances the 16-bit checksum in the UDP datagram
+ * header. This widens the theoretical collision to one in every 2^48 =>
+ * 281 trillion => 281,474,976,710,656.
  * <p>
  * Following is the 16-bit Destination Socket ID.
  * The Destination ID is used for UDP multiplexer. Multiple Bolt socket
@@ -81,7 +82,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private int dataLength;
 
-    private BoltSession session;
 
     public DataPacket() {
     }
@@ -235,7 +235,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     public void copyFrom(final DataPacket src) {
         setClassID(src.getClassID());
         setPacketSeqNumber(src.getPacketSeqNumber());
-        setSession(src.getSession());
         setDestinationID(src.getDestinationID());
 
         setData(src.getData());
@@ -260,10 +259,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     }
 
     public boolean forSender() {
-        return false;
-    }
-
-    public boolean isConnectionHandshake() {
         return false;
     }
 
@@ -307,18 +302,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public int getControlPacketType() {
         return -1;
-    }
-
-    public BoltSession getSession() {
-        return session;
-    }
-
-    public void setSession(BoltSession session) {
-        this.session = session;
-    }
-
-    public int compareTo(BoltPacket other) {
-        return (getPacketSeqNumber() - other.getPacketSeqNumber());
     }
 
     public boolean isClassful() {

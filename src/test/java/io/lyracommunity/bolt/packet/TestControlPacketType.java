@@ -1,6 +1,5 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.packet.ControlPacket.ControlPacketType;
 import org.junit.Test;
 
 import java.util.stream.Stream;
@@ -31,10 +30,6 @@ public class TestControlPacketType {
         assertEquals(4, t.getTypeId());
         t = ControlPacketType.ACK2;
         assertEquals(5, t.getTypeId());
-        t = ControlPacketType.MESSAGE_DROP_REQUEST;
-        assertEquals(6, t.getTypeId());
-        t = ControlPacketType.USER_DEFINED;
-        assertEquals(7, t.getTypeId());
     }
 
     @Test

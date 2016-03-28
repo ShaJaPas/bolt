@@ -9,6 +9,7 @@
 - [X] Simulated packet-loss
 - [ ] Simulated latency
 - [ ] Simulated jitter
+- [ ] Multi-client
 - [ ] Client disconnect (remove sessions, generate event)
 - [ ] Client disconnect/reconnect (bad network conditions)
 - [ ] Performance testing high-volume of single packets

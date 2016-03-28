@@ -1,13 +1,12 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.packet.*;
-import io.lyracommunity.bolt.packet.ControlPacket.ControlPacketType;
+import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.receiver.*;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
-import io.lyracommunity.bolt.packet.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -81,6 +80,10 @@ public class BoltReceiver {
     private final BlockingQueue<BoltPacket> handOffQueue;
     private final Config config;
     /**
+     * Microseconds to next EXP event.
+     */
+    private final long expTimerInterval = 100 * Util.getSYNTime();
+    /**
      * Round trip time, calculated from ACK/ACK2 pairs.
      */
     private long roundTripTime = 0;
@@ -122,10 +125,6 @@ public class BoltReceiver {
      */
     private long nakTimerInterval = Util.getSYNTime();
     private long nextNAK;
-    /**
-     * Microseconds to next EXP event.
-     */
-    private final long expTimerInterval = 100 * Util.getSYNTime();
     private long nextEXP;
     private volatile boolean stopped = false;
     /**
@@ -155,8 +154,7 @@ public class BoltReceiver {
         this.packetHistoryWindow = new PacketHistoryWindow(16);
         this.receiverLossList = new ReceiverLossList();
         this.packetPairWindow = new PacketPairWindow(16);
-//        this.largestReceivedRelSeqNumber = session.getInitialSequenceNumber() - 1;
-        this.largestReceivedRelSeqNumber = 0; // TODO is 0 the correct start?
+        this.largestReceivedRelSeqNumber = 0;
         this.bufferSize = session.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
         this.config = config;
@@ -335,8 +333,8 @@ public class BoltReceiver {
         final ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
 
         final int ackNumber = (entry == null)
-            ? SeqNum.increment16(largestReceivedRelSeqNumber)
-            : entry.getSequenceNumber();
+                ? SeqNum.increment16(largestReceivedRelSeqNumber)
+                : entry.getSequenceNumber();
 
         // 2a) If ackNumber equals to the largest sequence number ever acknowledged by ACK2
         if (ackNumber == largestAcknowledgedAckNumber) {
@@ -445,9 +443,7 @@ public class BoltReceiver {
 
         ReceiveBuffer.OfferResult OK = session.getSocket().haveNewData(dp);
         if (!OK.success) {
-            // TODO revert to old warn
-            LOG.info("Need to drop packet  {}  {}  reason: [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
-//            LOG.warn("Need to drop packet {}", dp.getPacketSeqNumber());
+            LOG.info("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
             return;
         }
 
@@ -504,7 +500,6 @@ public class BoltReceiver {
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
-        nAckPacket.setSession(session);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
         for (int i = SeqNum.increment16(largestReceivedRelSeqNumber);
@@ -513,7 +508,7 @@ public class BoltReceiver {
             final ReceiverLossListEntry detectedLossSeqNumber = new ReceiverLossListEntry(i);
             receiverLossList.insert(detectedLossSeqNumber);
         }
-        endpoint.doSend(nAckPacket);
+        endpoint.doSend(nAckPacket, session);
         LOG.debug("NAK for {}", currentRelSequenceNumber);
         statistics.incNumberOfNAKSent();
     }
@@ -522,15 +517,14 @@ public class BoltReceiver {
         if (sequenceNumbers.isEmpty()) return;
         NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
         nAckPacket.addLossInfo(sequenceNumbers);
-        nAckPacket.setSession(session);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
-        endpoint.doSend(nAckPacket);
+        endpoint.doSend(nAckPacket, session);
         statistics.incNumberOfNAKSent();
     }
 
     private long sendLightAcknowledgment(final int ackNumber) throws IOException {
         Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
-        endpoint.doSend(acknowledgmentPkt);
+        endpoint.doSend(acknowledgmentPkt, session);
         statistics.incNumberOfACKSent();
         return acknowledgmentPkt.getAckSequenceNumber();
     }
@@ -544,7 +538,7 @@ public class BoltReceiver {
         final long packetArrivalSpeed = packetHistoryWindow.getPacketArrivalSpeed();
         acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
 
-        endpoint.doSend(acknowledgmentPkt);
+        endpoint.doSend(acknowledgmentPkt, session);
 
         statistics.incNumberOfACKSent();
         statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
@@ -564,7 +558,6 @@ public class BoltReceiver {
         acknowledgmentPkt.setBufferSize(bufferSize);
 
         acknowledgmentPkt.setDestinationID(session.getDestination().getSocketID());
-        acknowledgmentPkt.setSession(session);
 
         return acknowledgmentPkt;
     }
@@ -597,32 +590,16 @@ public class BoltReceiver {
         }
     }
 
-    /**
-     * On message drop request received:
-     * <ol>
-     * <li> Tag all packets belong to the message in the receiver buffer so
-     * that they will not be read.
-     * <li> Remove all corresponding packets in the receiver's loss list.
-     * </ol>
-     *
-     * @param messageDropRequest the received MessageDropRequest packet.
-     */
-    protected void onMessageDropRequest(MessageDropRequest messageDropRequest) {
-        // TODO this was never implemented. Investigate if required and implications.
-    }
-
     private void sendKeepAlive() throws IOException {
-        KeepAlive ka = new KeepAlive();
+        final KeepAlive ka = new KeepAlive();
         ka.setDestinationID(session.getDestination().getSocketID());
-        ka.setSession(session);
-        endpoint.doSend(ka);
+        endpoint.doSend(ka, session);
     }
 
     private void sendShutdown() throws IOException {
-        Shutdown s = new Shutdown();
+        final Shutdown s = new Shutdown();
         s.setDestinationID(session.getDestination().getSocketID());
-        s.setSession(session);
-        endpoint.doSend(s);
+        endpoint.doSend(s, session);
     }
 
     protected void resetEXPTimer() {
@@ -658,7 +635,6 @@ public class BoltReceiver {
         final float dropRate = config.getPacketDropRate();
         return dropRate > 0 && (n % dropRate < 1f);
     }
-
 
     public String toString() {
         return "BoltReceiver " + session + "\n" +

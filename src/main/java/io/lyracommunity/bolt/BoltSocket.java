@@ -31,7 +31,7 @@ public class BoltSocket {
      * @param session
      * @throws SocketException, UnknownHostException
      */
-    public BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
+    BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
         this.session = session;
         this.receiver = new BoltReceiver(session, endpoint, endpoint.getConfig());
         this.sender = new BoltSender(session, endpoint);

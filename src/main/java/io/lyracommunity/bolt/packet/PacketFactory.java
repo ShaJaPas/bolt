@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.packet;
 
 import io.lyracommunity.bolt.BoltPacket;
-import io.lyracommunity.bolt.packet.ControlPacket.ControlPacketType;
 
 import java.io.IOException;
 
@@ -30,7 +29,7 @@ public class PacketFactory {
      * Create the right type of control packet based on the packet data.
      *
      * @param encodedData the encoded control packet.
-     * @param length size of the encoded packet.
+     * @param length      size of the encoded packet.
      * @return the created Control packet.
      */
     public static ControlPacket createControlPacket(byte[] encodedData, int length) throws IOException {
@@ -54,7 +53,7 @@ public class PacketFactory {
         }
         else if (ControlPacketType.NAK.getTypeId() == pktType) {
             packet = new NegativeAcknowledgement(controlInformation);
-            if (((NegativeAcknowledgement)packet).getDecodedLossInfo().isEmpty()) {
+            if (((NegativeAcknowledgement) packet).getDecodedLossInfo().isEmpty()) {
                 System.out.println("NO");
             }
         }
@@ -63,12 +62,6 @@ public class PacketFactory {
         }
         else if (ControlPacketType.ACK2.getTypeId() == pktType) {
             packet = new Acknowledgment2(additionalInfo, controlInformation);
-        }
-        else if (ControlPacketType.MESSAGE_DROP_REQUEST.getTypeId() == pktType) {
-            packet = new MessageDropRequest(controlInformation);
-        }
-        else if (ControlPacketType.USER_DEFINED.getTypeId() == pktType) {
-            packet = new UserDefined(controlInformation);
         }
 
         if (packet != null) {

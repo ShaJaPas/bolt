@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.packet;
 
 import io.lyracommunity.bolt.BoltPacket;
-import io.lyracommunity.bolt.BoltSession;
 
 import java.util.Objects;
 
@@ -100,13 +99,9 @@ public abstract class ControlPacket implements BoltPacket {
 
     protected int controlPacketType;
 
-    protected int messageId;
-
     protected int destinationID;
 
     protected byte[] controlInformation;
-
-    private BoltSession session;
 
     public ControlPacket() {
 
@@ -114,14 +109,6 @@ public abstract class ControlPacket implements BoltPacket {
 
     public int getControlPacketType() {
         return controlPacketType;
-    }
-
-    public int getMessageId() {
-        return messageId;
-    }
-
-    public void setMessageId(int messageId) {
-        this.messageId = messageId;
     }
 
     public int getDestinationID() {
@@ -162,12 +149,12 @@ public abstract class ControlPacket implements BoltPacket {
     public abstract byte[] encodeControlInformation();
 
     /**
-     * Complete header+ControlInformation packet for transmission.
+     * Complete header + ControlInformation packet for transmission.
      */
     public byte[] getEncoded() {
-        byte[] header = getHeader();
-        byte[] controlInfo = encodeControlInformation();
-        byte[] result = controlInfo != null ?
+        final byte[] header = getHeader();
+        final byte[] controlInfo = encodeControlInformation();
+        final byte[] result = controlInfo != null ?
                 new byte[header.length + controlInfo.length] :
                 new byte[header.length];
         System.arraycopy(header, 0, result, 0, header.length);
@@ -185,7 +172,8 @@ public abstract class ControlPacket implements BoltPacket {
         if (o == null || getClass() != o.getClass())
             return false;
         ControlPacket that = (ControlPacket) o;
-        return controlPacketType == that.controlPacketType && destinationID == that.destinationID;
+        return controlPacketType == that.controlPacketType
+                && destinationID == that.destinationID;
     }
 
     @Override
@@ -202,47 +190,8 @@ public abstract class ControlPacket implements BoltPacket {
         return true;
     }
 
-    public boolean isConnectionHandshake() {
-        return false;
-    }
-
-    public BoltSession getSession() {
-        return session;
-    }
-
-    public void setSession(BoltSession session) {
-        this.session = session;
-    }
-
     public int getPacketSeqNumber() {
         return -1;
-    }
-
-    public int compareTo(BoltPacket other) {
-        return (getPacketSeqNumber() - other.getPacketSeqNumber());
-    }
-
-    public enum ControlPacketType {
-
-        CONNECTION_HANDSHAKE(0),
-        KEEP_ALIVE(1),
-        ACK(2),
-        NAK(3),
-        SHUTDOWN(4),
-        ACK2(5),
-        MESSAGE_DROP_REQUEST(6),
-        USER_DEFINED(7),;
-
-        private final int typeId;
-
-        ControlPacketType(int typeId) {
-            this.typeId = typeId;
-        }
-
-        public int getTypeId() {
-            return typeId;
-        }
-
     }
 
 }

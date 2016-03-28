@@ -138,9 +138,8 @@ public class ClientSession extends BoltSession {
     protected void sendInitialHandShake() throws IOException {
         final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), getInitialSequenceNumber(),
                 flowWindowSize, mySocketID, endPoint.getLocalAddress());
-        handshake.setSession(this);
-        LOG.info("Sending " + handshake);
-        endPoint.doSend(handshake);
+        LOG.info("Sending {}", handshake);
+        endPoint.doSend(handshake, this);
     }
 
     /**
@@ -149,9 +148,8 @@ public class ClientSession extends BoltSession {
     protected void sendSecondHandshake() throws IOException {
         final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), getInitialSequenceNumber(),
                 flowWindowSize, mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
-        ch.setSession(this);
-        LOG.info("Sending confirmation " + ch);
-        endPoint.doSend(ch);
+        LOG.info("Sending confirmation {}", ch);
+        endPoint.doSend(ch, this);
     }
 
 

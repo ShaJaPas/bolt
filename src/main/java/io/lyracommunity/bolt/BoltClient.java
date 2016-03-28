@@ -134,9 +134,8 @@ public class BoltClient implements Client {
         if (clientSession.isReady() && clientSession.isActive()) {
             Shutdown shutdown = new Shutdown();
             shutdown.setDestinationID(clientSession.getDestination().getSocketID());
-            shutdown.setSession(clientSession);
             try {
-                clientEndpoint.doSend(shutdown);
+                clientEndpoint.doSend(shutdown, clientSession);
             }
             catch (IOException e) {
                 LOG.error("ERROR: Connection could not be stopped!", e);

@@ -1,12 +1,10 @@
 package io.lyracommunity.bolt;
 
 
+import io.lyracommunity.bolt.util.SeqNum;
+
 public interface BoltPacket extends Comparable<BoltPacket> {
 
-
-    int getMessageId();
-
-    void setMessageId(int messageNumber);
 
     int getDestinationID();
 
@@ -19,17 +17,15 @@ public interface BoltPacket extends Comparable<BoltPacket> {
     byte[] getEncoded();
 
     /**
-     * return <code>true</code> if this packet should be routed to
-     * the {@link BoltSender}
-     *
-     * @return
+     * Returns true if this packet should be routed to the {@link BoltSender}.
      */
     boolean forSender();
 
-    boolean isConnectionHandshake();
-
-    BoltSession getSession();
-
     int getPacketSeqNumber();
+
+    @Override
+    default int compareTo(BoltPacket o) {
+        return SeqNum.comparePacketSeqNum(getPacketSeqNumber(), o.getPacketSeqNumber());
+    }
 
 }

@@ -2,6 +2,7 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.ConnectionReadyEvent;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
+import io.lyracommunity.bolt.packet.ControlPacketType;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.PacketFactory;
 import org.slf4j.Logger;
@@ -15,7 +16,6 @@ import java.net.*;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 
 /**
@@ -43,7 +43,7 @@ public class BoltEndPoint {
      *
      * @param localAddress the local address to bind.
      * @param localPort    the port to bind to. If the port is zero, the system will pick an ephemeral port.
-     * @throws SocketException if for example if the port is already bound to.
+     * @throws SocketException      if for example if the port is already bound to.
      * @throws UnknownHostException
      */
     public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
@@ -139,7 +139,8 @@ public class BoltEndPoint {
                 long dest = packet.getDestinationID();
                 final BoltSession session = sessions.get(dest);
 
-                if (packet.isConnectionHandshake()) {
+                final boolean isConnectionHandshake = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == packet.getControlPacketType();
+                if (isConnectionHandshake) {
                     final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
                     if (result.isReady()) subscriber.onNext(new ConnectionReadyEvent(result));
                 }
@@ -201,9 +202,9 @@ public class BoltEndPoint {
         return session;
     }
 
-    protected void doSend(BoltPacket packet) throws IOException {
-        byte[] data = packet.getEncoded();
-        DatagramPacket dgp = packet.getSession().getDatagram();
+    void doSend(final BoltPacket packet, final BoltSession session) throws IOException {
+        final byte[] data = packet.getEncoded();
+        DatagramPacket dgp = session.getDatagram();
         dgp.setData(data);
         dgSocket.send(dgp);
     }

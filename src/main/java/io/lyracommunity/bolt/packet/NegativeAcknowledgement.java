@@ -4,7 +4,6 @@ import io.lyracommunity.bolt.util.SeqNum;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

@@ -6,8 +6,9 @@ import io.lyracommunity.bolt.BoltSender;
  * Acknowledgement of Acknowledgement (ACK2) is sent by the {@link BoltSender}
  * as immediate reply to an {@link Acknowledgement}.
  * <p>
- * Additional Info: ACK sequence number     <br>
- * Control Info: None                       <br>
+ * Additional Info: ACK sequence number
+ * <p>
+ * Control Info: None
  */
 public class Acknowledgment2 extends ControlPacket {
 
@@ -19,7 +20,7 @@ public class Acknowledgment2 extends ControlPacket {
         this.controlPacketType = ControlPacketType.ACK2.getTypeId();
     }
 
-    public Acknowledgment2(long ackSeqNo, byte[] controlInformation) {
+    Acknowledgment2(long ackSeqNo, byte[] controlInformation) {
         this();
         this.ackSequenceNumber = ackSeqNo;
         decode(controlInformation);

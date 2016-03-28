@@ -67,6 +67,8 @@ public class ServerSession extends BoltSession {
                     LOG.info("Client/Server handshake complete!");
                     setState(READY);
                     socket = new BoltSocket(endPoint, this);
+                    /* TODO below probably incorrect - sender/receiver completing will
+                    complete the entire subscriber, which is incorrect for the BoltServer */
                     socket.start().subscribe(subscriber);
                     cc.init();
                 }
@@ -147,9 +149,8 @@ public class ServerSession extends BoltSession {
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
-        responseHandshake.setSession(this);
         LOG.info("Sending reply {}", responseHandshake);
-        endPoint.doSend(responseHandshake);
+        endPoint.doSend(responseHandshake, this);
     }
 
     private void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
@@ -165,10 +166,9 @@ public class ServerSession extends BoltSession {
 
             finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                     handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
-            finalConnectionHandshake.setSession(this);
         }
         LOG.info("Sending final handshake ack {}", finalConnectionHandshake);
-        endPoint.doSend(finalConnectionHandshake);
+        endPoint.doSend(finalConnectionHandshake, this);
     }
 
 }

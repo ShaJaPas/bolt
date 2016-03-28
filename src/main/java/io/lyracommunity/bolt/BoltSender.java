@@ -158,7 +158,7 @@ public class BoltSender {
         synchronized (sendLock) {
             statistics.beginSend();
 
-            endpoint.doSend(dp);
+            endpoint.doSend(dp, session);
 
             statistics.endSend();
 
@@ -186,7 +186,6 @@ public class BoltSender {
      */
     protected void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
-        src.setSession(session);
         src.setDestinationID(session.getDestination().getSocketID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
         src.setReliabilitySeqNumber(src.isReliable() ? nextReliabilitySequenceNumber() : 0);
@@ -307,16 +306,14 @@ public class BoltSender {
      */
     protected void sendKeepAlive() throws Exception {
         KeepAlive keepAlive = new KeepAlive();
-        keepAlive.setSession(session);
-        endpoint.doSend(keepAlive);
+        endpoint.doSend(keepAlive, session);
     }
 
     protected void sendAck2(long ackSequenceNumber) throws IOException {
         Acknowledgment2 ackOfAckPkt = new Acknowledgment2();
         ackOfAckPkt.setAckSequenceNumber(ackSequenceNumber);
-        ackOfAckPkt.setSession(session);
         ackOfAckPkt.setDestinationID(session.getDestination().getSocketID());
-        endpoint.doSend(ackOfAckPkt);
+        endpoint.doSend(ackOfAckPkt, session);
     }
 
     /**
@@ -406,9 +403,8 @@ public class BoltSender {
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
-                retransmit.setSession(session);
                 retransmit.setDestinationID(session.getDestination().getSocketID());
-                endpoint.doSend(retransmit);
+                endpoint.doSend(retransmit, session);
                 statistics.incNumberOfRetransmittedDataPackets();
                 // TODO remove below
 //                if (data.getPacketSeqNumber() % 20 == 0) {
