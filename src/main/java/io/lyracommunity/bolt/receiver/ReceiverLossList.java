@@ -25,23 +25,16 @@ public class ReceiverLossList {
     }
 
     public void insert(ReceiverLossListEntry entry) {
-        /*
-        TODO is synchronized necessary?
-        Or use ConcurrentSet as complimentary to prevent duplicates?
-        Or use ConcurrentSkipListSet?
-         */
-        synchronized (backingList) {
-            if (!backingList.contains(entry)) {
-                backingList.add(entry);
-            }
+        if (!contains(entry)) {
+            backingList.add(entry);
         }
     }
 
-    public void remove(int relSeqNo) {
+    public void remove(final int relSeqNo) {
         backingList.remove(new ReceiverLossListEntry(relSeqNo));
     }
 
-    public boolean contains(ReceiverLossListEntry obj) {
+    public boolean contains(final ReceiverLossListEntry obj) {
         return backingList.contains(obj);
     }
 

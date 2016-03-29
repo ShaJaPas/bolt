@@ -20,9 +20,9 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      * @param sequenceNumber sequence number lost.
      */
     public ReceiverLossListEntry(final int sequenceNumber) {
-//        if (sequenceNumber <= 0) {
-//            throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
-//        }
+        if (sequenceNumber < 0) {
+            throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
+        }
         this.sequenceNumber = sequenceNumber;
         this.lastFeedbackTime = Util.getCurrentTime();
     }
@@ -41,9 +41,9 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
     }
 
     /**
-     * k is initialised as 2 and increased by 1 each time the number is fed back
+     * k is initialised as 2 and increased by 1 each time the number is fed back.
      *
-     * @return k the number of times that this seqNo has been feedback in NAK
+     * @return k the number of times that this seqNo has been feedback in NAK.
      */
     public long getK() {
         return k;

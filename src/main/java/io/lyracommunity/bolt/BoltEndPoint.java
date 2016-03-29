@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.event.ConnectionReadyEvent;
+import io.lyracommunity.bolt.event.ConnectionReady;
+import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.ControlPacketType;
 import io.lyracommunity.bolt.packet.Destination;
@@ -136,13 +137,13 @@ public class BoltEndPoint {
                 final BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
                 if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
 
-                long dest = packet.getDestinationID();
+                final long dest = packet.getDestinationID();
                 final BoltSession session = sessions.get(dest);
 
                 final boolean isConnectionHandshake = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == packet.getControlPacketType();
                 if (isConnectionHandshake) {
                     final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
-                    if (result.isReady()) subscriber.onNext(new ConnectionReadyEvent(result));
+                    if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
                 }
                 else if (session != null) {
                     // Dispatch to existing session.

@@ -1,6 +1,11 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.Ack;
+import io.lyracommunity.bolt.packet.Ack2;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.packet.KeepAlive;
+import io.lyracommunity.bolt.packet.NegativeAcknowledgement;
 import io.lyracommunity.bolt.sender.FlowWindow;
 import io.lyracommunity.bolt.sender.SenderLossList;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -203,9 +208,9 @@ public class BoltSender {
      */
     protected void receive(final BoltPacket p) throws IOException {
         if (p.isControlPacket()) {
-            if (p instanceof Acknowledgement) {
-                Acknowledgement acknowledgement = (Acknowledgement) p;
-                onAcknowledge(acknowledgement);
+            if (p instanceof Ack) {
+                Ack ack = (Ack) p;
+                onAcknowledge(ack);
             }
             else if (p instanceof NegativeAcknowledgement) {
                 NegativeAcknowledgement nak = (NegativeAcknowledgement) p;
@@ -229,30 +234,30 @@ public class BoltSender {
      * <li> Update sender's loss list (by removing all those that has been acknowledged).
      * </ol>
      *
-     * @param acknowledgement the received ACK packet.
+     * @param ack the received ACK packet.
      * @throws IOException if sending of ACK2 fails.
      */
-    private void onAcknowledge(final Acknowledgement acknowledgement) throws IOException {
+    private void onAcknowledge(final Ack ack) throws IOException {
         ackLock.lock();
         ackCondition.signal();
         ackLock.unlock();
 
         // TODO this method needs to perform better.
         final CongestionControl cc = session.getCongestionControl();
-        final long rtt = acknowledgement.getRoundTripTime();
+        final long rtt = ack.getRoundTripTime();
         if (rtt > 0) {
-            long rttVar = acknowledgement.getRoundTripTimeVar();
+            long rttVar = ack.getRoundTripTimeVar();
             cc.setRTT(rtt, rttVar);
             statistics.setRTT(rtt, rttVar);
         }
-        final long rate = acknowledgement.getPacketReceiveRate();
+        final long rate = ack.getPacketReceiveRate();
         if (rate > 0) {
-            long linkCapacity = acknowledgement.getEstimatedLinkCapacity();
+            long linkCapacity = ack.getEstimatedLinkCapacity();
             cc.updatePacketArrivalRate(rate, linkCapacity);
             statistics.setPacketArrivalRate(cc.getPacketArrivalRate(), cc.getEstimatedLinkCapacity());
         }
 
-        final int ackNumber = acknowledgement.getAckNumber();
+        final int ackNumber = ack.getAckNumber();
         cc.onACK(ackNumber);
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
         // Need to remove all sequence numbers up the ACK number from the sendBuffer.
@@ -310,9 +315,7 @@ public class BoltSender {
     }
 
     protected void sendAck2(long ackSequenceNumber) throws IOException {
-        Acknowledgment2 ackOfAckPkt = new Acknowledgment2();
-        ackOfAckPkt.setAckSequenceNumber(ackSequenceNumber);
-        ackOfAckPkt.setDestinationID(session.getDestination().getSocketID());
+        final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, session.getDestination().getSocketID());
         endpoint.doSend(ackOfAckPkt, session);
     }
 

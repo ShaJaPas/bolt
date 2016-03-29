@@ -1,8 +1,20 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.Ack;
+import io.lyracommunity.bolt.packet.Ack2;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ControlPacket;
+import io.lyracommunity.bolt.packet.ControlPacketType;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.packet.KeepAlive;
+import io.lyracommunity.bolt.packet.NegativeAcknowledgement;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.receiver.*;
+import io.lyracommunity.bolt.receiver.AckHistoryEntry;
+import io.lyracommunity.bolt.receiver.AckHistoryWindow;
+import io.lyracommunity.bolt.receiver.PacketHistoryWindow;
+import io.lyracommunity.bolt.receiver.PacketPairWindow;
+import io.lyracommunity.bolt.receiver.ReceiverLossList;
+import io.lyracommunity.bolt.receiver.ReceiverLossListEntry;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -421,7 +433,7 @@ public class BoltReceiver {
             statistics.endDataProcess();
         }
         else if (p.getControlPacketType() == ControlPacketType.ACK2.getTypeId()) {
-            final Acknowledgment2 ack2 = (Acknowledgment2) p;
+            final Ack2 ack2 = (Ack2) p;
             onAck2PacketReceived(ack2);
         }
         else if (p instanceof Shutdown) {
@@ -523,43 +535,28 @@ public class BoltReceiver {
     }
 
     private long sendLightAcknowledgment(final int ackNumber) throws IOException {
-        Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
+        Ack acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
         endpoint.doSend(acknowledgmentPkt, session);
         statistics.incNumberOfACKSent();
         return acknowledgmentPkt.getAckSequenceNumber();
     }
 
     private long sendAcknowledgment(final int ackNumber) throws IOException {
-        Acknowledgement acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
-        // Set the estimate link capacity
-        final long estimateLinkCapacity = packetPairWindow.getEstimatedLinkCapacity();
-        acknowledgmentPkt.setEstimatedLinkCapacity(estimateLinkCapacity);
-        // Set the packet arrival rate
-        final long packetArrivalSpeed = packetHistoryWindow.getPacketArrivalSpeed();
-        acknowledgmentPkt.setPacketReceiveRate(packetArrivalSpeed);
+        final Ack ack = Ack.buildAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar,
+                bufferSize, session.getDestination().getSocketID(),
+                packetPairWindow.getEstimatedLinkCapacity(), packetHistoryWindow.getPacketArrivalSpeed());
 
-        endpoint.doSend(acknowledgmentPkt, session);
+        endpoint.doSend(ack, session);
 
         statistics.incNumberOfACKSent();
-        statistics.setPacketArrivalRate(packetArrivalSpeed, estimateLinkCapacity);
-        return acknowledgmentPkt.getAckSequenceNumber();
+        statistics.setPacketArrivalRate(ack.getPacketReceiveRate(), ack.getEstimatedLinkCapacity());
+        return ack.getAckSequenceNumber();
     }
 
     // Builds a "light" Acknowledgement
-    private Acknowledgement buildLightAcknowledgement(final int ackNumber) {
-        Acknowledgement acknowledgmentPkt = new Acknowledgement();
-        // The packet sequence number to which all the packets have been received
-        acknowledgmentPkt.setAckNumber(ackNumber);
-        // Assign this ack a unique increasing ACK sequence number
-        acknowledgmentPkt.setAckSequenceNumber(++ackSequenceNumber);
-        acknowledgmentPkt.setRoundTripTime(roundTripTime);
-        acknowledgmentPkt.setRoundTripTimeVar(roundTripTimeVar);
-        // Set the buffer size
-        acknowledgmentPkt.setBufferSize(bufferSize);
-
-        acknowledgmentPkt.setDestinationID(session.getDestination().getSocketID());
-
-        return acknowledgmentPkt;
+    private Ack buildLightAcknowledgement(final int ackNumber) {
+        return Ack.buildLightAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar, bufferSize,
+                session.getDestination().getSocketID());
     }
 
     /**
@@ -574,7 +571,7 @@ public class BoltReceiver {
      * <li> Update both ACK and NAK period to 4 * RTT + RTTVar + SYN.
      * </ol>
      */
-    private void onAck2PacketReceived(Acknowledgment2 ack2) {
+    private void onAck2PacketReceived(Ack2 ack2) {
         final AckHistoryEntry entry = ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
         if (entry != null) {
             long ackNumber = entry.getAckNumber();

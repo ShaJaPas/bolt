@@ -2,7 +2,7 @@ package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.Config;
-import io.lyracommunity.bolt.event.ConnectionReadyEvent;
+import io.lyracommunity.bolt.event.ConnectionReady;
 import rx.Subscription;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
@@ -41,7 +41,7 @@ public class TestClient {
 
         final Subscription subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())
-                .ofType(ConnectionReadyEvent.class)
+                .ofType(ConnectionReady.class)
                 .observeOn(Schedulers.computation())
                 .subscribe(__ -> onReady.call(client), onError);
 

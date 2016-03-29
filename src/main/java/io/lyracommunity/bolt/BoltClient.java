@@ -3,7 +3,7 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.receiver.RoutedData;
+import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.codec.CodecRepository;
@@ -51,7 +51,7 @@ public class BoltClient implements Client {
                         if (packet != null) {
                             final Object decoded = codecs.decode(packet);
                             if (decoded != null) {
-                                subscriber.onNext(new RoutedData(clientSession.getSocketID(), decoded));
+                                subscriber.onNext(new ReceiveObject(clientSession.getSocketID(), decoded));
                             }
                         }
                     }

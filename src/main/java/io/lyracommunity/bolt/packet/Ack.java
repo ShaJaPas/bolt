@@ -22,7 +22,7 @@ import java.io.ByteArrayOutputStream;
  * <li> 32 bits: Estimated link capacity (in number of packets per second)
  * </ol>
  */
-public class Acknowledgement extends ControlPacket {
+public class Ack extends ControlPacket {
 
     /** The ACK sequence number */
     private int ackSequenceNumber;
@@ -45,11 +45,37 @@ public class Acknowledgement extends ControlPacket {
     /** Estimated link capacity in number of packets per second */
     private long estimatedLinkCapacity;
 
-    public Acknowledgement() {
+    public Ack() {
         this.controlPacketType = ControlPacketType.ACK.getTypeId();
     }
 
-    public Acknowledgement(int ackSeqNo, byte[] controlInformation) {
+    public static Ack buildAcknowledgement(final int ackNumber, final int ackSequenceNumber,
+            final long roundTripTime, final long roundTripTimeVar, final long bufferSize, final int destinationID,
+            final long estimatedLinkCapacity, final long packetArrivalSpeed) {
+        final Ack ack = buildLightAcknowledgement(ackNumber, ackSequenceNumber, roundTripTime, roundTripTimeVar, bufferSize, destinationID);
+        ack.setEstimatedLinkCapacity(estimatedLinkCapacity);
+        ack.setPacketReceiveRate(packetArrivalSpeed);
+        return ack;
+    }
+
+    /**
+     * Builds a "light" Acknowledgement.
+     */
+    public static Ack buildLightAcknowledgement(final int ackNumber, final int ackSequenceNumber,
+            final long roundTripTime, final long roundTripTimeVar, final long bufferSize, final int destinationID) {
+        Ack ack = new Ack();
+        // The packet sequence number to which all the packets have been received
+        ack.setAckNumber(ackNumber);
+        // Assign this ack a unique increasing ACK sequence number
+        ack.setAckSequenceNumber(ackSequenceNumber);
+        ack.setRoundTripTime(roundTripTime);
+        ack.setRoundTripTimeVar(roundTripTimeVar);
+        ack.setBufferSize(bufferSize);
+        ack.setDestinationID(destinationID);
+        return ack;
+    }
+
+    public Ack(int ackSeqNo, byte[] controlInformation) {
         this();
         this.ackSequenceNumber = ackSeqNo;
         decodeControlInformation(controlInformation);
@@ -184,7 +210,7 @@ public class Acknowledgement extends ControlPacket {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Acknowledgement other = (Acknowledgement) obj;
+        Ack other = (Ack) obj;
         if (ackNumber != other.ackNumber)
             return false;
         if (roundTripTime != other.roundTripTime)

@@ -1,6 +1,5 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.BoltPacket;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.junit.Test;
 
@@ -37,18 +36,7 @@ public class TestPacketFactory {
 
     @Test
     public void testConnectionHandshake() throws IOException {
-        ConnectionHandshake p1 = new ConnectionHandshake();
-        p1.setDestinationID(1);
-
-        p1.setConnectionType(1);
-        p1.setSocketType(1);
-        p1.setInitialSeqNo(321);
-        p1.setPacketSize(128);
-        p1.setMaxFlowWndSize(128);
-        p1.setSocketID(1);
-        p1.setBoltVersion(1);
-        p1.setAddress(InetAddress.getLocalHost());
-        p1.setCookie(SeqNum.randomInt());
+        final ConnectionHandshake p1 = new ConnectionHandshake(128, 321, 1, 1, 128, 1, 1, SeqNum.randomInt(), InetAddress.getLocalHost());
 
         byte[] p1_data = p1.getEncoded();
 
@@ -60,7 +48,7 @@ public class TestPacketFactory {
 
     @Test
     public void testAcknowledgement() throws IOException {
-        Acknowledgement p1 = new Acknowledgement();
+        Ack p1 = new Ack();
         p1.setAckSequenceNumber(1234);
         p1.setDestinationID(1);
         p1.setBufferSize(128);
@@ -72,19 +60,17 @@ public class TestPacketFactory {
 
         byte[] p1_data = p1.getEncoded();
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        Acknowledgement p2 = (Acknowledgement) p;
+        Ack p2 = (Ack) p;
         assertEquals(p1, p2);
     }
 
     @Test
     public void testAcknowledgementOfAcknowledgement() throws IOException {
-        Acknowledgment2 p1 = new Acknowledgment2();
-        p1.setAckSequenceNumber(1230);
-        p1.setDestinationID(1);
+        final Ack2 p1 = new Ack2(1230, 1);
 
         byte[] p1_data = p1.getEncoded();
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        Acknowledgment2 p2 = (Acknowledgment2) p;
+        Ack2 p2 = (Ack2) p;
         assertEquals(p1, p2);
 
 

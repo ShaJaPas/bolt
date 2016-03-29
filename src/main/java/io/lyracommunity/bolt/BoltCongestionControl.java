@@ -109,11 +109,13 @@ public class BoltCongestionControl implements CongestionControl {
     }
 
     public void updatePacketArrivalRate(long rate, long linkCapacity) {
-        // See spec p. 14.
-        if (packetArrivalRate > 0) packetArrivalRate = (packetArrivalRate * 7 + rate) / 8;
-        else packetArrivalRate = rate;
-        if (estimatedLinkCapacity > 0) estimatedLinkCapacity = (estimatedLinkCapacity * 7 + linkCapacity) / 8;
-        else estimatedLinkCapacity = linkCapacity;
+        packetArrivalRate = (packetArrivalRate > 0)
+                ? (packetArrivalRate * 7 + rate) / 8
+                : rate;
+
+        estimatedLinkCapacity = (estimatedLinkCapacity > 0)
+                ? (estimatedLinkCapacity * 7 + linkCapacity) / 8
+                : linkCapacity;
     }
 
     public long getPacketArrivalRate() {
@@ -152,11 +154,11 @@ public class BoltCongestionControl implements CongestionControl {
      * @see CongestionControl#onACK(long)
      */
     public void onACK(final long ackSeqNo) {
-        // increase window during slow start
+        // Increase window during slow start.
         if (slowStartPhase) {
             congestionWindowSize += ackSeqNo - lastAckSeqNumber;
             lastAckSeqNumber = ackSeqNo;
-            // but not beyond a maximum size
+            // But not beyond a maximum size.
             if (congestionWindowSize > session.getFlowWindowSize()) {
                 slowStartPhase = false;
                 if (packetArrivalRate > 0) {
@@ -177,7 +179,7 @@ public class BoltCongestionControl implements CongestionControl {
             }
         }
 
-        // no rate increase during slow start
+        // No rate increase during slow start
         if (slowStartPhase) return;
 
         // No rate increase "immediately" after a NAK
@@ -186,10 +188,10 @@ public class BoltCongestionControl implements CongestionControl {
             return;
         }
 
-        // 4) compute the increase in sent packets for the next SYN period
+        // 4) Compute the increase in sent packets for the next SYN period
         double numOfIncreasingPacket = computeNumOfIncreasingPacket();
 
-        // 5) update the send period
+        // 5) Update the send period
         double factor = Util.getSYNTimeD() / (packetSendingPeriod * numOfIncreasingPacket + Util.getSYNTimeD());
         packetSendingPeriod = factor * packetSendingPeriod;
         // packetSendingPeriod=0.995*packetSendingPeriod;
@@ -202,7 +204,7 @@ public class BoltCongestionControl implements CongestionControl {
      */
     private double computeNumOfIncreasingPacket() {
         // Difference between link capacity and sending speed, in packets per second.
-        final double remaining = estimatedLinkCapacity - 1000000.0 / packetSendingPeriod;
+        final double remaining = estimatedLinkCapacity - 1_000_000d / packetSendingPeriod;
 
         if (remaining <= 0) {
             return 1.0 / BoltEndPoint.DATAGRAM_SIZE;

@@ -3,6 +3,7 @@ package io.lyracommunity.bolt.packet;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Objects;
 
 /**
  * Protocol Connection Handshake
@@ -12,11 +13,9 @@ import java.net.InetAddress;
  * Control Info:
  * <ol>
  * <li> 32 bits: Bolt version
- * <li> 32 bits: Socket Type (STREAM or DGRAM)
  * <li> 32 bits: initial packet sequence number
  * <li> 32 bits: maximum packet size (including UDP/IP headers)
  * <li> 32 bits: maximum flow window size
- * <li> 32 bits: connection type (regular or rendezvous)
  * <li> 32 bits: socket ID
  * <li> 32 bits: SYN cookie
  * <li> 128 bits: the IP address of the peer's UDP socket
@@ -24,15 +23,16 @@ import java.net.InetAddress;
  */
 public class ConnectionHandshake extends ControlPacket {
 
-    private static final long SOCKET_TYPE_DGRAM = 1;
+
     private static final long CONNECTION_TYPE_REGULAR = 1L;
 
-    /**
-     * Connection type in response handshake packet.
-     */
+    /** Connection type in response handshake packet. */
     public static final long CONNECTION_SERVER_ACK = -1L;
-    private long boltVersion = 4;
-    private long socketType = SOCKET_TYPE_DGRAM;  // Stream or dgram TODO is stream needed?
+
+    private static final long BOLT_VERSION = 1;
+
+
+    private long boltVersion;
     private int initialSeqNo = 0;
     private long packetSize;
     private long maxFlowWndSize;
@@ -57,12 +57,13 @@ public class ConnectionHandshake extends ControlPacket {
         decode(controlInformation);
     }
 
-    private ConnectionHandshake(long packetSize, long boltVersion, int initialSeqNo, long connectionType, long maxFlowWndSize,
-                                int socketID, int destinationID, long cookie, InetAddress address) {
+    ConnectionHandshake(long packetSize, int initialSeqNo, long boltVersion, long connectionType, long maxFlowWndSize, int socketID,
+            int destinationID, long cookie, InetAddress address) {
         this();
+        Objects.requireNonNull(address);
         this.packetSize = packetSize;
-        this.boltVersion = boltVersion;
         this.initialSeqNo = initialSeqNo;
+        this.boltVersion = boltVersion;
         this.connectionType = connectionType;
         this.maxFlowWndSize = maxFlowWndSize;
         this.socketID = socketID;
@@ -71,115 +72,84 @@ public class ConnectionHandshake extends ControlPacket {
         this.address = address;
     }
 
+    /**
+     * Build first stage of three-way handshake.
+     * This is the first client to server handshake request.
+     */
     public static ConnectionHandshake ofClientInitial(long packetSize, int initialSeqNo, long maxFlowWndSize,
                                                       int socketID, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
-                0, 0, address);
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
     }
 
+    /**
+     * Build the third and final stage of the three-way handshake.
+     * This is the client's acknowledgement of the previous server acknowledgement.
+     */
     public static ConnectionHandshake ofClientSecond(long packetSize, int initialSeqNo, long maxFlowWndSize,
                                                      int socketID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }
 
+    /**
+     * Build the second stage of the three-way handshake.
+     * This is the server response to the client handshake request.
+     */
     public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
                                                                 int socketID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, 4, initialSeqNo, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
                 destinationID, cookie, address);
     }
 
     void decode(byte[] data) throws IOException {
         boltVersion = PacketUtil.decode(data, 0);
-        socketType = PacketUtil.decode(data, 4);
-        initialSeqNo = PacketUtil.decodeInt(data, 8);
-        packetSize = PacketUtil.decode(data, 12);
-        maxFlowWndSize = PacketUtil.decode(data, 16);
-        connectionType = PacketUtil.decode(data, 20);
-        socketID = PacketUtil.decodeInt(data, 24);
-        cookie = PacketUtil.decode(data, 28);
+        initialSeqNo = PacketUtil.decodeInt(data, 4);
+        packetSize = PacketUtil.decode(data, 8);
+        maxFlowWndSize = PacketUtil.decode(data, 12);
+        connectionType = PacketUtil.decode(data, 16);
+        socketID = PacketUtil.decodeInt(data, 20);
+        cookie = PacketUtil.decode(data, 24);
         // TODO ipv6 check
-        address = PacketUtil.decodeInetAddress(data, 32, false);
+        address = PacketUtil.decodeInetAddress(data, 28, false);
     }
 
     public long getBoltVersion() {
         return boltVersion;
     }
 
-    public void setBoltVersion(long boltVersion) {
-        this.boltVersion = boltVersion;
-    }
-
-    public long getSocketType() {
-        return socketType;
-    }
-
-    public void setSocketType(long socketType) {
-        this.socketType = socketType;
-    }
-
     public int getInitialSeqNo() {
         return initialSeqNo;
-    }
-
-    public void setInitialSeqNo(int initialSeqNo) {
-        this.initialSeqNo = initialSeqNo;
     }
 
     public long getPacketSize() {
         return packetSize;
     }
 
-    public void setPacketSize(long packetSize) {
-        this.packetSize = packetSize;
-    }
-
     public long getMaxFlowWndSize() {
         return maxFlowWndSize;
-    }
-
-    public void setMaxFlowWndSize(long maxFlowWndSize) {
-        this.maxFlowWndSize = maxFlowWndSize;
     }
 
     public long getConnectionType() {
         return connectionType;
     }
 
-    public void setConnectionType(long connectionType) {
-        this.connectionType = connectionType;
-    }
-
     public int getSocketID() {
         return socketID;
-    }
-
-    public void setSocketID(int socketID) {
-        this.socketID = socketID;
     }
 
     public long getCookie() {
         return cookie;
     }
 
-    public void setCookie(long cookie) {
-        this.cookie = cookie;
-    }
-
     public InetAddress getAddress() {
         return address;
-    }
-
-    public void setAddress(InetAddress address) {
-        this.address = address;
     }
 
     @Override
     public byte[] encodeControlInformation() {
         try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream(48);
+            final ByteArrayOutputStream bos = new ByteArrayOutputStream(44);
             bos.write(PacketUtil.encode(boltVersion));
-            bos.write(PacketUtil.encode(socketType));
             bos.write(PacketUtil.encode(initialSeqNo));
             bos.write(PacketUtil.encode(packetSize));
             bos.write(PacketUtil.encode(maxFlowWndSize));
@@ -196,33 +166,30 @@ public class ConnectionHandshake extends ControlPacket {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object o)
+    {
+        if (this == o)
             return true;
-        if (!super.equals(obj))
+        if (o == null || getClass() != o.getClass())
             return false;
-        if (getClass() != obj.getClass())
+        if (!super.equals(o))
             return false;
-        ConnectionHandshake other = (ConnectionHandshake) obj;
-        if (connectionType != other.connectionType)
-            return false;
-        if (initialSeqNo != other.initialSeqNo)
-            return false;
-        if (maxFlowWndSize != other.maxFlowWndSize)
-            return false;
-        if (packetSize != other.packetSize)
-            return false;
-        if (socketID != other.socketID)
-            return false;
-        if (socketType != other.socketType)
-            return false;
-        if (boltVersion != other.boltVersion)
-            return false;
-        if (cookie != other.cookie)
-            return false;
-        if (!address.equals(other.address))
-            return false;
-        return true;
+        final ConnectionHandshake that = (ConnectionHandshake) o;
+        return boltVersion == that.boltVersion &&
+                initialSeqNo == that.initialSeqNo &&
+                packetSize == that.packetSize &&
+                maxFlowWndSize == that.maxFlowWndSize &&
+                connectionType == that.connectionType &&
+                socketID == that.socketID &&
+                cookie == that.cookie &&
+                Objects.equals(address, that.address);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects
+                .hash(super.hashCode(), boltVersion, initialSeqNo, packetSize, maxFlowWndSize, connectionType, socketID, cookie, address);
     }
 
     public String toString() {
@@ -233,7 +200,6 @@ public class ConnectionHandshake extends ControlPacket {
         sb.append(", initialSeqNo=").append(initialSeqNo);
         sb.append(", packetSize=").append(packetSize);
         sb.append(", maxFlowWndSize=").append(maxFlowWndSize);
-        sb.append(", socketType=").append(socketType);
         sb.append(", destSocketID=").append(destinationID);
         if (cookie > 0) {
             sb.append(", cookie=").append(cookie);

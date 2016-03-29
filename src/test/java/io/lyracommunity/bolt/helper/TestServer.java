@@ -2,7 +2,7 @@ package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltServer;
 import io.lyracommunity.bolt.Config;
-import io.lyracommunity.bolt.receiver.RoutedData;
+import io.lyracommunity.bolt.event.ReceiveObject;
 import rx.Subscription;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
@@ -44,7 +44,7 @@ public class TestServer {
                 .subscribeOn(Schedulers.io())
                 .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())
-                .ofType(RoutedData.class)
+                .ofType(ReceiveObject.class)
                 .filter(rd -> rd.isOfSubType(ofType))
                 .map(rd -> (T) rd.getPayload())
                 .subscribe(onNext, onError);

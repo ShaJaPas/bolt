@@ -77,7 +77,7 @@ public class BoltSocket {
         } catch (InterruptedException ie) {
             throw new IOException(ie);
         }
-        if (dataPacket.getLength() > 0) active = true;
+        if (dataPacket.getDataLength() > 0) active = true;
     }
 
     protected void doWriteBlocking(final DataPacket dataPacket) throws IOException, InterruptedException {

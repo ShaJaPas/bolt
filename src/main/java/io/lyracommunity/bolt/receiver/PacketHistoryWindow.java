@@ -14,56 +14,52 @@ public class PacketHistoryWindow extends CircularArray<Long> {
     /**
      * Create a new PacketHistoryWindow of the given size.
      *
-     * @param size
+     * @param size the size of the window.
      */
-    public PacketHistoryWindow(int size) {
+    public PacketHistoryWindow(final int size) {
         super(size);
         num = max - 1;
         intervals = new long[num];
     }
 
     /**
-     * Compute the packet arrival speed
-     * (see specification section 6.2, page 12)
+     * Compute the packet arrival speed.
      *
-     * @return the current value
+     * @return the current value.
      */
     public long getPacketArrivalSpeed() {
         if (!haveOverflow) return 0;
 
-        double AI;
-        double medianPacketArrivalSpeed;
         double total = 0;
         int count = 0;
-        int pos = position - 1;
-        if (pos < 0) pos = num;
+        int pos = (position - 1 < 0) ? num : (position - 1);
         do {
-            long upper = getEntry(pos);
+            final long upper = getEntry(pos);
             pos--;
             if (pos < 0) pos = num;
-            long lower = getEntry(pos);
-            long interval = upper - lower;
+            final long lower = getEntry(pos);
+            final long interval = upper - lower;
             intervals[count] = interval;
             total += interval;
             count++;
         }
         while (count < num);
         // Compute median
-        AI = total / num;
-        // Compute the actual value, filtering out intervals between AI/8 and AI*8
+        final double AI = total / num;
+        // Compute the actual value, filtering out intervals between AI/8 and AI*8.
         count = 0;
         total = 0;
-        for (long l : intervals) {
-            if (l > AI / 8 && l < AI * 8) {
+        for (final long l : intervals) {
+            if (l > AI / 8d && l < AI * 8d) {
                 total += l;
                 count++;
             }
         }
-        if (count > 8) {
-            medianPacketArrivalSpeed = 1e6 * count / total;
-        } else {
-            medianPacketArrivalSpeed = 0;
-        }
+
+        final double medianPacketArrivalSpeed = (count > 8)
+                ? 1e6 * count / total
+                : 0;
+
         return (long) Math.ceil(medianPacketArrivalSpeed);
     }
 

@@ -1,6 +1,5 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.BoltPacket;
 import io.lyracommunity.bolt.util.SeqNum;
 
 import java.util.Arrays;
@@ -80,8 +79,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     private int reliabilitySeqNumber;
 
-    private int dataLength;
-
 
     public DataPacket() {
     }
@@ -122,7 +119,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
             messageId = PacketUtil.decodeInt(encodedData, headerPos, 0, 16);
         }
 
-        dataLength = length - headerLength;
+        final int dataLength = length - headerLength;
         data = new byte[dataLength];
         System.arraycopy(encodedData, headerLength, data, 0, dataLength);
     }
@@ -140,15 +137,10 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
 
     public void setData(byte[] data) {
         this.data = data;
-        this.dataLength = data.length;
     }
 
-    public int getLength() {
-        return dataLength;
-    }
-
-    public void setLength(int length) {
-        dataLength = length;
+    public int getDataLength() {
+        return data.length;
     }
 
     public int getPacketSeqNumber() {
@@ -199,6 +191,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
      */
     public byte[] getEncoded() {
         final int headerLength = DataPacket.computeHeaderLength(delivery);
+        final int dataLength = getDataLength();
         byte[] result = new byte[headerLength + dataLength];
 
         byte[] flagsAndSeqNum = PacketUtil.encodeInt(packetSeqNumber);

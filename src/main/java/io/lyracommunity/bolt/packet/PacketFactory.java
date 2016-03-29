@@ -1,7 +1,5 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.BoltPacket;
-
 import java.io.IOException;
 
 public class PacketFactory {
@@ -49,7 +47,7 @@ public class PacketFactory {
             packet = new KeepAlive();
         }
         else if (ControlPacketType.ACK.getTypeId() == pktType) {
-            packet = new Acknowledgement(additionalInfo, controlInformation);
+            packet = new Ack(additionalInfo, controlInformation);
         }
         else if (ControlPacketType.NAK.getTypeId() == pktType) {
             packet = new NegativeAcknowledgement(controlInformation);
@@ -61,7 +59,7 @@ public class PacketFactory {
             packet = new Shutdown();
         }
         else if (ControlPacketType.ACK2.getTypeId() == pktType) {
-            packet = new Acknowledgment2(additionalInfo, controlInformation);
+            packet = new Ack2(additionalInfo, controlInformation);
         }
 
         if (packet != null) {

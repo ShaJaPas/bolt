@@ -1,7 +1,5 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.BoltPacket;
-
 import java.util.Objects;
 
 /**
@@ -121,7 +119,7 @@ public abstract class ControlPacket implements BoltPacket {
 
 
     /**
-     * Computers the contrl packet header.
+     * Computes the control packet header.
      *
      * @return the encoded header byte array.
      */

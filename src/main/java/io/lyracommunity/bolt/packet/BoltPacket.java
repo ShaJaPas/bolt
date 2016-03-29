@@ -1,19 +1,29 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.packet;
 
 
+import io.lyracommunity.bolt.BoltSender;
 import io.lyracommunity.bolt.util.SeqNum;
 
 public interface BoltPacket extends Comparable<BoltPacket> {
 
-
+    /**
+     * Get the ID of the destination socket.
+     */
     int getDestinationID();
 
-    void setDestinationID(int destinationID);
-
+    /**
+     * Identifies whether this is a control packet (more performant than instanceof).
+     */
     boolean isControlPacket();
 
+    /**
+     * Get the ID of the control packet type. Equates to {@link ControlPacketType#getTypeId()}.
+     */
     int getControlPacketType();
 
+    /**
+     * Get the binary encoded form of the packet.
+     */
     byte[] getEncoded();
 
     /**
@@ -21,6 +31,9 @@ public interface BoltPacket extends Comparable<BoltPacket> {
      */
     boolean forSender();
 
+    /**
+     * Get the packet sequence number.
+     */
     int getPacketSeqNumber();
 
     @Override

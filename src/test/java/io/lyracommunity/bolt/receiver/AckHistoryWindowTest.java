@@ -11,15 +11,15 @@ public class AckHistoryWindowTest {
 
     @Test
     public void testAckHistoryWindow() {
-        AckHistoryEntry ackSeqNrA = new AckHistoryEntry(0, 1, 1263465050);
-        AckHistoryEntry ackSeqNrB = new AckHistoryEntry(1, 2, 1263465054);
-        AckHistoryEntry ackSeqNrC = new AckHistoryEntry(2, 3, 1263465058);
+        final AckHistoryEntry ackSeqNrA = new AckHistoryEntry(0, 1, 1263465050);
+        final AckHistoryEntry ackSeqNrB = new AckHistoryEntry(1, 2, 1263465054);
+        final AckHistoryEntry ackSeqNrC = new AckHistoryEntry(2, 3, 1263465058);
 
-        AckHistoryWindow recvWindow = new AckHistoryWindow(3);
+        final AckHistoryWindow recvWindow = new AckHistoryWindow(3);
         recvWindow.add(ackSeqNrA);
         recvWindow.add(ackSeqNrB);
         recvWindow.add(ackSeqNrC);
-        AckHistoryEntry entryA = recvWindow.getEntry(1);
+        final AckHistoryEntry entryA = recvWindow.getEntry(1);
         assertEquals(1263465050, entryA.getSentTime());
     }
 

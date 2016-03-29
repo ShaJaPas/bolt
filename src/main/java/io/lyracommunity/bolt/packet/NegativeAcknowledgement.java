@@ -21,17 +21,17 @@ import java.util.List;
  */
 public class NegativeAcknowledgement extends ControlPacket {
 
-    // After decoding this contains the lost sequence numbers
+    /** After decoding this contains the lost sequence numbers. */
     List<Integer> lostSequenceNumbers;
 
-    // This contains the loss information intervals as described on p.15 of the spec
-    ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
+    /** This contains the loss information intervals. */
+    final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
 
     public NegativeAcknowledgement() {
         this.controlPacketType = ControlPacketType.NAK.getTypeId();
     }
 
-    public NegativeAcknowledgement(byte[] controlInformation) {
+    public NegativeAcknowledgement(final byte[] controlInformation) {
         this();
         lostSequenceNumbers = decode(controlInformation);
     }

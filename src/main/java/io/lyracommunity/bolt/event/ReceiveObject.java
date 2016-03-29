@@ -1,19 +1,23 @@
-package io.lyracommunity.bolt.receiver;
+package io.lyracommunity.bolt.event;
 
 /**
  * Created by keen on 06/03/16.
  */
-public class RoutedData {
+public class ReceiveObject
+{
 
     private final long sourceId;
 
     private final Object payload;
 
-    public RoutedData(final long sourceId, final Object payload) {
+    public ReceiveObject(final long sourceId, final Object payload) {
         this.sourceId = sourceId;
         this.payload = payload;
     }
 
+    /**
+     * The ID of the session that this data was routed from.
+     */
     public long getSourceId() {
         return sourceId;
     }

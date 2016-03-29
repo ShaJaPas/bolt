@@ -99,4 +99,5 @@ public enum DeliveryType
     {
         return EnumSet.allOf(DeliveryType.class).stream().collect(Collectors.toMap(d -> (int) d.getId(), identity()));
     }
+
 }

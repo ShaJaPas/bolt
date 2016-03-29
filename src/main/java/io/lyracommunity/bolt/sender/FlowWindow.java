@@ -42,12 +42,12 @@ public class FlowWindow {
      */
     public FlowWindow(final int flowWindowSize, final int chunkSize) {
         this.length = flowWindowSize + 1;
-        packets = new DataPacket[length];
+        this.packets = new DataPacket[length];
         for (int i = 0; i < packets.length; i++) {
             packets[i] = new DataPacket();
             packets[i].setData(new byte[chunkSize]);
         }
-        lock = new ReentrantLock(true);
+        this.lock = new ReentrantLock(true);
     }
 
     public boolean tryProduce(final DataPacket src) {
