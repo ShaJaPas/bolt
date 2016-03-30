@@ -11,6 +11,7 @@ import rx.Subscriber;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -91,13 +92,27 @@ public class BoltServer implements Server {
         return (serverEndpoint != null) ? serverEndpoint.getLocalPort() : config.getLocalPort();
     }
 
+    public void sendAll(final Object obj) throws IOException {
+        final List<Long> ids = serverEndpoint.getSessions().stream()
+                .map(BoltSession::getSocketID)
+                .collect(Collectors.toList());
+        send(obj, ids);
+    }
+
     @Override
-    public void send(final Object obj, final long destId) throws IOException {
-        final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destId)).orElse(null);
-        if (session != null) {
-            final Collection<DataPacket> data = codecs.encode(obj);
-            for (final DataPacket dp : data) {
-                session.getSocket().doWrite(dp);
+    public void send(final Object obj, final long destID) throws IOException {
+        send(obj, Collections.singletonList(destID));
+    }
+
+    public void send(final Object obj, final List<Long> destIDs) throws IOException {
+        Collection<DataPacket> data = null;
+        for (final long destID : destIDs) {
+            final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
+            if (session != null) {
+                if (data == null) data = codecs.encode(obj);
+                for (final DataPacket dp : data) {
+                    session.getSocket().doWrite(dp);
+                }
             }
         }
     }
