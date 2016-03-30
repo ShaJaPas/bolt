@@ -13,7 +13,7 @@ import java.util.List;
  * <p>
  * The algorithm is adapted from the C++ reference implementation.
  */
-public class BoltCongestionControl implements CongestionControl {
+class BoltCongestionControl implements CongestionControl {
 
     private static final Logger LOG         = LoggerFactory.getLogger(BoltCongestionControl.class);
     private static final long   PS          = BoltEndPoint.DATAGRAM_SIZE;
@@ -21,52 +21,47 @@ public class BoltCongestionControl implements CongestionControl {
 
     protected final BoltSession session;
 
-    protected final BoltStatistics statistics;
+    private final BoltStatistics statistics;
 
     /**
      * Round trip time in microseconds.
      */
-    protected long roundTripTime = 0;
+    private long roundTripTime = 0;
 
     /**
      * Rate in packets per second.
      */
-    protected long packetArrivalRate = 0;
+    private long packetArrivalRate = 0;
 
     /**
      * Link capacity in packets per second.
      */
-    protected long estimatedLinkCapacity = 0;
+    private long estimatedLinkCapacity = 0;
 
     /**
      * Packet sending period = packet send interval, in microseconds.
      */
-    protected double packetSendingPeriod = 1;
+    private double packetSendingPeriod = 1;
 
     /**
      * Congestion window size, in packets.
      */
-    protected double congestionWindowSize = 16;
-
-    /**
-     * If larger than 0, the receiver should acknowledge every n'th packet.
-     */
-    protected long ackInterval = -1;
+    private double congestionWindowSize = 16;
 
     /**
      * Number of decreases in a congestion epoch.
      */
-    long decCount = 1;
+    private long decCount = 1;
 
     /**
      * Random threshold on decrease by number of loss events.
      */
-    long decreaseRandom = 1;
+    private long decreaseRandom = 1;
 
     /**
      * Average number of NAKs per congestion.
      */
-    long averageNACKNum;
+    private long averageNACKNum;
 
     /**
      * If in slow start phase.
@@ -94,7 +89,7 @@ public class BoltCongestionControl implements CongestionControl {
     private boolean loss = false;
 
 
-    public BoltCongestionControl(BoltSession session) {
+    BoltCongestionControl(final BoltSession session) {
         this.session = session;
         this.statistics = session.getStatistics();
         this.lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;
@@ -104,7 +99,7 @@ public class BoltCongestionControl implements CongestionControl {
         // Do nothing.
     }
 
-    public void setRTT(long rtt, long rttVar) {
+    public void setRTT(final long rtt, final long rttVar) {
         this.roundTripTime = rtt;
     }
 
@@ -128,17 +123,6 @@ public class BoltCongestionControl implements CongestionControl {
 
     public double getSendInterval() {
         return packetSendingPeriod;
-    }
-
-    public long getAckInterval() {
-        return ackInterval;
-    }
-
-    public void setAckInterval(long ackInterval) {
-        this.ackInterval = ackInterval;
-        if (session.getSocket() != null && session.getSocket().getReceiver() != null) {
-            session.getSocket().getReceiver().setAckInterval(ackInterval);
-        }
     }
 
     /**
@@ -172,7 +156,7 @@ public class BoltCongestionControl implements CongestionControl {
         }
         else {
             // 1. if it's not in slow start phase,set the congestion window size to the product of packet arrival rate and(rtt +SYN)
-            double A = packetArrivalRate / 1000000.0 * (roundTripTime + Util.getSYNTimeD());
+            final double A = packetArrivalRate / 1_000_000d * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
             if (LOG.isTraceEnabled()) {
                 LOG.trace("receive rate " + packetArrivalRate + " rtt " + roundTripTime + " set to window size: " + (A + 16));
@@ -233,7 +217,7 @@ public class BoltCongestionControl implements CongestionControl {
         }
 
         // TODO make sure this is valid
-        long currentMaxSequenceNumber = session.getSocket().getSender().getCurrentReliabilitySequenceNumber();
+        long currentMaxRelSequenceNumber = session.getSocket().getSender().getCurrentReliabilitySequenceNumber();
         // 2) If this NAK starts a new congestion epoch
         if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {
             // -increase inter-packet interval
@@ -246,7 +230,7 @@ public class BoltCongestionControl implements CongestionControl {
             // - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum
             decreaseRandom = (int) Math.ceil((averageNACKNum - 1) * Math.random() + 1);
             // -Update LastDecSeq
-            lastDecreaseSeqNo = currentMaxSequenceNumber;
+            lastDecreaseSeqNo = currentMaxRelSequenceNumber;
             // -Stop.
         }
         // 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
@@ -256,7 +240,7 @@ public class BoltCongestionControl implements CongestionControl {
             // b. Increase DecCount by 1;
             decCount++;
             // c. Record the current largest sent sequence number (LastDecSeq).
-            lastDecreaseSeqNo = currentMaxSequenceNumber;
+            lastDecreaseSeqNo = currentMaxRelSequenceNumber;
         }
 
         statistics.setSendPeriod(packetSendingPeriod);

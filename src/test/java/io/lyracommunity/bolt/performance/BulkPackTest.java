@@ -65,13 +65,10 @@ public class BulkPackTest {
         while (done.get() && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
 
-        System.out.println(cli.client.getStatistics());
+        cli.printStatistics().cleanup();
+        srv.printStatistics().cleanup();
 
         assertEquals(PACKET_COUNT, received.get());
-
-        cli.cleanup();
-        srv.cleanup();
     }
-
 
 }

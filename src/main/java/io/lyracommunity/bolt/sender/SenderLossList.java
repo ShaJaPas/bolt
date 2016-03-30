@@ -24,7 +24,7 @@ public class SenderLossList {
         backingList.add(obj);
     }
 
-    public void remove(Integer obj) {
+    public void remove(final Integer obj) {
         backingList.remove(obj);
     }
 

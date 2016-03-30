@@ -3,26 +3,26 @@ package io.lyracommunity.bolt.event;
 /**
  * Created by keen on 06/03/16.
  */
-public class ReceiveObject
+public class ReceiveObject<T>
 {
 
-    private final long sourceId;
+    private final long sessionID;
 
-    private final Object payload;
+    private final T payload;
 
-    public ReceiveObject(final long sourceId, final Object payload) {
-        this.sourceId = sourceId;
+    public ReceiveObject(final long sessionID, final T payload) {
+        this.sessionID = sessionID;
         this.payload = payload;
     }
 
     /**
      * The ID of the session that this data was routed from.
      */
-    public long getSourceId() {
-        return sourceId;
+    public long getSessionID() {
+        return sessionID;
     }
 
-    public Object getPayload() {
+    public T getPayload() {
         return payload;
     }
 

@@ -146,7 +146,10 @@ public class BoltSender {
                 senderAlgorithm(stopped);
 //                }
             }
-            catch (IOException | InterruptedException ex) {
+            catch (InterruptedException ex) {
+                LOG.info("Finished with an interrupt {}", (Object)ex);
+            }
+            catch (IOException ex) {
                 LOG.error("Sender error", ex);
                 subscriber.onError(ex);
             }
@@ -279,7 +282,6 @@ public class BoltSender {
         // Send ACK2 packet to the receiver.
         sendAck2(ackNumber);
         statistics.incNumberOfACKReceived();
-        statistics.storeParameters();
     }
 
     /**
@@ -415,7 +417,7 @@ public class BoltSender {
 //                }
             }
             else {
-                LOG.warn("Did not find expected data in sendBuffer");
+                LOG.warn("Did not find expected data in sendBuffer [{}]", relSeqNumber);
             }
         }
         catch (Exception e) {

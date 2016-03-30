@@ -83,11 +83,11 @@ public class ReliabilityTest {
     private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
         final TestServer srv = TestServer.runServer(Object.class,
                 x -> {
-                    if (x instanceof TestPackets.BaseDataClass) {
+                    if (x.getPayload() instanceof TestPackets.BaseDataClass) {
                         deliveryCount.incrementAndGet();
                         System.out.println(format("Recv {0} {1}", x.getClass().getSimpleName(), deliveryCount.get()));
                     }
-                    else if (x instanceof TestPackets.Finished) {
+                    else if (x.getPayload() instanceof TestPackets.Finished) {
                         completed.set(true);
                     }
                 },

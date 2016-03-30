@@ -1,17 +1,20 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.event.ReceiveObject;
-import io.lyracommunity.bolt.util.Util;
-import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.codec.CodecRepository;
+import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
+import io.lyracommunity.bolt.event.ReceiveObject;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.statistic.BoltStatistics;
+import io.lyracommunity.bolt.util.Util;
 import rx.Observable;
 import rx.Subscriber;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 /**
@@ -104,6 +107,10 @@ public class BoltServer implements Server {
             this.serverEndpoint.stop();
             this.serverEndpoint = null;
         }
+    }
+
+    public List<BoltStatistics> getStatistics() {
+        return serverEndpoint.getSessions().stream().map(BoltSession::getStatistics).collect(Collectors.toList());
     }
 
     public Config config() {

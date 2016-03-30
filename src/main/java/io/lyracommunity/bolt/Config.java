@@ -16,6 +16,11 @@ public class Config
 
     private boolean sessionsExpirable = true;
 
+    /**
+     * If larger than 0, the receiver should acknowledge every n'th packet.
+     */
+    private int ackInterval = -1;
+
 //    private final int datagramSize = 1400;
 
     /**
@@ -65,4 +70,19 @@ public class Config
         this.sessionsExpirable = sessionsExpirable;
     }
 
+    /**
+     * Get the ACK interval. If larger than 0, the receiver should acknowledge
+     * every n'th packet.
+     */
+    public int getAckInterval() {
+        return ackInterval;
+    }
+
+    /**
+     * Set the ACK interval. If larger than 0, the receiver should acknowledge
+     * every n'th packet.
+     */
+    public void setAckInterval(int ackInterval) {
+        this.ackInterval = ackInterval;
+    }
 }

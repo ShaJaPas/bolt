@@ -6,8 +6,9 @@ Bolt UDP
 - [X] In-order and out-of-order delivery
 - [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - 65536 values - not safe enough)
 - [X] Message assembly/disassembly
-- [ ] Delivery strategy (aggressive, on NACK)
-- [ ] Trim control and data packets
+- [X] Delivery strategy
+- [ ] Retransmit strategy (aggressive, on NACK)
+- [X] Trim control and data packets
 - [X] Simulated packet-loss
 - [ ] Simulated latency
 - [ ] Simulated jitter
@@ -30,3 +31,4 @@ Bolt UDP
 - [ ] Reduce 1+ second startup of local client/server
 - [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic
 - [ ] Open-source the library
+- [ ] Configurable timeout on no response

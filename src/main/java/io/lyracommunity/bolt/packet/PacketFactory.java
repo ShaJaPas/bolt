@@ -4,19 +4,19 @@ import java.io.IOException;
 
 public class PacketFactory {
 
+
+    static BoltPacket createPacket(byte[] encodedData) throws IOException {
+        return createPacket(encodedData, encodedData.length);
+    }
+
     /**
      * Creates a Control or Data packet depending on the highest bit
      * of the first 32 bit of data.
      *
      * @param encodedData encoded data to decode.
+     * @param length length of the encoded data.
      * @return the created packet.
      */
-    public static BoltPacket createPacket(byte[] encodedData) throws IOException {
-        boolean isControl = (encodedData[0] & 128) != 0;
-        if (isControl) return createControlPacket(encodedData, encodedData.length);
-        return new DataPacket(encodedData);
-    }
-
     public static BoltPacket createPacket(byte[] encodedData, int length) throws IOException {
         boolean isControl = (encodedData[0] & 128) != 0;
         if (isControl) return createControlPacket(encodedData, length);
@@ -30,7 +30,7 @@ public class PacketFactory {
      * @param length      size of the encoded packet.
      * @return the created Control packet.
      */
-    public static ControlPacket createControlPacket(byte[] encodedData, int length) throws IOException {
+    private static ControlPacket createControlPacket(byte[] encodedData, int length) throws IOException {
 
         ControlPacket packet = null;
 

@@ -16,24 +16,29 @@ import java.util.function.Consumer;
 public class TestServer {
 
     public final BoltServer server;
-    public final Subscription subscription;
+    private final Subscription subscription;
 
-    public TestServer(BoltServer server, Subscription subscription) {
+    private TestServer(BoltServer server, Subscription subscription) {
         this.server = server;
         this.subscription = subscription;
+    }
+
+    public TestServer printStatistics() {
+        server.getStatistics().forEach(System.out::println);
+        return this;
     }
 
     public void cleanup() {
         subscription.unsubscribe();
     }
 
-    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super T> onNext,
+    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
                                            final Action1<Throwable> onError) throws Exception {
         return runServer(ofType, onNext, onError, null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super T> onNext,
+    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
                                            final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), PortUtil.nextServerPort()));
@@ -46,7 +51,7 @@ public class TestServer {
                 .observeOn(Schedulers.computation())
                 .ofType(ReceiveObject.class)
                 .filter(rd -> rd.isOfSubType(ofType))
-                .map(rd -> (T) rd.getPayload())
+                .map(rd -> (ReceiveObject<T>) rd)
                 .subscribe(onNext, onError);
 
         return new TestServer(server, subscription);

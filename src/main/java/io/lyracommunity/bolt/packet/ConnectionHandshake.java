@@ -48,11 +48,11 @@ public class ConnectionHandshake extends ControlPacket {
     // Address of the UDP socket
     private InetAddress address;
 
-    public ConnectionHandshake() {
+    private ConnectionHandshake() {
         this.controlPacketType = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId();
     }
 
-    public ConnectionHandshake(byte[] controlInformation) throws IOException {
+    ConnectionHandshake(byte[] controlInformation) throws IOException {
         this();
         decode(controlInformation);
     }

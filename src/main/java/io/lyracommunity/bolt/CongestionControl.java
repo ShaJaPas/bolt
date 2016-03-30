@@ -9,12 +9,12 @@ public interface CongestionControl {
 
     /**
      * Callback function to be called (only) at the start of a Bolt connection.
-     * when the Bolt socket is conected
+     * when the Bolt socket is connected.
      */
     void init();
 
     /**
-     * set roundtrip time and associated variance
+     * Set round-trip time and associated variance.
      *
      * @param rtt    - round trip time in microseconds
      * @param rttVar - round trip time variance in microseconds
@@ -49,18 +49,6 @@ public interface CongestionControl {
      * get the congestion window size
      */
     double getCongestionWindowSize();
-
-    /**
-     * get the ACK interval. If larger than 0, the receiver should acknowledge
-     * every n'th packet
-     */
-    long getAckInterval();
-
-    /**
-     * set the ACK interval. If larger than 0, the receiver should acknowledge
-     * every n'th packet
-     */
-    void setAckInterval(long ackInterval);
 
     /**
      * Callback function to be called when an ACK packet is received.

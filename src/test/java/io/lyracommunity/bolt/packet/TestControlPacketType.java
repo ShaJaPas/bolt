@@ -11,8 +11,8 @@ public class TestControlPacketType {
     @Test
     public void testSequenceNumber1() {
         ControlPacket p = new DummyControlPacket();
-        byte[] x = p.getHeader();
-        byte highest = x[0];
+        final byte[] x = p.getHeader();
+        final byte highest = x[0];
         assertEquals(128, highest & 0x80);
     }
 

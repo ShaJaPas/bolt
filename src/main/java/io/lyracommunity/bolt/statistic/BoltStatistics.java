@@ -25,8 +25,8 @@ public class BoltStatistics {
     private final AtomicInteger numberOfACKReceived = new AtomicInteger(0);
     private final AtomicInteger numberOfCCSlowDownEvents = new AtomicInteger(0);
     private final AtomicInteger numberOfCCWindowExceededEvents = new AtomicInteger(0);
+    private final AtomicInteger numberOfArtificialDrops = new AtomicInteger(0);
     private final String componentDescription;
-    //    private final Map<Metric, MeanValue> metrics = new HashMap<>();
     private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
     // Sender metrics
     private final MeanValue dgSendTime = new MeanValue("SENDER: Datagram send time");
@@ -37,7 +37,6 @@ public class BoltStatistics {
     private final MeanValue dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
     private final MeanValue processTime = new MeanValue("RECEIVER: Bolt packet process time");
     private final MeanValue dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
-    private boolean first = true;
     private volatile long roundTripTime;
     private volatile long roundTripTimeVariance;
     private volatile long packetArrivalRate;
@@ -54,6 +53,10 @@ public class BoltStatistics {
 
     public int getNumberOfSentDataPackets() {
         return numberOfSentDataPackets.get();
+    }
+
+    public int getNumberOfArtificialDrops() {
+        return numberOfArtificialDrops.get();
     }
 
     public int getNumberOfReceivedDataPackets() {
@@ -94,6 +97,10 @@ public class BoltStatistics {
 
     public void incNumberOfDuplicateDataPackets() {
         numberOfDuplicateDataPackets.incrementAndGet();
+    }
+
+    public void incNumberOfArtificialDrops() {
+        numberOfArtificialDrops.incrementAndGet();
     }
 
     public void incNumberOfMissingDataEvents() {
@@ -176,14 +183,14 @@ public class BoltStatistics {
         sb.append("Duplicate data packets: ").append(getNumberOfDuplicateDataPackets()).append("\n");
         sb.append("ACK received: ").append(getNumberOfACKReceived()).append("\n");
         sb.append("NAK received: ").append(getNumberOfNAKReceived()).append("\n");
-        sb.append("Retransmitted data: ").append(getNumberOfRetransmittedDataPackets()).append("\n");
+        sb.append("Retransmitted data packets: ").append(getNumberOfRetransmittedDataPackets()).append("\n");
         sb.append("NAK sent: ").append(getNumberOfNAKSent()).append("\n");
         sb.append("ACK sent: ").append(getNumberOfACKSent()).append("\n");
         if (roundTripTime > 0) {
             sb.append("RTT ").append(roundTripTime).append(" var. ").append(roundTripTimeVariance).append("\n");
         }
-        if (packetArrivalRate > 0) {
-            sb.append("Packet rate: ").append(packetArrivalRate).append("/sec., link capacity: ").append(estimatedLinkCapacity).append("/sec.\n");
+        if (getPacketArrivalRate() > 0) {
+            sb.append("Packet rate: ").append(getPacketArrivalRate()).append("/sec., link capacity: ").append(estimatedLinkCapacity).append("/sec.\n");
         }
         if (numberOfMissingDataEvents.get() > 0) {
             sb.append("Sender without data events: ").append(numberOfMissingDataEvents.get()).append("\n");
@@ -194,9 +201,12 @@ public class BoltStatistics {
         if (numberOfCCWindowExceededEvents.get() > 0) {
             sb.append("CC window slowdown events: ").append(numberOfCCWindowExceededEvents.get()).append("\n");
         }
+        if (getNumberOfArtificialDrops() > 0) {
+            sb.append("Number of artificial drops: ").append(getNumberOfArtificialDrops()).append("\n");
+        }
         sb.append("CC parameter SND:  ").append((int) sendPeriod).append("\n");
         sb.append("CC parameter CWND: ").append(congestionWindowSize).append("\n");
-        for (MeanValue v : getMetrics()) {
+        for (final MeanValue v : getMetrics()) {
             sb.append(v.getName()).append(": ").append(v.getFormattedMean()).append("\n");
         }
         return sb.toString();
@@ -208,8 +218,8 @@ public class BoltStatistics {
      */
     public void storeParameters() {
         final List<MeanValue> metrics = getMetrics();
+        final boolean first = (initialTime == 0L);
         if (first) {
-            first = false;
             statsHistory.add(new StatisticsHistoryEntry(true, 0, metrics));
             initialTime = System.currentTimeMillis();
         }

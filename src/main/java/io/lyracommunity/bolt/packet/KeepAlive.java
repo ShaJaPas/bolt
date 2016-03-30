@@ -3,8 +3,9 @@ package io.lyracommunity.bolt.packet;
 /**
  * Keep-alive
  * <p>
- * Additional Info: Undefined   <br>
- * Control Info: None           <br>
+ * Additional Info: Undefined
+ * <p>
+ * Control Info: None
  */
 public class KeepAlive extends ControlPacket {
 

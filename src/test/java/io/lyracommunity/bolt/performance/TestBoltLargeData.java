@@ -50,8 +50,8 @@ public class TestBoltLargeData {
 
         final TestServer srv = TestServer.runServer(byte[].class,
                 x -> {
-                    serverMD5.update(x, 0, x.length);
-                    totalBytesReceived += x.length;
+                    serverMD5.update(x.getPayload(), 0, x.getPayload().length);
+                    totalBytesReceived += x.getPayload().length;
                 },
                 errors::add);
         srv.server.config().setPacketLoss(packetLossPercentage);

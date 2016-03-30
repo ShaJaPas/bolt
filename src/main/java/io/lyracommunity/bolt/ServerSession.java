@@ -1,9 +1,6 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ConnectionHandshake;
-import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.KeepAlive;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
@@ -23,13 +20,15 @@ import static io.lyracommunity.bolt.BoltSession.SessionState.*;
 public class ServerSession extends BoltSession {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServerSession.class);
+    private static final String DESCRIPTION_TEMPLATE = "ServerSession localPort={0} peer={1}:{2}";
 
     private final BoltEndPoint endPoint;
 
     private ConnectionHandshake finalConnectionHandshake;
 
     public ServerSession(final Destination peer, final BoltEndPoint endPoint) throws SocketException, UnknownHostException {
-        super("ServerSession localPort=" + endPoint.getLocalPort() + " peer=" + peer.getAddress() + ":" + peer.getPort(), peer);
+        super(MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()),
+                peer);
         this.endPoint = endPoint;
         LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
     }

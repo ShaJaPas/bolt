@@ -1,8 +1,8 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.helper.TestClient;
-import io.lyracommunity.bolt.helper.TestServer;
 import io.lyracommunity.bolt.helper.TestData;
+import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
 import java.security.MessageDigest;
@@ -97,8 +97,8 @@ public class BoltServerTest {
         return TestServer.runServer(byte[].class, x -> {
             totalReceived++;
             if (totalReceived % 10_000 == 0) System.out.println("Received: " + totalReceived);
-            serverMd5.update(x, 0, x.length);
-            total += x.length;
+            serverMd5.update(x.getPayload(), 0, x.getPayload().length);
+            total += x.getPayload().length;
         }, ex -> {
             System.out.println(ex.toString());
         });

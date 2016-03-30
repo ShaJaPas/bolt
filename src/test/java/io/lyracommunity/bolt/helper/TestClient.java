@@ -23,6 +23,11 @@ public class TestClient {
         this.subscription = subscription;
     }
 
+    public TestClient printStatistics() {
+        System.out.println(client.getStatistics());
+        return this;
+    }
+
     public void cleanup() {
         subscription.unsubscribe();
     }
