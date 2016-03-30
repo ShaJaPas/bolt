@@ -1,20 +1,8 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.Ack;
-import io.lyracommunity.bolt.packet.Ack2;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ControlPacket;
-import io.lyracommunity.bolt.packet.ControlPacketType;
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.KeepAlive;
-import io.lyracommunity.bolt.packet.NegativeAcknowledgement;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.receiver.AckHistoryEntry;
-import io.lyracommunity.bolt.receiver.AckHistoryWindow;
-import io.lyracommunity.bolt.receiver.PacketHistoryWindow;
-import io.lyracommunity.bolt.receiver.PacketPairWindow;
-import io.lyracommunity.bolt.receiver.ReceiverLossList;
-import io.lyracommunity.bolt.receiver.ReceiverLossListEntry;
+import io.lyracommunity.bolt.receiver.*;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -139,15 +127,13 @@ public class BoltReceiver {
     private long nextNAK;
     private long nextEXP;
     private volatile boolean stopped = false;
-    /**
-     * (optional) ack interval (see CongestionControl interface)
-     */
-    private volatile long ackInterval = -1;
 
-    /**
-     * Number of received data packets.
-     */
+    /** Number of total received data packets. */
     private int n = 0;
+
+    /** Number of reliable received data packets. */
+    private int reliableN = 0;
+
     private volatile int ackSequenceNumber = 0;
 
     /**
@@ -187,7 +173,6 @@ public class BoltReceiver {
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * expTimerInterval;
-                ackInterval = session.getCongestionControl().getAckInterval();
                 while (!stopped && !subscriber.isUnsubscribed()) {
                     receiverAlgorithm();
                 }
@@ -449,12 +434,14 @@ public class BoltReceiver {
 //            System.out.println("Received  " + dp.getReliabilitySeqNumber() + " \t\t" + dp.getPacketSeqNumber());
 //        }
         if (isArtificialDrop()) {
+            statistics.incNumberOfArtificialDrops();
             LOG.debug("Artificial packet loss, dropping packet");
             return;
         }
 
         ReceiveBuffer.OfferResult OK = session.getSocket().haveNewData(dp);
         if (!OK.success) {
+            if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
             LOG.info("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
             return;
         }
@@ -476,6 +463,7 @@ public class BoltReceiver {
         lastDataPacketArrivalTime = currentDataPacketArrivalTime;
 
         if (dp.isReliable()) {
+            reliableN++;
             final int relSeqNum = dp.getReliabilitySeqNumber();
             // 6) Number of detected lossed packet
             if (SeqNum.compare16(relSeqNum, SeqNum.increment16(largestReceivedRelSeqNumber)) > 0) {
@@ -495,8 +483,8 @@ public class BoltReceiver {
             }
 
             // 8) Need to send an ACK? Some cc algorithms use this.
-            if (ackInterval > 0) {
-                if (n % ackInterval == 0) processACKEvent(false);
+            if (config.getAckInterval() > 0) {
+                if (reliableN % config.getAckInterval() == 0) processACKEvent(false);
             }
         }
 
@@ -581,7 +569,8 @@ public class BoltReceiver {
             if (roundTripTime > 0) roundTripTime = (roundTripTime * 7 + rtt) / 8;
             else roundTripTime = rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
-            ackTimerInterval = Math.min(10_000, 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime());
+            ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
+//            ackTimerInterval = Math.min(1_000, 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime());
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }
@@ -606,10 +595,6 @@ public class BoltReceiver {
 
     protected void resetEXPCount() {
         expCount = 0;
-    }
-
-    public void setAckInterval(long ackInterval) {
-        this.ackInterval = ackInterval;
     }
 
     private void onShutdown() throws IOException {
