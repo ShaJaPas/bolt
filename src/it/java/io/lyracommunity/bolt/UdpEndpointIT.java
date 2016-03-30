@@ -18,7 +18,8 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class UdpEndpointTest {
+public class UdpEndpointIT
+{
 
 
     @Test

@@ -1,7 +1,5 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.receiver;
 
-import io.lyracommunity.bolt.receiver.ReceiverLossList;
-import io.lyracommunity.bolt.receiver.ReceiverLossListEntry;
 import org.junit.Test;
 
 import java.util.stream.IntStream;

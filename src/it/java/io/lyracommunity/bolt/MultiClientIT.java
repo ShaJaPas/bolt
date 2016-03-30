@@ -16,7 +16,8 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 24/03/16.
  */
-public class MultiClientTest {
+public class MultiClientIT
+{
 
     private final Set<Throwable> errors = new HashSet<>();
     private final AtomicInteger received = new AtomicInteger(0);
@@ -29,44 +30,30 @@ public class MultiClientTest {
     @Test
     public void testReceiveFromMultipleClients() throws Throwable {
         final TestPackets.ReliableUnordered toSend = TestPackets.reliableUnordered(100);
-        final int PACKET_COUNT = 500;
+        final int packetCount = 500;
         final int clientCount = 2 + new Random().nextInt(4);
         System.out.println("Total of " + clientCount + " clients.");
         final CountDownLatch clientsComplete = new CountDownLatch(clientCount);
 
-        final TestServer srv = TestServer.runServer(toSend.getClass(),
-                x -> {
-                    if (received.incrementAndGet() % 50 == 0) {
-                        System.out.println(MessageFormat.format("Received from [{0}], total {1}.", x.getSessionID(), received.get()));
-                    }
+        final TestServer srv = createServer(false, toSend);
+
+        final List<TestClient> clients = TestClient.runClients(clientCount, srv.server.getPort(),
+                client -> {
+                    for (int i = 0; i < packetCount; i++) client.send(toSend);
+                    client.flush();
+                    clientsComplete.countDown();
                 },
-                errors::add);
-        srv.server.config().setSessionsExpirable(false);
+                errors::add,
+                client -> client.config().setSessionsExpirable(false));
 
-        System.out.println("Connect to server port " + srv.server.getPort());
-        final List<TestClient> clients = new ArrayList<>();
-        for (int j = 0; j < clientCount; j++) {
-            final TestClient cli1 = TestClient.runClient(srv.server.getPort(),
-                    c -> {
-                        for (int i = 0; i < PACKET_COUNT; i++) {
-                            c.send(toSend);
-                        }
-                        c.flush();
-                        clientsComplete.countDown();
-                    },
-                    errors::add);
-            cli1.client.config().setSessionsExpirable(false);
-            clients.add(cli1);
-        }
-
-        final Supplier<Boolean> done = () -> received.get() < PACKET_COUNT * clientCount;
+        final Supplier<Boolean> done = () -> received.get() < packetCount * clientCount;
         while (done.get() && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
 
         clients.forEach(c -> c.printStatistics().cleanup());
         srv.printStatistics().cleanup();
 
-        assertEquals(PACKET_COUNT * clientCount, received.get());
+        assertEquals(packetCount * clientCount, received.get());
     }
 
     @Test
@@ -79,5 +66,14 @@ public class MultiClientTest {
 
     }
 
+    private <T> TestServer createServer(final boolean sessionExpirable, final T toSend) throws Exception {
+        return TestServer.runServer(toSend.getClass(),
+                x -> {
+                    if (received.incrementAndGet() % 50 == 0) {
+                        System.out.println(MessageFormat.format("Received from [{0}], total {1}.", x.getSessionID(), received.get()));
+                    }
+                },
+                errors::add, server -> server.config().setSessionsExpirable(sessionExpirable));
+    }
 
 }

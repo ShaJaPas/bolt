@@ -8,7 +8,10 @@ import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 /**
  * Created by keen on 24/03/16.
@@ -52,4 +55,15 @@ public class TestClient {
 
         return new TestClient(client, subscription);
     }
+
+    public static List<TestClient> runClients(final int clientCount, final int serverPort, final Action1<BoltClient> onReady,
+            final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
+
+        final List<TestClient> clients = new ArrayList<>(clientCount);
+        for (int i = 0; i < clientCount; i++) {
+            clients.add(runClient(serverPort, onReady, onError, init));
+        }
+        return clients;
+    }
+
 }

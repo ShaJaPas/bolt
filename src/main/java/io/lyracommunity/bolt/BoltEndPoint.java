@@ -105,7 +105,7 @@ public class BoltEndPoint {
     }
 
     public void addSession(final Long destinationID, final BoltSession session) {
-        LOG.info("Storing session <" + destinationID + ">");
+        LOG.info("Storing session [{}]", destinationID);
         sessions.put(destinationID, session);
     }
 
@@ -150,16 +150,16 @@ public class BoltEndPoint {
                     session.received(packet, peer);
                 }
                 else {
-                    LOG.warn("Unknown session <" + dest + "> requested from <" + peer + "> packet type " + packet.getClass().getName());
+                    LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", dest, peer, packet.getClass().getName());
                 }
             }
             catch (SocketException | SocketTimeoutException ex) {
                 // For timeout, can safely ignore... will retry until the endpoint is stopped.
-                LOG.info("SocketException: " + ex.getMessage());
+                LOG.info("SocketException: {}", ex.getMessage());
 //                if (dgSocket.isClosed()) subscriber.unsubscribe();
             }
             catch (Exception ex) {
-                LOG.warn("Got: " + ex.getMessage(), ex);
+                LOG.warn("Unexpected endpoint error", ex);
             }
         }
         stop();

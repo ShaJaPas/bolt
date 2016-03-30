@@ -12,7 +12,8 @@ import java.util.Random;
 /**
  * Send some data over a TCP connection and measure performance.
  */
-public class TCPTest {
+public class TCPIT
+{
 
     private static final int SERVER_PORT = PortUtil.nextServerPort();
     private volatile long total = 0;

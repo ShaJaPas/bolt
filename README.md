@@ -13,6 +13,8 @@ Bolt UDP
 - [ ] Simulated latency
 - [ ] Simulated jitter
 - [ ] Multi-client
+- [X] Distinguish unit/integration tests and use both surefire/failsafe
+- [ ] IPv6 support
 - [ ] Client disconnect (remove sessions, generate event)
 - [ ] Client disconnect/reconnect (bad network conditions)
 - [ ] Performance testing high-volume of single packets

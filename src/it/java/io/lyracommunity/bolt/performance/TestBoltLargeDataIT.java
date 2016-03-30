@@ -14,7 +14,8 @@ import java.util.concurrent.TimeoutException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class TestBoltLargeData {
+public class TestBoltLargeDataIT
+{
 
     private final NumberFormat format = NumberFormat.getNumberInstance();
 
@@ -104,8 +105,8 @@ public class TestBoltLargeData {
 
         assertEquals(md5Sent, md5Received);
 
-        cli.cleanup();
-        srv.cleanup();
+        cli.printStatistics().cleanup();
+        srv.printStatistics().cleanup();
 
 //        // store stat history to csv file
 //        client.getStatistics().writeParameterHistory(File.createTempFile("/boltstats-", ".csv"));

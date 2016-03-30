@@ -1,11 +1,11 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.codec;
 
 import org.junit.Test;
 
 /**
  * Created by omahoc9 on 3/24/16.
  */
-public class MessageAssemblyTest
+public class MessageAssembleBufferTest
 {
 
     // TODO consider memory leak cases

@@ -76,7 +76,7 @@ public class BoltServer implements Server {
                     if (packet != null) {
                         final Object decoded = codecs.decode(packet);
                         if (decoded != null) {
-                            subscriber.onNext(new ReceiveObject(session.getSocketID(), decoded));
+                            subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
                         }
                     }
                 }
@@ -92,7 +92,7 @@ public class BoltServer implements Server {
         return (serverEndpoint != null) ? serverEndpoint.getLocalPort() : config.getLocalPort();
     }
 
-    public void sendAll(final Object obj) throws IOException {
+    public void sendToAll(final Object obj) throws IOException {
         final List<Long> ids = serverEndpoint.getSessions().stream()
                 .map(BoltSession::getSocketID)
                 .collect(Collectors.toList());

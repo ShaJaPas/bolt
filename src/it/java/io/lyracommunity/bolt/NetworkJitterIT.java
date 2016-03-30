@@ -5,7 +5,7 @@ import org.junit.Test;
 /**
  * Created by omahoc9 on 3/24/16.
  */
-public class NetworkJitterTest
+public class NetworkJitterIT
 {
 
 

@@ -1,5 +1,6 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.codec;
 
+import io.lyracommunity.bolt.BoltException;
 import io.lyracommunity.bolt.codec.PacketCodec;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
@@ -17,7 +18,8 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by omahoc9 on 3/24/16.
  */
-public class CodecTest {
+public class CodecRepositoryTest
+{
 
     private CodecRepository codecRepository;
 

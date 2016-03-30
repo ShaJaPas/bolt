@@ -153,7 +153,7 @@ public class BoltSender {
                 LOG.error("Sender error", ex);
                 subscriber.onError(ex);
             }
-            LOG.info("STOPPING SENDER for " + session);
+            LOG.info("STOPPING SENDER for {}", session);
             subscriber.onCompleted();
             stop();
         });
@@ -342,56 +342,60 @@ public class BoltSender {
      * congestion control and t is the total time used by step 1 to step 5. Go to 1).
      * </ol>
      *
-     * @throws InterruptedException if the thread is interrupted waiting for an ACK.
      * @throws IOException          on failure to send the DataPacket.
      */
-    private void senderAlgorithm(final Supplier<Boolean> stopped) throws InterruptedException, IOException {
+    private void senderAlgorithm(final Supplier<Boolean> stopped) throws IOException {
         while (!stopped.get()) {
-            final long iterationStart = Util.getCurrentTime();
-            // If the sender's loss list is not empty
-            final Integer entry = senderLossList.getFirstEntry();
-            if (entry != null) {
-                handleRetransmit(entry);
-            }
-            else {
-                // If the number of unacknowledged data packets does not exceed the congestion
-                // and the flow window sizes, pack a new packet.
-                int unAcknowledged = unacknowledged.get();
-
-                if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize()
-                        && unAcknowledged < session.getFlowWindowSize()) {
-                    // Check for application data
-                    final DataPacket dp = flowWindow.consumeData();
-                    if (dp != null) {
-                        send(dp);
-                    }
-                    else {
-                        statistics.incNumberOfMissingDataEvents();
-                    }
+            try {
+                final long iterationStart = Util.getCurrentTime();
+                // If the sender's loss list is not empty
+                final Integer entry = senderLossList.getFirstEntry();
+                if (entry != null) {
+                    handleRetransmit(entry);
                 }
                 else {
-                    // Congestion window full, wait for an ack
-                    if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
-                        statistics.incNumberOfCCWindowExceededEvents();
+                    // If the number of unacknowledged data packets does not exceed the congestion
+                    // and the flow window sizes, pack a new packet.
+                    int unAcknowledged = unacknowledged.get();
+
+                    if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize()
+                            && unAcknowledged < session.getFlowWindowSize()) {
+                        // Check for application data
+                        final DataPacket dp = flowWindow.consumeData();
+                        if (dp != null) {
+                            send(dp);
+                        }
+                        else {
+                            statistics.incNumberOfMissingDataEvents();
+                        }
                     }
-                    waitForAck();
+                    else {
+                        // Congestion window full, wait for an ack
+                        if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
+                            statistics.incNumberOfCCWindowExceededEvents();
+                        }
+                        waitForAck();
+                    }
+                }
+
+                // Wait
+                if (largestSentSequenceNumber % 16 != 0) {
+                    long snd = (long) session.getCongestionControl().getSendInterval();
+                    long passed = Util.getCurrentTime() - iterationStart;
+                    int x = 0;
+                    while (snd - passed > 0) {
+                        // Can't wait with microsecond precision :(
+                        if (x == 0) {
+                            statistics.incNumberOfCCSlowDownEvents();
+                            x++;
+                        }
+                        passed = Util.getCurrentTime() - iterationStart;
+                        if (stopped.get()) return;
+                    }
                 }
             }
-
-            // Wait
-            if (largestSentSequenceNumber % 16 != 0) {
-                long snd = (long) session.getCongestionControl().getSendInterval();
-                long passed = Util.getCurrentTime() - iterationStart;
-                int x = 0;
-                while (snd - passed > 0) {
-                    // Can't wait with microsecond precision :(
-                    if (x == 0) {
-                        statistics.incNumberOfCCSlowDownEvents();
-                        x++;
-                    }
-                    passed = Util.getCurrentTime() - iterationStart;
-                    if (stopped.get()) return;
-                }
+            catch (InterruptedException e) {
+                LOG.info("Sender caught an interrupt {}", e.getMessage());
             }
         }
     }

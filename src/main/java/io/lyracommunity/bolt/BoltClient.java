@@ -35,7 +35,7 @@ public class BoltClient implements Client {
         this.config = config;
         this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
-        LOG.info("Created client endpoint on port " + clientEndpoint.getLocalPort());
+        LOG.info("Created client endpoint on port {}", clientEndpoint.getLocalPort());
     }
 
     @Override
@@ -51,7 +51,7 @@ public class BoltClient implements Client {
                         if (packet != null) {
                             final Object decoded = codecs.decode(packet);
                             if (decoded != null) {
-                                subscriber.onNext(new ReceiveObject(clientSession.getSocketID(), decoded));
+                                subscriber.onNext(new ReceiveObject<>(clientSession.getSocketID(), decoded));
                             }
                         }
                     }

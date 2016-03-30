@@ -169,7 +169,7 @@ public class BoltReceiver {
 
                 while (session.getSocket() == null) Thread.sleep(100);
 
-                LOG.info("STARTING RECEIVER for " + session);
+                LOG.info("STARTING RECEIVER for {}", session);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * expTimerInterval;
@@ -178,10 +178,10 @@ public class BoltReceiver {
                 }
             }
             catch (final Exception ex) {
-                LOG.error("Receiver exception", ex);
+                LOG.error("Unexpected receiver exception", ex);
                 subscriber.onError(ex);
             }
-            LOG.info("STOPPING RECEIVER for " + session);
+            LOG.info("STOPPING RECEIVER for {}", session);
             subscriber.onCompleted();
             stop();
         });
@@ -202,7 +202,7 @@ public class BoltReceiver {
             // Only allow in here for DataPacket/Ack2/Shutdown
             statistics.beginReceive();
             if (!p.isControlPacket() && LOG.isTraceEnabled()) {
-                LOG.trace("++ " + p + " queuesize=" + handOffQueue.size());
+                LOG.trace("++ {}  QueueSize={}", p,  handOffQueue.size());
             }
             handOffQueue.offer(p);
             statistics.endReceive();

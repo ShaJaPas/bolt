@@ -18,10 +18,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * send some data over a UDP connection and measure performance
  */
-public class UDPTest {
+public class UDPIT
+{
 
     public static final int SERVER_PORT = PortUtil.nextServerPort();
-//    public static final int SERVER_PORT = 65317;
     final int num_packets = 1_000;
     final int packetSize = BoltEndPoint.DATAGRAM_SIZE;
     private final Queue<DatagramPacket> handoff = new ConcurrentLinkedQueue<>();
@@ -31,13 +31,14 @@ public class UDPTest {
 
     @Test
     public void test1() throws Exception {
+        // TODO clean up server once complete.
         runServer();
         runThirdThread();
 
-        // Client socket
+        // Client socket.
         DatagramSocket s = new DatagramSocket(PortUtil.nextClientPort());
 
-        // Generate a test array with random content
+        // Generate a test array with random content.
         N = num_packets * packetSize;
         byte[] data = new byte[packetSize];
         new Random().nextBytes(data);
@@ -52,7 +53,7 @@ public class UDPTest {
         for (int i = 0; i < num_packets; i++) {
             DataPacket p = new DataPacket();
             p.setDelivery(DeliveryType.UNRELIABLE_UNORDERED);
-            p.setData(data); // FIXME this may fail due to delivery type decoding
+            p.setData(data);
             dp.setData(p.getEncoded());
             dgSendInterval.end();
             dgSendTime.begin();

@@ -17,7 +17,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by keen on 15/03/16.
  */
-public class ReliabilityTest {
+public class DeliveryReliabilityIT
+{
 
 
     private final AtomicInteger deliveryCount = new AtomicInteger(0);

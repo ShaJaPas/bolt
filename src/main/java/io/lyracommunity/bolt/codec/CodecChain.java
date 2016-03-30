@@ -56,7 +56,6 @@ public class CodecChain<T> {
             return encodeObject(object);
         }
         else {
-            //FIXME each split should have its own message id
             final Collection<T> split = spliterator.split(object);
             return split.stream()
                     .flatMap(t -> encodeObject(t).stream())

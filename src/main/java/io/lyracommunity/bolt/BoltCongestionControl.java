@@ -159,7 +159,7 @@ class BoltCongestionControl implements CongestionControl {
             final double A = packetArrivalRate / 1_000_000d * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
             if (LOG.isTraceEnabled()) {
-                LOG.trace("receive rate " + packetArrivalRate + " rtt " + roundTripTime + " set to window size: " + (A + 16));
+                LOG.trace("Receive rate [{}]  RTT [{}]  Set to window size [{}]", packetArrivalRate, roundTripTime, (A + 16));
             }
         }
 

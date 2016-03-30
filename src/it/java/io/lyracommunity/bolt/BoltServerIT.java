@@ -11,7 +11,8 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class BoltServerTest {
+public class BoltServerIT
+{
 
     private int num_packets = 32;
     private long total = 0;
@@ -22,11 +23,6 @@ public class BoltServerTest {
     public void testErrorTooManyChunks() throws Throwable {
         num_packets = 10_000;
         doTest(0);
-    }
-
-    @Test
-    public void testPortAlreadyBoundTo() throws Throwable {
-        // TODO write test
     }
 
     @Test

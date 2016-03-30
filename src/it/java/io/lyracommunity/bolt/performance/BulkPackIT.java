@@ -17,7 +17,8 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 26/02/16.
  */
-public class BulkPackTest {
+public class BulkPackIT
+{
 
     private static final long PACKET_COUNT = 1_000_000;
     private static final int SIZE = 1384;
