@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import rx.Observable;

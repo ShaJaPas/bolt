@@ -40,7 +40,7 @@ public class BulkPackIT
     private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
         final AtomicBoolean sendComplete = new AtomicBoolean(false);
 
-        final TestServer srv = TestServer.runServer(toSend.getClass(),
+        final TestServer srv = TestServer.runObjectServer(toSend.getClass(),
                 x -> {
                     if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
                 },

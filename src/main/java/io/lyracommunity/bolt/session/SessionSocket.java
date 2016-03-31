@@ -1,5 +1,8 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.receiver.BoltReceiver;
+import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import rx.Observable;
@@ -11,19 +14,20 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * BoltSocket is analogous to a normal java.net.Socket, it provides input and
+ * SessionSocket is analogous to a normal java.net.Socket, it provides input and
  * output streams for the application.
  * TODO consider if this class is even necessary anymore with In/Out streams.
  */
-public class BoltSocket {
+public class SessionSocket
+{
 
     // Endpoint
     private final BoltSession session;
     private volatile boolean active;
 
     // Processing received data
-    private final BoltReceiver receiver;
-    private final BoltSender sender;
+    private final BoltReceiver  receiver;
+    private final BoltSender    sender;
     private final ReceiveBuffer receiveBuffer;
 
     /**
@@ -31,7 +35,7 @@ public class BoltSocket {
      * @param session
      * @throws SocketException, UnknownHostException
      */
-    BoltSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
+    SessionSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
         this.session = session;
         this.receiver = new BoltReceiver(session, endpoint, endpoint.getConfig());
         this.sender = new BoltSender(session, endpoint);
@@ -63,7 +67,7 @@ public class BoltSocket {
      *
      * @param packet
      */
-    protected ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
+    public ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
         return receiveBuffer.offer(packet);
     }
 
@@ -71,7 +75,7 @@ public class BoltSocket {
         return session;
     }
 
-    protected void doWrite(final DataPacket dataPacket) throws IOException {
+    public void doWrite(final DataPacket dataPacket) throws IOException {
         try {
             sender.sendPacket(dataPacket, 10, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ie) {
@@ -89,7 +93,7 @@ public class BoltSocket {
      * Will block until the outstanding packets have really been sent out
      * and acknowledged.
      */
-    protected void flush() throws InterruptedException, IllegalStateException {
+    public void flush() throws InterruptedException, IllegalStateException {
         if (!active) return;
         // TODO change to reliability seq number. Also, logic needs careful looking over.
         final int seqNo = sender.getCurrentSequenceNumber();

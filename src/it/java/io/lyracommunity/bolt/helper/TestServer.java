@@ -32,14 +32,29 @@ public class TestServer {
         subscription.unsubscribe();
     }
 
-    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
+    public static <T> TestServer runObjectServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
                                            final Action1<Throwable> onError) throws Exception {
-        return runServer(ofType, onNext, onError, null);
+        return runObjectServer(ofType, onNext, onError, null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> TestServer runServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
+    public static <T> TestServer runObjectServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
                                            final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
+
+        final Action1<? super Object> act = (x) -> {
+            if (x instanceof ReceiveObject) {
+                final ReceiveObject ro = (ReceiveObject) x;
+                if (ro.isOfSubType(ofType)) onNext.call((ReceiveObject<T>)ro);
+            }
+        };
+
+        return runCustomServer(act, onError, init);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static TestServer runCustomServer(final Action1<? super Object> onNext,
+            final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), PortUtil.nextServerPort()));
         if (init != null) init.accept(server);
@@ -49,9 +64,6 @@ public class TestServer {
                 .subscribeOn(Schedulers.io())
                 .onBackpressureBuffer()
                 .observeOn(Schedulers.computation())
-                .ofType(ReceiveObject.class)
-                .filter(rd -> rd.isOfSubType(ofType))
-                .map(rd -> (ReceiveObject<T>) rd)
                 .subscribe(onNext, onError);
 
         return new TestServer(server, subscription);

@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.event;
 
-import io.lyracommunity.bolt.BoltSession;
+import io.lyracommunity.bolt.session.BoltSession;
 
 /**
  * Created by keen on 03/03/16.

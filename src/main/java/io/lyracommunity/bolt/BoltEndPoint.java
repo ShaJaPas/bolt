@@ -1,11 +1,15 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.ConnectionReady;
+import io.lyracommunity.bolt.event.PeerDisconnected;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.ControlPacketType;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.PacketFactory;
+import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -13,7 +17,12 @@ import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BoltEndPoint {
 
     public static final int DATAGRAM_SIZE = 1400;
-    private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(BoltEndPoint.class);
     private final DatagramPacket dp = new DatagramPacket(new byte[DATAGRAM_SIZE], DATAGRAM_SIZE);
     private final int port;
     private final DatagramSocket dgSocket;
@@ -82,7 +91,8 @@ public class BoltEndPoint {
     }
 
     public void stop() {
-//        stopped = true;
+        sessionsBeingConnected.clear();
+        sessions.values().stream().forEach(s -> s.close());
         dgSocket.close();
     }
 
@@ -126,6 +136,7 @@ public class BoltEndPoint {
      * </ul>
      */
     protected void doReceive(final Subscriber<? super Object> subscriber) {
+        Thread.currentThread().setName("Bolt-Endpoint" + Util.THREAD_INDEX.incrementAndGet());
         LOG.info("BoltEndpoint started.");
         while (!subscriber.isUnsubscribed()) {
             try {
@@ -137,8 +148,8 @@ public class BoltEndPoint {
                 final BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
                 if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
 
-                final long dest = packet.getDestinationID();
-                final BoltSession session = sessions.get(dest);
+                final long destID = packet.getDestinationID();
+                final BoltSession session = sessions.get(destID);
 
                 final boolean isConnectionHandshake = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == packet.getControlPacketType();
                 if (isConnectionHandshake) {
@@ -146,11 +157,16 @@ public class BoltEndPoint {
                     if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
                 }
                 else if (session != null) {
+                    if (ControlPacketType.SHUTDOWN.getTypeId() == packet.getControlPacketType()) {
+                        endSession(subscriber, packet.getDestinationID(), "Shutdown received");
+                    }
                     // Dispatch to existing session.
-                    session.received(packet, peer);
+                    else {
+                        session.received(packet, peer, subscriber);
+                    }
                 }
                 else {
-                    LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", dest, peer, packet.getClass().getName());
+                    LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getClass().getName());
                 }
             }
             catch (SocketException | SocketTimeoutException ex) {
@@ -165,6 +181,13 @@ public class BoltEndPoint {
         stop();
     }
 
+    private void endSession(final Subscriber<? super Object> subscriber, final long destinationID, final String reason) {
+        final BoltSession session = sessions.remove(destinationID);
+        System.out.println("REMOVED " + destinationID + " " + reason + " " + session);
+        if (session != null) session.close();
+        if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
+    }
+
     /**
      * Called when a "connection handshake" packet was received and no
      * matching session yet exists.
@@ -177,11 +200,11 @@ public class BoltEndPoint {
     protected synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
                                                            final ConnectionHandshake packet, final Destination peer,
                                                            final BoltSession existingSession) throws IOException, InterruptedException {
+        final long destID = packet.getDestinationID();
         BoltSession session = existingSession;
         if (session == null) {
             final Destination p = new Destination(peer.getAddress(), peer.getPort());
             session = sessionsBeingConnected.get(peer);
-            final long destID = packet.getDestinationID();
             // New session
             if (session == null) {
                 session = new ServerSession(peer, this);
@@ -194,16 +217,21 @@ public class BoltEndPoint {
                 addSession(destID, session);
             }
             else {
-                throw new IOException("dest ID sent by client does not match");
+                throw new IOException("Destination ID sent by client does not match");
             }
             Integer peerSocketID = packet.getSocketID();
             peer.setSocketID(peerSocketID);
         }
-        session.receiveHandshake(subscriber, packet, peer);
+        final boolean readyToStart = session.receiveHandshake(subscriber, packet, peer);
+        if (readyToStart) {
+            session.start().subscribe(subscriber::onNext,
+                    ex -> endSession(subscriber, destID, ex.getMessage()),
+                    () -> endSession(subscriber, destID, "Session ended successfully"));
+        }
         return session;
     }
 
-    void doSend(final BoltPacket packet, final BoltSession session) throws IOException {
+    public void doSend(final BoltPacket packet, final BoltSession session) throws IOException {
         final byte[] data = packet.getEncoded();
         DatagramPacket dgp = session.getDatagram();
         dgp.setData(data);

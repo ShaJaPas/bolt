@@ -13,6 +13,11 @@ public class Shutdown extends ControlPacket {
         this.controlPacketType = ControlPacketType.SHUTDOWN.getTypeId();
     }
 
+    public Shutdown(final int destinationID) {
+        this();
+        this.destinationID = destinationID;
+    }
+
     @Override
     public byte[] encodeControlInformation() {
         return null;

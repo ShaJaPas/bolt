@@ -19,7 +19,7 @@ import java.util.List;
  * <li> 32 bits integer array of compressed loss information (see section 3.9).
  * </ol>
  */
-public class NegativeAcknowledgement extends ControlPacket {
+public class NegAck extends ControlPacket {
 
     /** After decoding this contains the lost sequence numbers. */
     List<Integer> lostSequenceNumbers;
@@ -27,11 +27,11 @@ public class NegativeAcknowledgement extends ControlPacket {
     /** This contains the loss information intervals. */
     final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
 
-    public NegativeAcknowledgement() {
+    public NegAck() {
         this.controlPacketType = ControlPacketType.NAK.getTypeId();
     }
 
-    public NegativeAcknowledgement(final byte[] controlInformation) {
+    public NegAck(final byte[] controlInformation) {
         this();
         lostSequenceNumbers = decode(controlInformation);
     }
@@ -169,7 +169,7 @@ public class NegativeAcknowledgement extends ControlPacket {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        NegativeAcknowledgement other = (NegativeAcknowledgement) obj;
+        NegAck other = (NegAck) obj;
 
         final List<Integer> thisLost;
         final List<Integer> otherLost;

@@ -5,14 +5,22 @@ package io.lyracommunity.bolt.event;
  */
 public class PeerDisconnected {
 
-    private final int sessionID;
+    private final long sessionID;
 
-    public PeerDisconnected(final int sessionID) {
+    private final String reason;
+
+    public PeerDisconnected(final long sessionID, final String reason) {
         this.sessionID = sessionID;
+        this.reason = reason;
     }
 
-    public int getSessionID() {
+    public long getSessionID() {
         return sessionID;
+    }
+
+    public String getReason()
+    {
+        return reason;
     }
 
 }

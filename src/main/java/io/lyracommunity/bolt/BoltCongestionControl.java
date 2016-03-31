@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -13,7 +14,7 @@ import java.util.List;
  * <p>
  * The algorithm is adapted from the C++ reference implementation.
  */
-class BoltCongestionControl implements CongestionControl {
+public class BoltCongestionControl implements CongestionControl {
 
     private static final Logger LOG         = LoggerFactory.getLogger(BoltCongestionControl.class);
     private static final long   PS          = BoltEndPoint.DATAGRAM_SIZE;
@@ -89,7 +90,7 @@ class BoltCongestionControl implements CongestionControl {
     private boolean loss = false;
 
 
-    BoltCongestionControl(final BoltSession session) {
+    public BoltCongestionControl(final BoltSession session) {
         this.session = session;
         this.statistics = session.getStatistics();
         this.lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;

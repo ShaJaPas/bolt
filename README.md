@@ -20,6 +20,7 @@ Bolt UDP
 - [ ] Performance testing high-volume of single packets
 - [ ] Performance testing, high-volume of large messages
 - [ ] General performance testing
+- [ ] Validate thread cleanup
 - [ ] Improve statistics legibility
 - [ ] Improve performance of sender onAcknowledgement
 - [X] Use log4j with performant string interpolation
@@ -27,6 +28,7 @@ Bolt UDP
 - [ ] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
 - [ ] Review level of each log statement
 - [ ] Review Javadoc
+- [ ] Test keepalives and session expiry
 - [X] Change Test classes names from (Test.*.java) to (.*Test.java)
 - [X] Add group to base of package (before bolt.*)
 - [ ] Separate to core and api packages

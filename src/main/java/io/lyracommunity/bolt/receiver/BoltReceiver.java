@@ -1,8 +1,19 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.receiver;
 
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.sender.BoltSender;
+import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.packet.Ack;
+import io.lyracommunity.bolt.packet.Ack2;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ControlPacket;
+import io.lyracommunity.bolt.packet.ControlPacketType;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.packet.KeepAlive;
+import io.lyracommunity.bolt.packet.NegAck;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.receiver.*;
+import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -10,6 +21,7 @@ import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Subscriber;
 
 import java.io.IOException;
 import java.util.List;
@@ -39,9 +51,9 @@ public class BoltReceiver {
      */
     private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
 
-    private final BoltEndPoint endpoint;
-    private final BoltSession session;
-    private final BoltStatistics statistics;
+    private final BoltEndPoint     endpoint;
+    private final BoltSession      session;
+    private final BoltStatistics   statistics;
     /**
      * Record seqNo of detected lost data and latest feedback time.
      */
@@ -78,7 +90,7 @@ public class BoltReceiver {
      * Stores received packets to be sent.
      */
     private final BlockingQueue<BoltPacket> handOffQueue;
-    private final Config config;
+    private final Config                    config;
     /**
      * Microseconds to next EXP event.
      */
@@ -126,7 +138,6 @@ public class BoltReceiver {
     private long nakTimerInterval = Util.getSYNTime();
     private long nextNAK;
     private long nextEXP;
-    private volatile boolean stopped = false;
 
     /** Number of total received data packets. */
     private int n = 0;
@@ -173,8 +184,8 @@ public class BoltReceiver {
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * expTimerInterval;
-                while (!stopped && !subscriber.isUnsubscribed()) {
-                    receiverAlgorithm();
+                while (!subscriber.isUnsubscribed()) {
+                    receiverAlgorithm(subscriber);
                 }
             }
             catch (final Exception ex) {
@@ -183,14 +194,13 @@ public class BoltReceiver {
             }
             LOG.info("STOPPING RECEIVER for {}", session);
             subscriber.onCompleted();
-            stop();
         });
     }
 
     /**
      * Packets are written by the endpoint.
      */
-    protected void receive(final BoltPacket p) throws IOException {
+    public void receive(final BoltPacket p) throws IOException {
         final int controlPacketType = p.getControlPacketType();
         if (ControlPacketType.KEEP_ALIVE.getTypeId() == controlPacketType) {
             resetEXPCount();
@@ -236,8 +246,9 @@ public class BoltReceiver {
      * <li> Update LRSN. Go to 1).
      * </ol>
      */
-    private void receiverAlgorithm() throws InterruptedException, IOException {
-        checkTimers();
+//    private void receiverAlgorithm() throws InterruptedException, IOException {
+    private void receiverAlgorithm(final Subscriber<? super Object> sub) throws InterruptedException, IOException {
+        checkTimers(sub);
 
         // Perform time-bounded UDP receive
         BoltPacket packet = null;
@@ -265,13 +276,13 @@ public class BoltReceiver {
             }
             statistics.beginProcess();
 
-            processPacket(packet);
+            processPacket(packet, sub);
 
             statistics.endProcess();
         }
     }
 
-    private void checkTimers() throws IOException {
+    private void checkTimers(final Subscriber<? super Object> subscriber) throws IOException {
         // Check ACK timer.
         final long currentTime = Util.getCurrentTime();
         if (nextACK < currentTime) {
@@ -286,7 +297,7 @@ public class BoltReceiver {
         // Check EXP timer.
         if (nextEXP < currentTime) {
             nextEXP = currentTime + expTimerInterval;
-            processEXPEvent();
+            processEXPEvent(subscriber);
         }
     }
 
@@ -391,15 +402,14 @@ public class BoltReceiver {
      *
      * @throws IOException if shutdown, stop or send of keep-alive fails.
      */
-    private void processEXPEvent() throws IOException {
+    private void processEXPEvent(final Subscriber<? super Object> subscriber) throws IOException {
         if (session.getSocket() == null || !session.getSocket().isActive()) return;
         final BoltSender sender = session.getSocket().getSender();
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
         if (config.isSessionsExpirable() && expCount > 16 && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT) {
-            if (!stopped) {
-                sendShutdown();
-                stop();
+            if (!subscriber.isUnsubscribed()) {
+                subscriber.onError(new IllegalStateException("Session expired."));
                 LOG.info("Session {} expired.", session);
                 return;
             }
@@ -410,7 +420,7 @@ public class BoltReceiver {
         expCount++;
     }
 
-    private void processPacket(final BoltPacket p) throws IOException {
+    private void processPacket(final BoltPacket p, final Subscriber<? super Object> sub) throws IOException {
         // 3) Check the packet type and process it according to this.
         if (!p.isControlPacket()) {
             statistics.beginDataProcess();
@@ -420,9 +430,6 @@ public class BoltReceiver {
         else if (p.getControlPacketType() == ControlPacketType.ACK2.getTypeId()) {
             final Ack2 ack2 = (Ack2) p;
             onAck2PacketReceived(ack2);
-        }
-        else if (p instanceof Shutdown) {
-            onShutdown();
         }
     }
 
@@ -498,7 +505,7 @@ public class BoltReceiver {
      * @throws IOException
      */
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
-        NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
+        NegAck nAckPacket = new NegAck();
         nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
@@ -515,7 +522,7 @@ public class BoltReceiver {
 
     private void sendNAK(List<Integer> sequenceNumbers) throws IOException {
         if (sequenceNumbers.isEmpty()) return;
-        NegativeAcknowledgement nAckPacket = new NegativeAcknowledgement();
+        NegAck nAckPacket = new NegAck();
         nAckPacket.addLossInfo(sequenceNumbers);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
         endpoint.doSend(nAckPacket, session);
@@ -582,13 +589,7 @@ public class BoltReceiver {
         endpoint.doSend(ka, session);
     }
 
-    private void sendShutdown() throws IOException {
-        final Shutdown s = new Shutdown();
-        s.setDestinationID(session.getDestination().getSocketID());
-        endpoint.doSend(s, session);
-    }
-
-    protected void resetEXPTimer() {
+    public void resetEXPTimer() {
         nextEXP = Util.getCurrentTime() + expTimerInterval;
         expCount = 0;
     }
@@ -597,30 +598,13 @@ public class BoltReceiver {
         expCount = 0;
     }
 
-    private void onShutdown() throws IOException {
-        stop();
-    }
-
-    public void stop() {
-        stopped = true;
-        try {
-            session.getSocket().close();
-        }
-        catch (IOException ex) {
-            LOG.warn("Could not shutdown cleanly [{}]", ex.getMessage());
-        }
-        // Stop our sender as well.
-        session.getSocket().getSender().stop();
-    }
-
     private boolean isArtificialDrop() {
         final float dropRate = config.getPacketDropRate();
         return dropRate > 0 && (n % dropRate < 1f);
     }
 
     public String toString() {
-        return "BoltReceiver " + session + "\n" +
-                "LossList: " + receiverLossList;
+        return "BoltReceiver " + session + "\n" + "LossList: " + receiverLossList;
     }
 
 }

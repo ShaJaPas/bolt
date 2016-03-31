@@ -49,7 +49,7 @@ public class TestBoltLargeDataIT
 
         final byte[] data = TestData.getRandomData(12345, size);
 
-        final TestServer srv = TestServer.runServer(byte[].class,
+        final TestServer srv = TestServer.runObjectServer(byte[].class,
                 x -> {
                     serverMD5.update(x.getPayload(), 0, x.getPayload().length);
                     totalBytesReceived += x.getPayload().length;

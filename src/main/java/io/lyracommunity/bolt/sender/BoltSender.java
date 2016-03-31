@@ -1,13 +1,19 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.sender;
 
+import io.lyracommunity.bolt.BoltClient;
+import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.Ack;
 import io.lyracommunity.bolt.packet.Ack2;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.KeepAlive;
-import io.lyracommunity.bolt.packet.NegativeAcknowledgement;
+import io.lyracommunity.bolt.packet.NegAck;
+import io.lyracommunity.bolt.receiver.BoltReceiver;
 import io.lyracommunity.bolt.sender.FlowWindow;
 import io.lyracommunity.bolt.sender.SenderLossList;
+import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
@@ -98,7 +104,6 @@ public class BoltSender {
      */
     private volatile int lastAckReliabilitySequenceNumber;
     private volatile boolean started = false;
-    private volatile boolean stopped = false;
 
     /**
      * Used to signal that the sender should start to send
@@ -139,7 +144,7 @@ public class BoltSender {
                 String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
                 Thread.currentThread().setName("Bolt-Sender-" + s + Util.THREAD_INDEX.incrementAndGet());
 
-                final Supplier<Boolean> stopped = () -> this.stopped || subscriber.isUnsubscribed();
+                final Supplier<Boolean> stopped = subscriber::isUnsubscribed;
 //                while (!stopped.get()) {
                 // Wait until explicitly (re)started.
                 startLatch.await();
@@ -155,7 +160,6 @@ public class BoltSender {
             }
             LOG.info("STOPPING SENDER for {}", session);
             subscriber.onCompleted();
-            stop();
         });
     }
 
@@ -192,7 +196,7 @@ public class BoltSender {
      * @throws IOException
      * @throws InterruptedException
      */
-    protected void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
         src.setDestinationID(session.getDestination().getSocketID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
@@ -209,14 +213,14 @@ public class BoltSender {
     /**
      * Receive a packet from server from the peer.
      */
-    protected void receive(final BoltPacket p) throws IOException {
+    public void receive(final BoltPacket p) throws IOException {
         if (p.isControlPacket()) {
             if (p instanceof Ack) {
-                Ack ack = (Ack) p;
+                final Ack ack = (Ack) p;
                 onAcknowledge(ack);
             }
-            else if (p instanceof NegativeAcknowledgement) {
-                NegativeAcknowledgement nak = (NegativeAcknowledgement) p;
+            else if (p instanceof NegAck) {
+                final NegAck nak = (NegAck) p;
                 onNAKPacketReceived(nak);
             }
         }
@@ -294,7 +298,7 @@ public class BoltSender {
      *
      * @param nak NAK packet received.
      */
-    private void onNAKPacketReceived(NegativeAcknowledgement nak) {
+    private void onNAKPacketReceived(NegAck nak) {
         for (Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }
@@ -432,7 +436,7 @@ public class BoltSender {
     /**
      * For processing EXP event (see spec. p 13).
      */
-    protected void putUnacknowledgedPacketsIntoLossList() {
+    public void putUnacknowledgedPacketsIntoLossList() {
         synchronized (sendLock) {
             for (final Integer l : sendBuffer.keySet()) {
                 senderLossList.insert(l);
@@ -472,15 +476,15 @@ public class BoltSender {
         return currentSequenceNumber;
     }
 
-    boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
+    public boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
         return SeqNum.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
     }
 
-    boolean isSentOut(int sequenceNumber) {
+    public boolean isSentOut(int sequenceNumber) {
         return SeqNum.comparePacketSeqNum(largestSentSequenceNumber, sequenceNumber) >= 0;
     }
 
-    boolean haveLostPackets() {
+    public boolean haveLostPackets() {
         return !senderLossList.isEmpty();
     }
 
@@ -514,11 +518,6 @@ public class BoltSender {
         finally {
             ackLock.unlock();
         }
-    }
-
-
-    public void stop() {
-        stopped = true;
     }
 
 }

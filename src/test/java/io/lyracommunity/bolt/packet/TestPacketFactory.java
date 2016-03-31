@@ -78,7 +78,7 @@ public class TestPacketFactory {
 
     @Test
     public void testNegativeAcknowledgement() throws IOException {
-        NegativeAcknowledgement p1 = new NegativeAcknowledgement();
+        NegAck p1 = new NegAck();
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -86,7 +86,7 @@ public class TestPacketFactory {
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        NegativeAcknowledgement p2 = (NegativeAcknowledgement) p;
+        NegAck p2 = (NegAck) p;
         assertEquals(p1, p2);
 
         assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
@@ -95,14 +95,14 @@ public class TestPacketFactory {
 
     @Test
     public void testNegativeAcknowledgement2() throws IOException {
-        final NegativeAcknowledgement p1 = new NegativeAcknowledgement();
+        final NegAck p1 = new NegAck();
         p1.setDestinationID(2);
         final List<Integer> loss = IntStream.of(5, 6, 7, 8, 9, 11).boxed().collect(Collectors.toList());
 
         p1.addLossInfo(loss);
         final byte[] encoded = p1.getEncoded();
 
-        final NegativeAcknowledgement p2 = (NegativeAcknowledgement) PacketFactory.createPacket(encoded);
+        final NegAck p2 = (NegAck) PacketFactory.createPacket(encoded);
         assertEquals(p1, p2);
 
         assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
@@ -111,7 +111,7 @@ public class TestPacketFactory {
 
     @Test
     public void testNegativeAcknowledgement3() throws IOException {
-        NegativeAcknowledgement p1 = new NegativeAcknowledgement();
+        NegAck p1 = new NegAck();
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -119,7 +119,7 @@ public class TestPacketFactory {
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        NegativeAcknowledgement p2 = (NegativeAcknowledgement) p;
+        NegAck p2 = (NegAck) p;
         assertEquals(p1, p2);
 
 

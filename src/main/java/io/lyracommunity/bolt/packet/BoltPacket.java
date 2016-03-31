@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt.packet;
 
 
-import io.lyracommunity.bolt.BoltSender;
+import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.util.SeqNum;
 
 public interface BoltPacket extends Comparable<BoltPacket> {

@@ -1,12 +1,19 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.event.PeerDisconnected;
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestPackets;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
+import rx.functions.Action1;
 
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -24,7 +31,30 @@ public class MultiClientIT
 
     @Test
     public void testSingleClientDisconnect() throws Throwable {
+        final int numClients = 2;
+        final AtomicInteger serverDisconnectedEvents = new AtomicInteger(0);
+        final TestServer srv = createServer(evt -> {
+            System.out.println(evt.getClass());
+            if (evt instanceof PeerDisconnected) {
+                serverDisconnectedEvents.incrementAndGet();
+            }
+        });
+        final LinkedList<TestClient> clients = new LinkedList<>();
 
+        clients.addAll(TestClient.runClients(numClients, srv.server.getPort(),
+                c -> {
+                    System.out.println(clients.size());
+                    Optional.ofNullable(clients.poll()).ifPresent(TestClient::cleanup);
+                },
+                errors::add,
+                null));
+
+        while (errors.isEmpty() && serverDisconnectedEvents.get() < numClients) Thread.sleep(10);
+
+        srv.printStatistics().cleanup();
+        clients.forEach(c -> c.printStatistics().cleanup());
+
+        assertEquals(numClients, serverDisconnectedEvents.get());
     }
 
     @Test
@@ -35,7 +65,7 @@ public class MultiClientIT
         System.out.println("Total of " + clientCount + " clients.");
         final CountDownLatch clientsComplete = new CountDownLatch(clientCount);
 
-        final TestServer srv = createServer(false, toSend);
+        final TestServer srv = createObjectServer(false, toSend);
 
         final List<TestClient> clients = TestClient.runClients(clientCount, srv.server.getPort(),
                 client -> {
@@ -66,14 +96,18 @@ public class MultiClientIT
 
     }
 
-    private <T> TestServer createServer(final boolean sessionExpirable, final T toSend) throws Exception {
-        return TestServer.runServer(toSend.getClass(),
+    private <T> TestServer createObjectServer(final boolean sessionExpirable, final T toSend) throws Exception {
+        return TestServer.runObjectServer(toSend.getClass(),
                 x -> {
                     if (received.incrementAndGet() % 50 == 0) {
                         System.out.println(MessageFormat.format("Received from [{0}], total {1}.", x.getSessionID(), received.get()));
                     }
                 },
                 errors::add, server -> server.config().setSessionsExpirable(sessionExpirable));
+    }
+
+    private TestServer createServer(final Action1<? super Object> onNext) throws Exception {
+        return TestServer.runCustomServer(onNext, errors::add, null);
     }
 
 }

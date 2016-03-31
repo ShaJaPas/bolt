@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.BoltReceiver;
-import io.lyracommunity.bolt.BoltSender;
+import io.lyracommunity.bolt.receiver.BoltReceiver;
+import io.lyracommunity.bolt.sender.BoltSender;
 
 import java.io.ByteArrayOutputStream;
 

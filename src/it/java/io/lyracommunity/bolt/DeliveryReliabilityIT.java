@@ -82,7 +82,7 @@ public class DeliveryReliabilityIT
     }
 
     private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
-        final TestServer srv = TestServer.runServer(Object.class,
+        final TestServer srv = TestServer.runObjectServer(Object.class,
                 x -> {
                     if (x.getPayload() instanceof TestPackets.BaseDataClass) {
                         deliveryCount.incrementAndGet();

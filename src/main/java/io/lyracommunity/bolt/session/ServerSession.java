@@ -1,10 +1,15 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.session;
 
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ConnectionHandshake;
+import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.KeepAlive;
 import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.Observable;
 import rx.Subscriber;
 
 import java.io.IOException;
@@ -12,7 +17,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.text.MessageFormat;
 
-import static io.lyracommunity.bolt.BoltSession.SessionState.*;
+import static io.lyracommunity.bolt.session.BoltSession.SessionState.*;
 
 /**
  * Server side session in client-server mode.
@@ -22,14 +27,10 @@ public class ServerSession extends BoltSession {
     private static final Logger LOG = LoggerFactory.getLogger(ServerSession.class);
     private static final String DESCRIPTION_TEMPLATE = "ServerSession localPort={0} peer={1}:{2}";
 
-    private final BoltEndPoint endPoint;
-
     private ConnectionHandshake finalConnectionHandshake;
 
     public ServerSession(final Destination peer, final BoltEndPoint endPoint) throws SocketException, UnknownHostException {
-        super(MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()),
-                peer);
-        this.endPoint = endPoint;
+        super(endPoint, MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()), peer);
         LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
     }
 
@@ -44,6 +45,7 @@ public class ServerSession extends BoltSession {
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
         LOG.info("Received {} in state [{}]", handshake, getState());
+        boolean readyToStart = false;
         if (getState() == READY) {
             // Just send confirmation packet again.
             try {
@@ -66,10 +68,7 @@ public class ServerSession extends BoltSession {
                 if (handShakeComplete) {
                     LOG.info("Client/Server handshake complete!");
                     setState(READY);
-                    socket = new BoltSocket(endPoint, this);
-                    /* TODO below probably incorrect - sender/receiver completing will
-                    complete the entire subscriber, which is incorrect for the BoltServer */
-                    socket.start().subscribe(subscriber);
+                    readyToStart = true;
                     cc.init();
                 }
             }
@@ -79,22 +78,15 @@ public class ServerSession extends BoltSession {
                 setState(INVALID);
             }
         }
-        return isReady();
+        return readyToStart;
     }
 
     @Override
-    public void received(final BoltPacket packet, final Destination peer) {
+    public void received(final BoltPacket packet, final Destination peer, final Subscriber subscriber) {
 
         if (packet instanceof KeepAlive) {
             socket.getReceiver().resetEXPTimer();
             active = true;
-        }
-
-        else if (packet instanceof Shutdown) {
-            socket.getReceiver().stop();
-            setState(SHUTDOWN);
-            active = false;
-            LOG.info("Connection shutdown initiated by peer.");
         }
 
         else if (getState() == READY) {
@@ -153,7 +145,7 @@ public class ServerSession extends BoltSession {
         endPoint.doSend(responseHandshake, this);
     }
 
-    private void sendFinalHandShake(ConnectionHandshake handshake) throws IOException {
+    private void sendFinalHandShake(final ConnectionHandshake handshake) throws IOException {
 
         if (finalConnectionHandshake == null) {
             // Compare the packet size and choose minimum

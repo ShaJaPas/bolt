@@ -1,14 +1,20 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.BoltCongestionControl;
+import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.Observable;
 import rx.Subscriber;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -114,15 +120,17 @@ public abstract class BoltSession {
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
 
     private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
-    protected final BoltStatistics statistics;
-    protected final CongestionControl cc;
+    protected final    BoltStatistics    statistics;
+    protected final    CongestionControl cc;
     /**
      * remote Bolt entity (address and socket ID)
      */
-    protected final Destination destination;
-    protected final int mySocketID;
-    protected volatile boolean active;
-    protected volatile BoltSocket socket;
+    protected final    Destination       destination;
+    protected final    int               mySocketID;
+    protected volatile boolean           active;
+    protected volatile SessionSocket     socket;
+    protected final    BoltEndPoint      endPoint;
+
     protected int receiveBufferSize = 64 * 32768;
     /**
      * Session cookie created during handshake.
@@ -143,7 +151,8 @@ public abstract class BoltSession {
     // Cache dgPacket (peer stays the same always)
     private DatagramPacket dgPacket;
 
-    public BoltSession(final String description, final Destination destination) {
+    public BoltSession(final BoltEndPoint endPoint, final String description, final Destination destination) {
+        this.endPoint = endPoint;
         this.statistics = new BoltStatistics(description, datagramSize);
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
         this.destination = destination;
@@ -151,15 +160,36 @@ public abstract class BoltSession {
         this.cc = new BoltCongestionControl(this);
     }
 
-    public abstract void received(BoltPacket packet, Destination peer);
+    public abstract void received(BoltPacket packet, Destination peer, Subscriber subscriber);
 
     public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
 
-    public BoltSocket getSocket() {
+
+    public Observable<?> start() throws IOException {
+        socket = new SessionSocket(endPoint, this);
+        return socket.start();
+    }
+
+    public void close() {
+        try {
+            System.out.println("CLOSING SESSION " + this);
+            if (getState() == SessionState.READY) {
+                endPoint.doSend(new Shutdown(getDestination().getSocketID()), this);
+            }
+            active = false;
+            setState(SessionState.SHUTDOWN);
+            if (getSocket() != null) getSocket().close();
+        }
+        catch (IOException ex) {
+            LOG.warn("Could not close Session cleanly", ex);
+        }
+    }
+
+    public SessionSocket getSocket() {
         return socket;
     }
 
-    public void setSocket(BoltSocket socket) {
+    public void setSocket(SessionSocket socket) {
         this.socket = socket;
     }
 
@@ -232,10 +262,7 @@ public abstract class BoltSession {
     }
 
     public String toString() {
-        return super.toString() +
-                " [" +
-                "socketID=" + this.mySocketID +
-                " ]";
+        return super.toString() + " [" + "socketID=" + this.mySocketID + " ]";
     }
 
     public enum SessionState {

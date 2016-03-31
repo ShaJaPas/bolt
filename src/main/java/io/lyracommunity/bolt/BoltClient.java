@@ -1,12 +1,14 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.codec.CodecRepository;
+import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
+import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.event.ReceiveObject;
+import io.lyracommunity.bolt.session.ClientSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
-import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
-import io.lyracommunity.bolt.codec.CodecRepository;
+import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -22,10 +24,10 @@ public class BoltClient implements Client {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
-    private final BoltEndPoint clientEndpoint;
+    private final BoltEndPoint    clientEndpoint;
     private final CodecRepository codecs;
-    private final Config config;
-    private ClientSession clientSession;
+    private final Config          config;
+    private       ClientSession   clientSession;
 
     public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
         this(new Config(address, localPort));
@@ -42,8 +44,9 @@ public class BoltClient implements Client {
     public Observable<?> connect(final InetAddress address, final int port) {
 
         return Observable.create(subscriber -> {
+            Thread.currentThread().setName("Bolt-Poller-Client" + Util.THREAD_INDEX.incrementAndGet());
             try {
-                connectBlocking(address, port).subscribe(subscriber::onNext, subscriber::onError);
+                connectBlocking(address, port).subscribe(subscriber::onNext, subscriber::onError, subscriber::onCompleted);
                 while (!subscriber.isUnsubscribed()) {
                     if (clientSession != null && clientSession.getSocket() != null) {
                         final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
@@ -56,6 +59,9 @@ public class BoltClient implements Client {
                         }
                     }
                 }
+            }
+            catch (final InterruptedException ex) {
+                LOG.info("Client interrupted. {}", ex.getMessage());
             }
             catch (final Exception ex) {
                 subscriber.onError(ex);
@@ -130,17 +136,8 @@ public class BoltClient implements Client {
         }
     }
 
-    public void shutdown() {
+    private void shutdown() {
         if (clientSession.isReady() && clientSession.isActive()) {
-            Shutdown shutdown = new Shutdown();
-            shutdown.setDestinationID(clientSession.getDestination().getSocketID());
-            try {
-                clientEndpoint.doSend(shutdown, clientSession);
-            }
-            catch (IOException e) {
-                LOG.error("ERROR: Connection could not be stopped!", e);
-            }
-            clientSession.getSocket().getReceiver().stop();
             clientEndpoint.stop();
         }
     }

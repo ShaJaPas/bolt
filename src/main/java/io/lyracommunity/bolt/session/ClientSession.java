@@ -1,5 +1,6 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -13,27 +14,24 @@ import rx.schedulers.Schedulers;
 import java.io.IOException;
 import java.net.SocketException;
 
-import static io.lyracommunity.bolt.BoltSession.SessionState.*;
+import static io.lyracommunity.bolt.session.BoltSession.SessionState.*;
 
 /**
  * Client side of a client-server Bolt connection.
- * Once established, the session provides a valid {@link BoltSocket}.
+ * Once established, the session provides a valid {@link SessionSocket}.
  */
 public class ClientSession extends BoltSession {
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
-    private final BoltEndPoint endPoint;
-
 
     public ClientSession(BoltEndPoint endPoint, Destination dest) throws SocketException {
-        super("ClientSession localPort=" + endPoint.getLocalPort(), dest);
-        this.endPoint = endPoint;
+        super(endPoint, "ClientSession localPort=" + endPoint.getLocalPort(), dest);
         LOG.info("Created " + toString());
     }
 
     /**
-     * send connection handshake until a reply from server is received
+     * Send connection handshake until a reply from server is received.
      *
      * @throws InterruptedException
      * @throws IOException
@@ -72,6 +70,7 @@ public class ClientSession extends BoltSession {
     @Override
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
+        boolean readyToStart = false;
         if (getState() == HANDSHAKING) {
             LOG.info("Received initial handshake response from " + peer + "\n" + handshake);
             if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
@@ -97,38 +96,29 @@ public class ClientSession extends BoltSession {
                 LOG.info("Received confirmation handshake response from " + peer + "\n" + handshake);
                 // TODO validate parameters sent by peer
                 setState(READY);
-                socket = new BoltSocket(endPoint, this);
-                socket.start().subscribe(subscriber);
+                readyToStart = true;
             }
             catch (Exception ex) {
                 LOG.error("Error creating socket", ex);
                 setState(INVALID);
             }
         }
-        return isReady();
+        return readyToStart;
     }
 
     @Override
-    public void received(BoltPacket packet, Destination peer) {
+    public void received(BoltPacket packet, Destination peer, Subscriber subscriber) {
         if (getState() == READY) {
-
-            if (packet.isControlPacket() && packet instanceof Shutdown) {
-                setState(SHUTDOWN);
-                active = false;
-                LOG.info("Connection shutdown initiated by the other side.");
+            active = true;
+            try {
+                // Send all packets to both sender and receiver
+                socket.getSender().receive(packet);
+                socket.getReceiver().receive(packet);
             }
-            else {
-                active = true;
-                try {
-                    // Send all packets to both sender and receiver
-                    socket.getSender().receive(packet);
-                    socket.getReceiver().receive(packet);
-                }
-                catch (Exception ex) {
-                    // Session is invalid.
-                    LOG.error("Error in " + toString(), ex);
-                    setState(INVALID);
-                }
+            catch (Exception ex) {
+                // Session is invalid.
+                LOG.error("Error in " + toString(), ex);
+                setState(INVALID);
             }
         }
     }

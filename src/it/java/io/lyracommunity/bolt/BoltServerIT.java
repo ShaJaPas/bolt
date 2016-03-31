@@ -90,7 +90,7 @@ public class BoltServerIT
 
     private TestServer runServer() throws Exception {
         serverMd5 = MessageDigest.getInstance("MD5");
-        return TestServer.runServer(byte[].class, x -> {
+        return TestServer.runObjectServer(byte[].class, x -> {
             totalReceived++;
             if (totalReceived % 10_000 == 0) System.out.println("Received: " + totalReceived);
             serverMd5.update(x.getPayload(), 0, x.getPayload().length);
