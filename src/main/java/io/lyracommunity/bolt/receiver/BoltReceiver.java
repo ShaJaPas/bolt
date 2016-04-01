@@ -246,7 +246,6 @@ public class BoltReceiver {
      * <li> Update LRSN. Go to 1).
      * </ol>
      */
-//    private void receiverAlgorithm() throws InterruptedException, IOException {
     private void receiverAlgorithm(final Subscriber<? super Object> sub) throws InterruptedException, IOException {
         checkTimers(sub);
 
@@ -256,6 +255,7 @@ public class BoltReceiver {
             packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
         }
         catch (InterruptedException e) {
+            System.out.println("\t\tRECEIVER INTERR");
             LOG.info("Polling of hand-off queue was interrupted.");
         }
         if (packet != null) {

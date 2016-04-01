@@ -21,6 +21,7 @@ Bolt UDP
 - [ ] Performance testing, high-volume of large messages
 - [ ] General performance testing
 - [ ] Validate thread cleanup
+- [ ] Review thread sleep times for efficiency
 - [ ] Improve statistics legibility
 - [ ] Improve performance of sender onAcknowledgement
 - [X] Use log4j with performant string interpolation

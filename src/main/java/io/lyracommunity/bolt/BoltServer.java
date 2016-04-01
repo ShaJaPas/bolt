@@ -9,6 +9,7 @@ import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -30,7 +31,6 @@ public class BoltServer implements Server {
 
     private volatile BoltEndPoint serverEndpoint;
 
-    private volatile int count;
 
     public BoltServer(final Config config) {
         this(CodecRepository.basic(new MessageAssembleBuffer()), config);
@@ -47,7 +47,7 @@ public class BoltServer implements Server {
             try {
                 Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
                 this.serverEndpoint = new BoltEndPoint(config);
-                this.serverEndpoint.start().subscribe(subscriber);
+                this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {
 //                    try {
@@ -63,7 +63,9 @@ public class BoltServer implements Server {
                 subscriber.onError(ex);
             }
             subscriber.onCompleted();
-            shutdown();
+
+            // TODO removing as endpoint should clean itself up.
+//            shutdown();
         });
 //                .share();
     }
@@ -118,12 +120,13 @@ public class BoltServer implements Server {
         }
     }
 
-    private void shutdown() {
-        if (this.serverEndpoint != null) {
-            this.serverEndpoint.stop();
-            this.serverEndpoint = null;
-        }
-    }
+    // TODO should not be needed as server endpoint can clean itself up.
+//    private void shutdown() {
+//        if (this.serverEndpoint != null) {
+//            this.serverEndpoint.stop();
+//            this.serverEndpoint = null;
+//        }
+//    }
 
     public List<BoltStatistics> getStatistics() {
         return serverEndpoint.getSessions().stream().map(BoltSession::getStatistics).collect(Collectors.toList());

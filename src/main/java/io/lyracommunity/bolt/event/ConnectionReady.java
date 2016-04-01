@@ -18,4 +18,12 @@ public class ConnectionReady
         return session;
     }
 
+    @Override
+    public String toString()
+    {
+        return "ConnectionReady{" +
+                "session=" + session +
+                '}';
+    }
+
 }

@@ -261,10 +261,6 @@ public abstract class BoltSession {
         return dgPacket;
     }
 
-    public String toString() {
-        return super.toString() + " [" + "socketID=" + this.mySocketID + " ]";
-    }
-
     public enum SessionState {
         START(0),
         HANDSHAKING(1),
@@ -283,6 +279,13 @@ public abstract class BoltSession {
         public int seqNo() {
             return seqNo;
         }
+    }
+
+    @Override
+    public String toString()
+    {
+        return this.getClass().getSimpleName() + "{" + "mySocketID=" + mySocketID +
+                '}';
     }
 
 }

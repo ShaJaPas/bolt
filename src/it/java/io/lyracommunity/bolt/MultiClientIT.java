@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -34,25 +35,27 @@ public class MultiClientIT
         final int numClients = 2;
         final AtomicInteger serverDisconnectedEvents = new AtomicInteger(0);
         final TestServer srv = createServer(evt -> {
-            System.out.println(evt.getClass());
+            System.out.println(evt);
             if (evt instanceof PeerDisconnected) {
                 serverDisconnectedEvents.incrementAndGet();
             }
         });
         final LinkedList<TestClient> clients = new LinkedList<>();
+        final CountDownLatch awaitingConnectionReady = new CountDownLatch(numClients);
 
         clients.addAll(TestClient.runClients(numClients, srv.server.getPort(),
-                c -> {
-                    System.out.println(clients.size());
-                    Optional.ofNullable(clients.poll()).ifPresent(TestClient::cleanup);
-                },
+                c -> awaitingConnectionReady.countDown(),
                 errors::add,
                 null));
+
+        if (!awaitingConnectionReady.await(5, TimeUnit.SECONDS)) throw new RuntimeException("Timed out");
+
+        System.out.println(clients.size());
+        clients.forEach(TestClient::cleanup);
 
         while (errors.isEmpty() && serverDisconnectedEvents.get() < numClients) Thread.sleep(10);
 
         srv.printStatistics().cleanup();
-        clients.forEach(c -> c.printStatistics().cleanup());
 
         assertEquals(numClients, serverDisconnectedEvents.get());
     }

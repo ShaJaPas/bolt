@@ -5,13 +5,13 @@ import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.session.ClientSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Subscription;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -29,11 +29,11 @@ public class BoltClient implements Client {
     private final Config          config;
     private       ClientSession   clientSession;
 
-    public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException {
+    public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException, IOException {
         this(new Config(address, localPort));
     }
 
-    public BoltClient(final Config config) throws SocketException, UnknownHostException {
+    public BoltClient(final Config config) throws SocketException, UnknownHostException, IOException {
         this.config = config;
         this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
@@ -45,8 +45,10 @@ public class BoltClient implements Client {
 
         return Observable.create(subscriber -> {
             Thread.currentThread().setName("Bolt-Poller-Client" + Util.THREAD_INDEX.incrementAndGet());
+            Subscription endpointAndSession = null;
             try {
-                connectBlocking(address, port).subscribe(subscriber::onNext, subscriber::onError, subscriber::onCompleted);
+                startEndPoint().subscribe(subscriber);
+                startSession(address, port).subscribe(subscriber);
                 while (!subscriber.isUnsubscribed()) {
                     if (clientSession != null && clientSession.getSocket() != null) {
                         final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
@@ -66,8 +68,13 @@ public class BoltClient implements Client {
             catch (final Exception ex) {
                 subscriber.onError(ex);
             }
+            if (endpointAndSession != null) {
+                System.out.println("CLI UNSUB");
+                endpointAndSession.unsubscribe();
+            }
             subscriber.onCompleted();
-            shutdown();
+            // TODO removing as endpoint should clean itself up.
+//            shutdown();
         });
     }
 
@@ -94,6 +101,10 @@ public class BoltClient implements Client {
         flush();
     }
 
+    private Observable<?> startEndPoint() throws InterruptedException, IOException {
+        return clientEndpoint.start();
+    }
+
     /**
      * Establishes a connection to the given server.
      * Starts the sender thread.
@@ -102,14 +113,13 @@ public class BoltClient implements Client {
      * @param port    port of remote host.
      * @throws UnknownHostException
      */
-    private Observable<?> connectBlocking(final InetAddress address, final int port) throws InterruptedException, UnknownHostException, IOException {
+    private Observable<?> startSession(final InetAddress address, final int port) throws InterruptedException, IOException {
         final Destination destination = new Destination(address, port);
         // Create client session
         clientSession = new ClientSession(clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
-
         LOG.info("The BoltClient is connecting");
-        return Observable.merge(clientEndpoint.start(), clientSession.connect());
+        return clientSession.connect();
     }
 
     /**
@@ -136,11 +146,11 @@ public class BoltClient implements Client {
         }
     }
 
-    private void shutdown() {
-        if (clientSession.isReady() && clientSession.isActive()) {
-            clientEndpoint.stop();
-        }
-    }
+//    private void shutdown() {
+//        if (clientSession.isReady() && clientSession.isActive()) {
+//            clientEndpoint.stop();
+//        }
+//    }
 
     public BoltStatistics getStatistics() {
         return clientSession.getStatistics();

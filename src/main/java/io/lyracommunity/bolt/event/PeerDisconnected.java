@@ -23,4 +23,13 @@ public class PeerDisconnected {
         return reason;
     }
 
+    @Override
+    public String toString()
+    {
+        return "PeerDisconnected{" +
+                "sessionID=" + sessionID +
+                ", reason='" + reason + '\'' +
+                '}';
+    }
+
 }
