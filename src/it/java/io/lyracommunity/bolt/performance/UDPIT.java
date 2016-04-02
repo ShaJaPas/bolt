@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt.performance;
 
 import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.statistic.MeanValue;
@@ -23,7 +24,7 @@ public class UDPIT
 
     public static final int SERVER_PORT = PortUtil.nextServerPort();
     final int num_packets = 1_000;
-    final int packetSize = BoltEndPoint.DATAGRAM_SIZE;
+    final int packetSize = Config.DEFAULT_DATAGRAM_SIZE;
     private final Queue<DatagramPacket> handoff = new ConcurrentLinkedQueue<>();
     int N = 0;
     long total = 0;

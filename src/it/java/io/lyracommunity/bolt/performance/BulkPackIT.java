@@ -30,6 +30,8 @@ public class BulkPackIT
     @Test
     public void testBulkPackets() throws Exception {
         doTest(true, TestData.getRandomData(SIZE));
+
+        assertEquals(PACKET_COUNT, received.get());
     }
 
     @Test
@@ -68,8 +70,6 @@ public class BulkPackIT
 
         cli.printStatistics().cleanup();
         srv.printStatistics().cleanup();
-
-        assertEquals(PACKET_COUNT, received.get());
     }
 
 }

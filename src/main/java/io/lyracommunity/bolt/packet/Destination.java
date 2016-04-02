@@ -1,6 +1,8 @@
 package io.lyracommunity.bolt.packet;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Objects;
 
 public class Destination {
@@ -9,12 +11,15 @@ public class Destination {
 
     private final InetAddress address;
 
+    private final InetSocketAddress socketAddress;
+
     /** Bolt socket ID of the peer */
     private int socketID;
 
     public Destination(InetAddress address, int port) {
         this.address = address;
         this.port = port;
+        this.socketAddress = new InetSocketAddress(address, port);
     }
 
     public InetAddress getAddress() {
@@ -27,6 +32,10 @@ public class Destination {
 
     public int getSocketID() {
         return socketID;
+    }
+
+    public InetSocketAddress getSocketAddress() {
+        return socketAddress;
     }
 
     public void setSocketID(int socketID) {

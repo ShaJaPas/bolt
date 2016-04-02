@@ -2,6 +2,7 @@ package io.lyracommunity.bolt.codec;
 
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.BoltException;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.PacketUtil;
@@ -17,7 +18,7 @@ public class PacketCodec<T> implements Codec<T, List<DataPacket>>
 {
 
     // TODO consider changing 1400 to a variable MTU
-    private final int maxPacketSize = BoltEndPoint.DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
+    private final int maxPacketSize = Config.DEFAULT_DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
 
     private final ObjectCodec<T> objectCodec;
 

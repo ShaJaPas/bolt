@@ -17,7 +17,7 @@ import java.util.List;
 public class BoltCongestionControl implements CongestionControl {
 
     private static final Logger LOG         = LoggerFactory.getLogger(BoltCongestionControl.class);
-    private static final long   PS          = BoltEndPoint.DATAGRAM_SIZE;
+    private static final long   PS          = Config.DEFAULT_DATAGRAM_SIZE;
     private static final double BETA_DIV_PS = 0.0000015 / PS;
 
     protected final BoltSession session;
@@ -192,7 +192,7 @@ public class BoltCongestionControl implements CongestionControl {
         final double remaining = estimatedLinkCapacity - 1_000_000d / packetSendingPeriod;
 
         if (remaining <= 0) {
-            return 1.0 / BoltEndPoint.DATAGRAM_SIZE;
+            return 1.0 / Config.DEFAULT_DATAGRAM_SIZE;
         }
         else {
             double exp = Math.ceil(Math.log10(remaining * PS * 8));

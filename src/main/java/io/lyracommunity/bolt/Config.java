@@ -19,9 +19,11 @@ public class Config
     /**
      * If larger than 0, the receiver should acknowledge every n'th packet.
      */
-    private int ackInterval = -1;
+    private int ackInterval = 16;
 
-//    private final int datagramSize = 1400;
+    public static final int DEFAULT_DATAGRAM_SIZE = 1400;
+
+    private final int datagramSize = 1400;
 
     /**
      * Create a new instance.
@@ -85,4 +87,9 @@ public class Config
     public void setAckInterval(int ackInterval) {
         this.ackInterval = ackInterval;
     }
+
+    public int getDatagramSize() {
+        return datagramSize;
+    }
+
 }

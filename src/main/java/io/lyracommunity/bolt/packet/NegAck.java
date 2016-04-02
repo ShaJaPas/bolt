@@ -57,8 +57,9 @@ public class NegAck extends ControlPacket {
             int lost = ByteBuffer.wrap(buffer).getInt();
             if (isNotSingle) {
                 // Get the end of the interval
+                int end;
                 try {
-                    int end = bb.getInt();
+                    end = bb.getInt();
                     // And add all lost numbers to the result list
                     // TODO what about overflow? lost = 65536, end = 0
                     for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {

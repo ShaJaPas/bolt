@@ -8,12 +8,7 @@ import org.junit.Test;
 import rx.functions.Action1;
 
 import java.text.MessageFormat;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,15 +19,14 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by keen on 24/03/16.
  */
-public class MultiClientIT
-{
+public class MultiClientIT {
 
     private final Set<Throwable> errors = new HashSet<>();
     private final AtomicInteger received = new AtomicInteger(0);
 
     @Test
-    public void testSingleClientDisconnect() throws Throwable {
-        final int numClients = 2;
+    public void testMultiClientDisconnect() throws Throwable {
+        final int numClients = 2 + new Random().nextInt(3);
         final AtomicInteger serverDisconnectedEvents = new AtomicInteger(0);
         final TestServer srv = createServer(evt -> {
             System.out.println(evt);
@@ -50,7 +44,6 @@ public class MultiClientIT
 
         if (!awaitingConnectionReady.await(5, TimeUnit.SECONDS)) throw new RuntimeException("Timed out");
 
-        System.out.println(clients.size());
         clients.forEach(TestClient::cleanup);
 
         while (errors.isEmpty() && serverDisconnectedEvents.get() < numClients) Thread.sleep(10);
@@ -64,7 +57,8 @@ public class MultiClientIT
     public void testReceiveFromMultipleClients() throws Throwable {
         final TestPackets.ReliableUnordered toSend = TestPackets.reliableUnordered(100);
         final int packetCount = 500;
-        final int clientCount = 2 + new Random().nextInt(4);
+        final int clientCount = 4;
+//        final int clientCount = 2 + new Random().nextInt(4);
         System.out.println("Total of " + clientCount + " clients.");
         final CountDownLatch clientsComplete = new CountDownLatch(clientCount);
 

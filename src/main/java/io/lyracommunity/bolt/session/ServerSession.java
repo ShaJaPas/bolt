@@ -5,11 +5,9 @@ import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.KeepAlive;
-import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 import rx.Subscriber;
 
 import java.io.IOException;
@@ -86,11 +84,11 @@ public class ServerSession extends BoltSession {
 
         if (packet instanceof KeepAlive) {
             socket.getReceiver().resetEXPTimer();
-            active = true;
+            socket.setActive(true);
         }
 
         else if (getState() == READY) {
-            active = true;
+            socket.setActive(true);
             try {
                 socket.getSender().receive(packet);
                 socket.getReceiver().receive(packet);

@@ -44,49 +44,41 @@ public class BoltServer implements Server {
     @Override
     public Observable<?> bind() {
         return Observable.create(subscriber -> {
+            Subscription endpointSub = null;
             try {
                 Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
                 this.serverEndpoint = new BoltEndPoint(config);
-                this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
+                endpointSub = this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {
-//                    try {
-                        pollReceivedData(subscriber);
-//                        Thread.sleep(0, 1000);
-//                    }
-//                    catch (InterruptedException e) {
-//                        // Do nothing.
-//                    }
+                    pollReceivedData(subscriber);
                 }
+            }
+            catch (InterruptedException ex) {
+                // Do nothing.
             }
             catch (Exception ex) {
                 subscriber.onError(ex);
             }
+            if (endpointSub != null) {
+                serverEndpoint.stop(subscriber);
+                endpointSub.unsubscribe();
+            }
             subscriber.onCompleted();
-
-            // TODO removing as endpoint should clean itself up.
-//            shutdown();
         });
-//                .share();
     }
 
-    private void pollReceivedData(final Subscriber<? super Object> subscriber) {
+    private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
         for (BoltSession session : serverEndpoint.getSessions()) {
             if (session.getSocket() != null) {
-                try {
-                    final DataPacket packet = session.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
+                final DataPacket packet = session.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
 
-                    if (packet != null) {
-                        final Object decoded = codecs.decode(packet);
-                        if (decoded != null) {
-                            subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
-                        }
+                if (packet != null) {
+                    final Object decoded = codecs.decode(packet);
+                    if (decoded != null) {
+                        subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
                     }
                 }
-                catch (InterruptedException e) {
-                    // Do nothing
-                }
-
             }
         }
     }

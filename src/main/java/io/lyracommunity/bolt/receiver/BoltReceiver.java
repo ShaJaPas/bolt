@@ -49,7 +49,7 @@ public class BoltReceiver {
     /**
      * Milliseconds to timeout a new session that stays idle.
      */
-    private static final long IDLE_TIMEOUT = 3 * 60 * 1000;
+    private static final long IDLE_TIMEOUT = 3 * 1000;
 
     private final BoltEndPoint     endpoint;
     private final BoltSession      session;
@@ -188,6 +188,9 @@ public class BoltReceiver {
                     receiverAlgorithm(subscriber);
                 }
             }
+            catch (final InterruptedException ex) {
+                LOG.info("Receiver was interrupted.");
+            }
             catch (final Exception ex) {
                 LOG.error("Unexpected receiver exception", ex);
                 subscriber.onError(ex);
@@ -250,14 +253,8 @@ public class BoltReceiver {
         checkTimers(sub);
 
         // Perform time-bounded UDP receive
-        BoltPacket packet = null;
-        try {
-            packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
-        }
-        catch (InterruptedException e) {
-            System.out.println("\t\tRECEIVER INTERR");
-            LOG.info("Polling of hand-off queue was interrupted.");
-        }
+        final BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
+
         if (packet != null) {
             // Reset exp count to 1
             expCount = 1;
@@ -436,10 +433,6 @@ public class BoltReceiver {
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
         n++;
 
-        // TODO remove sout
-//        if (dp.isReliable() && dp.getPacketSeqNumber() % 20 == 0) {
-//            System.out.println("Received  " + dp.getReliabilitySeqNumber() + " \t\t" + dp.getPacketSeqNumber());
-//        }
         if (isArtificialDrop()) {
             statistics.incNumberOfArtificialDrops();
             LOG.debug("Artificial packet loss, dropping packet");
@@ -520,10 +513,11 @@ public class BoltReceiver {
         statistics.incNumberOfNAKSent();
     }
 
-    private void sendNAK(List<Integer> sequenceNumbers) throws IOException {
-        if (sequenceNumbers.isEmpty()) return;
-        NegAck nAckPacket = new NegAck();
-        nAckPacket.addLossInfo(sequenceNumbers);
+    private void sendNAK(final List<Integer> seqNums) throws IOException {
+        if (seqNums.isEmpty()) return;
+        final List<Integer> toSend = (seqNums.size() > 300) ? seqNums.subList(0, 300) : seqNums;
+        final NegAck nAckPacket = new NegAck();
+        nAckPacket.addLossInfo(toSend);
         nAckPacket.setDestinationID(session.getDestination().getSocketID());
         endpoint.doSend(nAckPacket, session);
         statistics.incNumberOfNAKSent();

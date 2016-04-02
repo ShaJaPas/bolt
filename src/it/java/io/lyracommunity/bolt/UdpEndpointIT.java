@@ -72,7 +72,7 @@ public class UdpEndpointIT
         BoltEndPoint endpoint = new BoltEndPoint(localhost, serverPort);
         Subscription sub = endpoint.start().subscribe();
         Destination d1 = new Destination(localhost, clientPort);
-        final int dataSize = BoltEndPoint.DATAGRAM_SIZE;
+        final int dataSize = Config.DEFAULT_DATAGRAM_SIZE;
         final DatagramPacket p = new DatagramPacket(TestData.getRandomData(dataSize), dataSize, d1.getAddress(), d1.getPort());
         final int N = 100_000;
 

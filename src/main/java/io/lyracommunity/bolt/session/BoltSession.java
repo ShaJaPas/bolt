@@ -2,6 +2,7 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
@@ -127,7 +128,6 @@ public abstract class BoltSession {
      */
     protected final    Destination       destination;
     protected final    int               mySocketID;
-    protected volatile boolean           active;
     protected volatile SessionSocket     socket;
     protected final    BoltEndPoint      endPoint;
 
@@ -144,7 +144,7 @@ public abstract class BoltSession {
     /**
      * Buffer size (i.e. datagram size). This is negotiated during connection setup.
      */
-    protected int datagramSize = BoltEndPoint.DATAGRAM_SIZE;
+    protected int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
     protected Integer initialSequenceNumber = null;
     private volatile SessionState state = SessionState.START;
 
@@ -165,23 +165,22 @@ public abstract class BoltSession {
     public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
 
 
-    public Observable<?> start() throws IOException {
+    public Observable<?> start() throws IOException, IllegalStateException {
+        if (socket != null) throw new IllegalStateException();
         socket = new SessionSocket(endPoint, this);
         return socket.start();
     }
 
     public void close() {
         try {
-            System.out.println("CLOSING SESSION " + this);
-            if (getState() == SessionState.READY) {
-                endPoint.doSend(new Shutdown(getDestination().getSocketID()), this);
-            }
-            active = false;
             setState(SessionState.SHUTDOWN);
             if (getSocket() != null) getSocket().close();
+            if (endPoint.isOpen()) {
+                endPoint.doSend(new Shutdown(getDestination().getSocketID()), this);
+            }
         }
         catch (IOException ex) {
-            LOG.warn("Could not close Session cleanly", ex);
+            LOG.warn("Could not close Session cleanly: {}", ex.getMessage());
         }
     }
 
@@ -208,10 +207,6 @@ public abstract class BoltSession {
 
     public boolean isReady() {
         return state == SessionState.READY;
-    }
-
-    public boolean isActive() {
-        return active;
     }
 
     public boolean isShutdown() {
@@ -257,10 +252,6 @@ public abstract class BoltSession {
         this.initialSequenceNumber = initialSequenceNumber;
     }
 
-    public DatagramPacket getDatagram() {
-        return dgPacket;
-    }
-
     public enum SessionState {
         START(0),
         HANDSHAKING(1),
@@ -279,6 +270,10 @@ public abstract class BoltSession {
         public int seqNo() {
             return seqNo;
         }
+    }
+
+    public DatagramPacket getDatagram() {
+        return dgPacket;
     }
 
     @Override

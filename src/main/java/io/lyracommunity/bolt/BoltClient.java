@@ -33,7 +33,7 @@ public class BoltClient implements Client {
         this(new Config(address, localPort));
     }
 
-    public BoltClient(final Config config) throws SocketException, UnknownHostException, IOException {
+    public BoltClient(final Config config) throws IOException {
         this.config = config;
         this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
         this.clientEndpoint = new BoltEndPoint(config);
@@ -47,8 +47,8 @@ public class BoltClient implements Client {
             Thread.currentThread().setName("Bolt-Poller-Client" + Util.THREAD_INDEX.incrementAndGet());
             Subscription endpointAndSession = null;
             try {
-                startEndPoint().subscribe(subscriber);
-                startSession(address, port).subscribe(subscriber);
+                endpointAndSession = Observable.merge(startEndPoint(), startSession(address, port))
+                        .subscribe(subscriber::onNext, subscriber::onError, subscriber::onCompleted);
                 while (!subscriber.isUnsubscribed()) {
                     if (clientSession != null && clientSession.getSocket() != null) {
                         final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
@@ -69,12 +69,10 @@ public class BoltClient implements Client {
                 subscriber.onError(ex);
             }
             if (endpointAndSession != null) {
-                System.out.println("CLI UNSUB");
+                clientEndpoint.stop(subscriber);
                 endpointAndSession.unsubscribe();
             }
             subscriber.onCompleted();
-            // TODO removing as endpoint should clean itself up.
-//            shutdown();
         });
     }
 

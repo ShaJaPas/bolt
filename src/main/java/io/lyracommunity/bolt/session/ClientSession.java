@@ -4,7 +4,6 @@ import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.Shutdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -53,11 +52,14 @@ public class ClientSession extends BoltSession {
                     }
 
                     if (getState() == INVALID) throw new IOException("Can't connect!");
-                    if (n++ > 10) throw new IOException("Could not connect to server within the timeout.");
+                    if (n++ > 40) throw new IOException("Could not connect to server within the timeout.");
 
                     Thread.sleep(500);
                 }
-                catch (IOException | InterruptedException ex) {
+                catch (InterruptedException ex) {
+                    // Do nothing.
+                }
+                catch (IOException ex) {
                     subscriber.onError(ex);
                 }
             }
@@ -80,6 +82,7 @@ public class ClientSession extends BoltSession {
                     sessionCookie = handshake.getCookie();
                     destination.setSocketID(peerSocketID);
                     setState(HANDSHAKING2);
+//                    sendSecondHandshake();
                 }
                 catch (Exception ex) {
                     LOG.warn("Error creating socket", ex);
@@ -109,7 +112,7 @@ public class ClientSession extends BoltSession {
     @Override
     public void received(BoltPacket packet, Destination peer, Subscriber subscriber) {
         if (getState() == READY) {
-            active = true;
+            socket.setActive(true);
             try {
                 // Send all packets to both sender and receiver
                 socket.getSender().receive(packet);

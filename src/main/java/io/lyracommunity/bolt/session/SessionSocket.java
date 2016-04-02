@@ -46,7 +46,10 @@ public class SessionSocket
     }
 
     public Observable<?> start() {
-        return Observable.merge(receiver.start().subscribeOn(Schedulers.io()), sender.doStart().subscribeOn(Schedulers.io()));
+        return Observable.merge(
+                receiver.start().subscribeOn(Schedulers.io()),
+                sender.doStart().subscribeOn(Schedulers.io()))
+                .doOnSubscribe(() -> setActive(true));
     }
 
     public BoltReceiver getReceiver() {
@@ -60,7 +63,6 @@ public class SessionSocket
     public boolean isActive() {
         return active;
     }
-
 
     /**
      * New application data.
@@ -81,7 +83,7 @@ public class SessionSocket
         } catch (InterruptedException ie) {
             throw new IOException(ie);
         }
-        if (dataPacket.getDataLength() > 0) active = true;
+        if (dataPacket.getDataLength() > 0) setActive(true);
     }
 
     protected void doWriteBlocking(final DataPacket dataPacket) throws IOException, InterruptedException {
@@ -89,22 +91,26 @@ public class SessionSocket
         flush();
     }
 
+    void setActive(boolean active) {
+        this.active = active;
+    }
+
     /**
      * Will block until the outstanding packets have really been sent out
      * and acknowledged.
      */
     public void flush() throws InterruptedException, IllegalStateException {
-        if (!active) return;
+        if (!isActive()) return;
         // TODO change to reliability seq number. Also, logic needs careful looking over.
         final int seqNo = sender.getCurrentSequenceNumber();
         final int relSeqNo = sender.getCurrentReliabilitySequenceNumber();
         if (seqNo < 0) throw new IllegalStateException();
-        while (active && !sender.isSentOut(seqNo)) {
+        while (isActive() && !sender.isSentOut(seqNo)) {
             Thread.sleep(5);
         }
         if (seqNo > -1) {
             // Wait until data has been sent out and acknowledged.
-            while (active && !sender.haveAcknowledgementFor(relSeqNo)) {
+            while (isActive() && !sender.haveAcknowledgementFor(relSeqNo)) {
                 sender.waitForAck(seqNo);
             }
         }
@@ -118,7 +124,7 @@ public class SessionSocket
      * @throws IOException
      */
     public void close() throws IOException {
-        active = false;
+        setActive(false);
     }
 
     public ReceiveBuffer getReceiveBuffer() {

@@ -119,10 +119,10 @@ public class BoltSender {
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
 
-        this.lastAckReliabilitySequenceNumber = 0; // TODO is this correct to init to 0?
+        this.lastAckReliabilitySequenceNumber = 0;
         this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
 
-        final int chunkSize = session.getDatagramSize() - 24;
+        final int chunkSize = endpoint.getConfig().getDatagramSize() - 24;
         this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
     }
 
@@ -419,10 +419,6 @@ public class BoltSender {
                 retransmit.setDestinationID(session.getDestination().getSocketID());
                 endpoint.doSend(retransmit, session);
                 statistics.incNumberOfRetransmittedDataPackets();
-                // TODO remove below
-//                if (data.getPacketSeqNumber() % 20 == 0) {
-//                    System.out.println("Retransmit  " + data.getReliabilitySeqNumber());
-//                }
             }
             else {
                 LOG.warn("Did not find expected data in sendBuffer [{}]", relSeqNumber);
