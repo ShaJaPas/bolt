@@ -1,17 +1,9 @@
 package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.Config;
-import io.lyracommunity.bolt.packet.Ack;
-import io.lyracommunity.bolt.packet.Ack2;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ControlPacket;
-import io.lyracommunity.bolt.packet.ControlPacketType;
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.KeepAlive;
-import io.lyracommunity.bolt.packet.NegAck;
-import io.lyracommunity.bolt.packet.Shutdown;
+import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -51,9 +43,9 @@ public class BoltReceiver {
      */
     private static final long IDLE_TIMEOUT = 3 * 1000;
 
-    private final BoltEndPoint     endpoint;
-    private final BoltSession      session;
-    private final BoltStatistics   statistics;
+    private final BoltEndPoint endpoint;
+    private final BoltSession session;
+    private final BoltStatistics statistics;
     /**
      * Record seqNo of detected lost data and latest feedback time.
      */
@@ -90,11 +82,12 @@ public class BoltReceiver {
      * Stores received packets to be sent.
      */
     private final BlockingQueue<BoltPacket> handOffQueue;
-    private final Config                    config;
+    private final Config config;
+
     /**
-     * Microseconds to next EXP event.
+     * Microseconds to next EXP event. Default to 500 millis.
      */
-    private final long expTimerInterval = 100 * Util.getSYNTime();
+    private final long expTimerInterval = 50 * Util.getSYNTime();
     /**
      * Round trip time, calculated from ACK/ACK2 pairs.
      */
@@ -139,10 +132,14 @@ public class BoltReceiver {
     private long nextNAK;
     private long nextEXP;
 
-    /** Number of total received data packets. */
+    /**
+     * Number of total received data packets.
+     */
     private int n = 0;
 
-    /** Number of reliable received data packets. */
+    /**
+     * Number of reliable received data packets.
+     */
     private int reliableN = 0;
 
     private volatile int ackSequenceNumber = 0;
@@ -215,7 +212,7 @@ public class BoltReceiver {
             // Only allow in here for DataPacket/Ack2/Shutdown
             statistics.beginReceive();
             if (!p.isControlPacket() && LOG.isTraceEnabled()) {
-                LOG.trace("++ {}  QueueSize={}", p,  handOffQueue.size());
+                LOG.trace("++ {}  QueueSize={}", p, handOffQueue.size());
             }
             handOffQueue.offer(p);
             statistics.endReceive();
@@ -262,7 +259,7 @@ public class BoltReceiver {
             boolean needEXPReset = false;
             if (packet.isControlPacket()) {
                 ControlPacket cp = (ControlPacket) packet;
-                int cpType = cp.getControlPacketType();
+                final int cpType = cp.getControlPacketType();
                 // TODO is it even possible to reach here. ACK/NACK are received by sender
                 if (cpType == ControlPacketType.ACK.getTypeId() || cpType == ControlPacketType.NAK.getTypeId()) {
                     needEXPReset = true;
@@ -404,17 +401,20 @@ public class BoltReceiver {
         final BoltSender sender = session.getSocket().getSender();
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
-        if (config.isSessionsExpirable() && expCount > 16 && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT) {
-            if (!subscriber.isUnsubscribed()) {
-                subscriber.onError(new IllegalStateException("Session expired."));
-                LOG.info("Session {} expired.", session);
-                return;
-            }
+        if (isSessionExpired() && !subscriber.isUnsubscribed()) {
+            subscriber.onError(new IllegalStateException("Session expired."));
+            LOG.info("Session {} expired.", session);
         }
-        if (!sender.haveLostPackets()) {
+        else if (!sender.haveLostPackets()) {
             sendKeepAlive();
         }
         expCount++;
+    }
+
+    private boolean isSessionExpired() {
+        return config.isAllowSessionExpiry()
+                && expCount > config.getExpLimit()
+                && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
     }
 
     private void processPacket(final BoltPacket p, final Subscriber<? super Object> sub) throws IOException {
@@ -585,7 +585,7 @@ public class BoltReceiver {
 
     public void resetEXPTimer() {
         nextEXP = Util.getCurrentTime() + expTimerInterval;
-        expCount = 0;
+        resetEXPCount();
     }
 
     protected void resetEXPCount() {

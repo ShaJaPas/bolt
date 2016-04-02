@@ -18,35 +18,21 @@ public class Util {
 
     /**
      * Get the current timer value in microseconds.
-     *
-     * @return
      */
     public static long getCurrentTime() {
         return System.nanoTime() / 1000L;
     }
 
     /**
-     * Get the SYN time in microseconds. The SYN time is 0.01 seconds = 10000 microseconds.
-     *
-     * @return
+     * Get the SYN time in microseconds. The SYN time is 0.01 seconds = 10,000 microseconds.
      */
     public static long getSYNTime() {
-        return 10_000;
+        return 10_000L;
     }
 
     public static double getSYNTimeD() {
         return 10000.0;
     }
-
-    /**
-     * Get the SYN time in seconds. The SYN time is 0.01 seconds = 10000 microseconds.
-     *
-     * @return
-     */
-    public static double getSYNTimeSeconds() {
-        return 0.01;
-    }
-
 
     /**
      * Perform UDP hole punching to the specified client by sending

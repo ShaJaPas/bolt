@@ -312,14 +312,6 @@ public class BoltSender {
         }
     }
 
-    /**
-     * Send single keep alive packet -> TODO: move to socket!
-     */
-    protected void sendKeepAlive() throws Exception {
-        KeepAlive keepAlive = new KeepAlive();
-        endpoint.doSend(keepAlive, session);
-    }
-
     protected void sendAck2(long ackSequenceNumber) throws IOException {
         final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, session.getDestination().getSocketID());
         endpoint.doSend(ackOfAckPkt, session);

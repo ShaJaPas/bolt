@@ -71,7 +71,7 @@ public class MultiClientIT {
                     clientsComplete.countDown();
                 },
                 errors::add,
-                client -> client.config().setSessionsExpirable(false));
+                client -> client.config().setAllowSessionExpiry(false));
 
         final Supplier<Boolean> done = () -> received.get() < packetCount * clientCount;
         while (done.get() && errors.isEmpty()) Thread.sleep(10);
@@ -100,7 +100,7 @@ public class MultiClientIT {
                         System.out.println(MessageFormat.format("Received from [{0}], total {1}.", x.getSessionID(), received.get()));
                     }
                 },
-                errors::add, server -> server.config().setSessionsExpirable(sessionExpirable));
+                errors::add, server -> server.config().setAllowSessionExpiry(sessionExpirable));
     }
 
     private TestServer createServer(final Action1<? super Object> onNext) throws Exception {

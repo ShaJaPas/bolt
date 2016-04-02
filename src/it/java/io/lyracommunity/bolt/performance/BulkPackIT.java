@@ -47,7 +47,7 @@ public class BulkPackIT
                     if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
                 },
                 errors::add);
-        srv.server.config().setSessionsExpirable(false);
+        srv.server.config().setAllowSessionExpiry(false);
 
         System.out.println("Connect to server port " + srv.server.getPort());
         final TestClient cli = TestClient.runClient(srv.server.getPort(),
@@ -60,7 +60,7 @@ public class BulkPackIT
                     sendComplete.set(true);
                 },
                 errors::add);
-        cli.client.config().setSessionsExpirable(false);
+        cli.client.config().setAllowSessionExpiry(false);
 
         final Supplier<Boolean> done = waitForDelivery
                 ? () -> received.get() < PACKET_COUNT

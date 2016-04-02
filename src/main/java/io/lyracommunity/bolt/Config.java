@@ -14,7 +14,12 @@ public class Config
 
     private int localPort;
 
-    private boolean sessionsExpirable = true;
+    private boolean allowSessionExpiry = true;
+
+    /**
+     * The consecutive number of EXP events before the session expires.
+     */
+    private final int expLimit = 16;
 
     /**
      * If larger than 0, the receiver should acknowledge every n'th packet.
@@ -64,12 +69,12 @@ public class Config
         return this;
     }
 
-    public boolean isSessionsExpirable() {
-        return sessionsExpirable;
+    public boolean isAllowSessionExpiry() {
+        return allowSessionExpiry;
     }
 
-    public void setSessionsExpirable(final boolean sessionsExpirable) {
-        this.sessionsExpirable = sessionsExpirable;
+    public void setAllowSessionExpiry(final boolean allowSessionExpiry) {
+        this.allowSessionExpiry = allowSessionExpiry;
     }
 
     /**
@@ -90,6 +95,10 @@ public class Config
 
     public int getDatagramSize() {
         return datagramSize;
+    }
+
+    public int getExpLimit() {
+        return expLimit;
     }
 
 }
