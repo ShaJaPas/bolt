@@ -1,5 +1,7 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.util.Util;
+
 import java.net.InetAddress;
 
 /**
@@ -19,7 +21,7 @@ public class Config
     /**
      * The consecutive number of EXP events before the session expires.
      */
-    private final int expLimit = 16;
+    private int expLimit = 16;
 
     /**
      * If larger than 0, the receiver should acknowledge every n'th packet.
@@ -29,6 +31,11 @@ public class Config
     public static final int DEFAULT_DATAGRAM_SIZE = 1400;
 
     private final int datagramSize = 1400;
+
+    /**
+     * Microseconds to next EXP event. Default to 500 millis.
+     */
+    private long expTimerInterval = 50 * Util.getSYNTime();
 
     /**
      * Create a new instance.
@@ -97,8 +104,24 @@ public class Config
         return datagramSize;
     }
 
+    public void setExpLimit(final int expLimit)
+    {
+        if (expLimit <= 1) throw new IllegalArgumentException("expLimit must be at least 2 or greater");
+        this.expLimit = expLimit;
+    }
+
     public int getExpLimit() {
         return expLimit;
+    }
+
+    public long getExpTimerInterval()
+    {
+        return expTimerInterval;
+    }
+
+    public void setExpTimerInterval(long expTimerInterval)
+    {
+        this.expTimerInterval = expTimerInterval;
     }
 
 }

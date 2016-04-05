@@ -293,8 +293,9 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.finalMessageChunk = finalMessageChunk;
     }
 
-    public int getControlPacketType() {
-        return -1;
+    @Override
+    public PacketType getPacketType() {
+        return PacketType.DATA;
     }
 
     public boolean isClassful() {

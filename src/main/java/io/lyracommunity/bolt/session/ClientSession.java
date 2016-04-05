@@ -87,11 +87,14 @@ public class ClientSession extends BoltSession {
                 catch (Exception ex) {
                     LOG.warn("Error creating socket", ex);
                     setState(INVALID);
+                    subscriber.onError(ex);
                 }
             }
             else {
-                LOG.info("Unexpected type of handshake packet received");
+                final Exception ex = new IllegalStateException("Unexpected type of handshake packet received");
+                LOG.error("Bad connection type received", ex);
                 setState(INVALID);
+                subscriber.onError(ex);
             }
         }
         else if (getState() == HANDSHAKING2) {
@@ -104,6 +107,7 @@ public class ClientSession extends BoltSession {
             catch (Exception ex) {
                 LOG.error("Error creating socket", ex);
                 setState(INVALID);
+                subscriber.onError(ex);
             }
         }
         return readyToStart;
@@ -121,6 +125,7 @@ public class ClientSession extends BoltSession {
             catch (Exception ex) {
                 // Session is invalid.
                 LOG.error("Error in " + toString(), ex);
+                subscriber.onError(ex);
                 setState(INVALID);
             }
         }

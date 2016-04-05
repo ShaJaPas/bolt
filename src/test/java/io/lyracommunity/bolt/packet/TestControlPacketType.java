@@ -18,24 +18,24 @@ public class TestControlPacketType {
 
     @Test
     public void testControlPacketTypes() {
-        ControlPacketType t = ControlPacketType.CONNECTION_HANDSHAKE;
+        PacketType t = PacketType.CONNECTION_HANDSHAKE;
         assertEquals(0, t.getTypeId());
-        t = ControlPacketType.KEEP_ALIVE;
+        t = PacketType.KEEP_ALIVE;
         assertEquals(1, t.getTypeId());
-        t = ControlPacketType.ACK;
+        t = PacketType.ACK;
         assertEquals(2, t.getTypeId());
-        t = ControlPacketType.NAK;
+        t = PacketType.NAK;
         assertEquals(3, t.getTypeId());
-        t = ControlPacketType.SHUTDOWN;
+        t = PacketType.SHUTDOWN;
         assertEquals(4, t.getTypeId());
-        t = ControlPacketType.ACK2;
+        t = PacketType.ACK2;
         assertEquals(5, t.getTypeId());
     }
 
     @Test
     public void testUniquePacketTypeIds() {
-        final long typeCount = ControlPacketType.values().length;
-        final long distinctTypeCount = Stream.of(ControlPacketType.values()).map(ControlPacketType::getTypeId).distinct().count();
+        final long typeCount = PacketType.values().length;
+        final long distinctTypeCount = Stream.of(PacketType.values()).map(PacketType::getTypeId).distinct().count();
         assertEquals(typeCount, distinctTypeCount);
     }
 

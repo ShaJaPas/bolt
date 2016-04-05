@@ -49,7 +49,7 @@ public class ConnectionHandshake extends ControlPacket {
     private InetAddress address;
 
     private ConnectionHandshake() {
-        this.controlPacketType = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId();
+        this.controlPacketType = PacketType.CONNECTION_HANDSHAKE.getTypeId();
     }
 
     ConnectionHandshake(byte[] controlInformation) throws IOException {

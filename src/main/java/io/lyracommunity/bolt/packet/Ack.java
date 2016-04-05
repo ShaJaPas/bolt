@@ -46,7 +46,7 @@ public class Ack extends ControlPacket {
     private long estimatedLinkCapacity;
 
     public Ack() {
-        this.controlPacketType = ControlPacketType.ACK.getTypeId();
+        this.controlPacketType = PacketType.ACK.getTypeId();
     }
 
     public static Ack buildAcknowledgement(final int ackNumber, final int ackSequenceNumber,

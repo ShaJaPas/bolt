@@ -10,7 +10,7 @@ package io.lyracommunity.bolt.packet;
 public class KeepAlive extends ControlPacket {
 
     public KeepAlive() {
-        this.controlPacketType = ControlPacketType.KEEP_ALIVE.getTypeId();
+        this.controlPacketType = PacketType.KEEP_ALIVE.getTypeId();
     }
 
     @Override

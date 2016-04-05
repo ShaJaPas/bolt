@@ -399,7 +399,7 @@ public class BoltSender {
     /**
      * Re-transmit an entry from the sender loss list.
      *
-     * @param relSeqNumber
+     * @param relSeqNumber reliability sequence number to retransmit.
      */
     protected void handleRetransmit(final Integer relSeqNumber) {
         try {

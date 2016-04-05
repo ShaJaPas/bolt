@@ -28,7 +28,7 @@ public class NegAck extends ControlPacket {
     final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
 
     public NegAck() {
-        this.controlPacketType = ControlPacketType.NAK.getTypeId();
+        this.controlPacketType = PacketType.NAK.getTypeId();
     }
 
     public NegAck(final byte[] controlInformation) {

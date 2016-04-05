@@ -74,6 +74,7 @@ public class ServerSession extends BoltSession {
                 // Session invalid.
                 LOG.warn("Error processing ConnectionHandshake", ex);
                 setState(INVALID);
+                subscriber.onError(ex);
             }
         }
         return readyToStart;
@@ -82,12 +83,7 @@ public class ServerSession extends BoltSession {
     @Override
     public void received(final BoltPacket packet, final Destination peer, final Subscriber subscriber) {
 
-        if (packet instanceof KeepAlive) {
-            socket.getReceiver().resetEXPTimer();
-            socket.setActive(true);
-        }
-
-        else if (getState() == READY) {
+        if (getState() == READY) {
             socket.setActive(true);
             try {
                 socket.getSender().receive(packet);
@@ -97,6 +93,7 @@ public class ServerSession extends BoltSession {
                 // Invalidate session
                 LOG.error("Session error receiving packet", ex);
                 setState(INVALID);
+                subscriber.onError(ex);
             }
         }
     }

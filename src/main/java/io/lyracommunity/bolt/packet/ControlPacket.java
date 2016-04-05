@@ -105,8 +105,9 @@ public abstract class ControlPacket implements BoltPacket {
 
     }
 
-    public int getControlPacketType() {
-        return controlPacketType;
+    @Override
+    public PacketType getPacketType() {
+        return PacketType.byTypeId(controlPacketType);
     }
 
     public int getDestinationID() {

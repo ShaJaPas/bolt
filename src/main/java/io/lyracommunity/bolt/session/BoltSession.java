@@ -257,7 +257,6 @@ public abstract class BoltSession {
         HANDSHAKING(1),
         HANDSHAKING2(2),
         READY(50),
-        KEEPALIVE(80),
         SHUTDOWN(90),
         INVALID(99);
 

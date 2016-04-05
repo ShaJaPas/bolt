@@ -31,6 +31,16 @@ public class DuplicateDetector {
         this.received = received;
     }
 
+    /**
+     * Create with a fixed size.
+     * <p/>
+     * The provided size should be a power of two. If this not the case,
+     * it will be rounded up to the next power of two.
+     *
+     * @param size the number of packets to keep track of. The memory usage of the
+     *             object scales by one bit per increment of size.
+     * @return the created object.
+     */
     public static DuplicateDetector ofSize(final int size) {
         final BitSet set = new BitSet(size);
         return fromBitSet(set);
@@ -40,7 +50,13 @@ public class DuplicateDetector {
         return new DuplicateDetector(DEFAULT_SEGMENT_COUNT, set.size() / DEFAULT_SEGMENT_COUNT, set);
     }
 
-    public boolean checkDuplicatePacket(final DataPacket data) {
+    /**
+     * Mark a packet as received and return whether it is a duplicate or not.
+     *
+     * @param data the received packet.
+     * @return true if a duplicate packet, false otherwise.
+     */
+    public boolean receivePacket(final DataPacket data) {
         final int duplicationId = getDuplicationId(data);
 
         final boolean isDuplicate = received.get(duplicationId);

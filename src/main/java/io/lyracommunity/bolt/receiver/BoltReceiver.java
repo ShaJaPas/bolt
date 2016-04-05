@@ -38,28 +38,24 @@ import java.util.concurrent.TimeUnit;
 public class BoltReceiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltReceiver.class);
-    /**
-     * Milliseconds to timeout a new session that stays idle.
-     */
+
+    /** Milliseconds to timeout a new session that stays idle. */
     private static final long IDLE_TIMEOUT = 3 * 1000;
 
     private final BoltEndPoint endpoint;
     private final BoltSession session;
     private final BoltStatistics statistics;
-    /**
-     * Record seqNo of detected lost data and latest feedback time.
-     */
+
+    /** Record seqNo of detected lost data and latest feedback time. */
     private final ReceiverLossList receiverLossList;
-    /**
-     * Record each sent ACK and the sent time.
-     */
+
+    /** Record each sent ACK and the sent time. */
     private final AckHistoryWindow ackHistoryWindow;
 
     // ACK event related
-    /**
-     * Packet history window that stores the time interval between the current and the last seq.
-     */
+    /** Packet history window that stores the time interval between the current and the last seq. */
     private final PacketHistoryWindow packetHistoryWindow;
+
     /**
      * Records the time interval between each probing pair compute the
      * median packet pair interval of the last 16 packet pair intervals (PI)
@@ -68,87 +64,65 @@ public class BoltReceiver {
     private final PacketPairWindow packetPairWindow;
 
     // EXP event related
-    /**
-     * Instant when the session was created (for expiry checking)
-     */
+    /** Instant when the session was created (for expiry checking). */
     private final long sessionUpSince;
 
-    /**
-     * Buffer size for storing data.
-     */
+    /** Buffer size for storing data. */
     private final long bufferSize;
 
-    /**
-     * Stores received packets to be sent.
-     */
+    /** Stores received packets to be sent. */
     private final BlockingQueue<BoltPacket> handOffQueue;
     private final Config config;
 
-    /**
-     * Microseconds to next EXP event. Default to 500 millis.
-     */
-    private final long expTimerInterval = 50 * Util.getSYNTime();
-    /**
-     * Round trip time, calculated from ACK/ACK2 pairs.
-     */
+    /** Round trip time, calculated from ACK/ACK2 pairs. */
     private long roundTripTime = 0;
-    /**
-     * Round trip time variance.
-     */
+
+    /** Round trip time variance. */
     private long roundTripTimeVar = roundTripTime / 2;
-    /**
-     * For storing the arrival time of the last received data packet.
-     */
+
+    /** For storing the arrival time of the last received data packet. */
     private volatile long lastDataPacketArrivalTime = 0;
+
     /**
-     * LRSN: A variable to record the largest received data packet sequence
-     * number. LRSN is initialized to the initial sequence number minus 1.
+     * LRSN: The largest received reliability sequence number.
      */
     private volatile int largestReceivedRelSeqNumber = 0;
-    /**
-     * Last Ack number.
-     */
+
+    /** Last Ack number. */
     private long lastAckNumber = 0;
-    /**
-     * largest Ack number ever acknowledged by ACK2
-     */
+
+    /** largest Ack number ever acknowledged by ACK2 */
     private volatile long largestAcknowledgedAckNumber = -1;
-    /**
-     * a variable to record number of continuous EXP time-out events
-     */
+
+    /** Record number of consecutive EXP time-out events. */
     private volatile long expCount = 0;
-    /**
-     * to check the ACK, NAK, or EXP timer
-     */
+
+    /** to check the ACK, NAK, or EXP timer */
     private long nextACK;
-    /**
-     * Microseconds to next ACK event.
-     */
+
+    /** Microseconds to next ACK event. */
     private long ackTimerInterval = Util.getSYNTime();
-    /**
-     * Microseconds to next NAK event.
-     */
+
+    /** Microseconds to next NAK event. */
     private long nakTimerInterval = Util.getSYNTime();
+
     private long nextNAK;
     private long nextEXP;
 
-    /**
-     * Number of total received data packets.
-     */
+    /** Number of total received data packets. */
     private int n = 0;
 
-    /**
-     * Number of reliable received data packets.
-     */
+    /** Number of reliable received data packets. */
     private int reliableN = 0;
 
     private volatile int ackSequenceNumber = 0;
 
     /**
-     * Create a receiver with a valid {@link BoltSession}
+     * Create a receiver with a valid {@link BoltSession}.
      *
-     * @param session
-     * @param config
+     * @param session the owning session.
+     * @param endpoint the network endpoint.
+     * @param config bolt configuration.
      */
     public BoltReceiver(final BoltSession session, final BoltEndPoint endpoint, final Config config) {
         if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
@@ -167,7 +141,7 @@ public class BoltReceiver {
     }
 
     /**
-     * Starts the sender algorithm
+     * Starts the sender algorithm.
      */
     public Observable<?> start() {
         return Observable.create(subscriber -> {
@@ -180,7 +154,7 @@ public class BoltReceiver {
                 LOG.info("STARTING RECEIVER for {}", session);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
-                nextEXP = Util.getCurrentTime() + 2 * expTimerInterval;
+                nextEXP = Util.getCurrentTime() + 2 * config.getExpTimerInterval();
                 while (!subscriber.isUnsubscribed()) {
                     receiverAlgorithm(subscriber);
                 }
@@ -201,22 +175,12 @@ public class BoltReceiver {
      * Packets are written by the endpoint.
      */
     public void receive(final BoltPacket p) throws IOException {
-        final int controlPacketType = p.getControlPacketType();
-        if (ControlPacketType.KEEP_ALIVE.getTypeId() == controlPacketType) {
-            resetEXPCount();
+        statistics.beginReceive();
+        if (!p.isControlPacket() && LOG.isTraceEnabled()) {
+            LOG.trace("++ {}  QueueSize={}", p, handOffQueue.size());
         }
-        else if (ControlPacketType.NAK.getTypeId() == controlPacketType) {
-            resetEXPTimer();
-        }
-        else if (!p.forSender()) {
-            // Only allow in here for DataPacket/Ack2/Shutdown
-            statistics.beginReceive();
-            if (!p.isControlPacket() && LOG.isTraceEnabled()) {
-                LOG.trace("++ {}  QueueSize={}", p, handOffQueue.size());
-            }
-            handOffQueue.offer(p);
-            statistics.endReceive();
-        }
+        handOffQueue.offer(p);
+        statistics.endReceive();
     }
 
     /**
@@ -247,31 +211,18 @@ public class BoltReceiver {
      * </ol>
      */
     private void receiverAlgorithm(final Subscriber<? super Object> sub) throws InterruptedException, IOException {
+        // Query for timer events.
         checkTimers(sub);
 
-        // Perform time-bounded UDP receive
+        // Perform time-bounded UDP receive.
         final BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
 
         if (packet != null) {
-            // Reset exp count to 1
-            expCount = 1;
-            // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
-            boolean needEXPReset = false;
-            if (packet.isControlPacket()) {
-                ControlPacket cp = (ControlPacket) packet;
-                final int cpType = cp.getControlPacketType();
-                // TODO is it even possible to reach here. ACK/NACK are received by sender
-                if (cpType == ControlPacketType.ACK.getTypeId() || cpType == ControlPacketType.NAK.getTypeId()) {
-                    needEXPReset = true;
-                }
-            }
-            if (needEXPReset) {
-                nextEXP = Util.getCurrentTime() + expTimerInterval;
-            }
+            // Reset EXP count for any packet.
+            resetEXPCount();
+
             statistics.beginProcess();
-
             processPacket(packet, sub);
-
             statistics.endProcess();
         }
     }
@@ -290,7 +241,7 @@ public class BoltReceiver {
         }
         // Check EXP timer.
         if (nextEXP < currentTime) {
-            nextEXP = currentTime + expTimerInterval;
+            nextEXP = currentTime + config.getExpTimerInterval();
             processEXPEvent(subscriber);
         }
     }
@@ -330,7 +281,7 @@ public class BoltReceiver {
      * of this ACK in the ACK History Window.
      * </ol>
      */
-    private void processACKEvent(boolean isTriggeredByTimer) throws IOException {
+    private void processACKEvent(final boolean isTriggeredByTimer) throws IOException {
         // 1) Find the sequence number prior to which all the packets have been received
         final ReceiverLossListEntry entry = receiverLossList.getFirstEntry();
 
@@ -346,26 +297,27 @@ public class BoltReceiver {
         else if (ackNumber == lastAckNumber) {
             // Or it is equals to the ackNumber in the last ACK and the time interval
             // between these two ACK packets is less than 2 RTTs, do not send(stop).
-            long timeOfLastSentAck = ackHistoryWindow.getTime(lastAckNumber);
+            final long timeOfLastSentAck = ackHistoryWindow.getTime(lastAckNumber);
+
             if (Util.getCurrentTime() - timeOfLastSentAck < 2 * roundTripTime) {
                 return;
             }
         }
-        final long ackSeqNumber;
+
         // If this ACK is not triggered by ACK timers, send out a light Ack and stop.
         if (!isTriggeredByTimer) {
-            ackSeqNumber = sendLightAcknowledgment(ackNumber);
-            return;
+            sendLightAcknowledgment(ackNumber);
         }
         else {
             // Pack the packet speed and link capacity into the ACK packet and send it out.
             // 7) Records the ACK number, ackseqNumber and the departure time of this Ack in the ACK History Window.
-            ackSeqNumber = sendAcknowledgment(ackNumber);
+            final long ackSeqNumber = sendAcknowledgment(ackNumber);
+
+            AckHistoryEntry sentAckNumber = new AckHistoryEntry(ackSeqNumber, ackNumber, Util.getCurrentTime());
+            ackHistoryWindow.add(sentAckNumber);
+            // Store ack number for next iteration
+            lastAckNumber = ackNumber;
         }
-        AckHistoryEntry sentAckNumber = new AckHistoryEntry(ackSeqNumber, ackNumber, Util.getCurrentTime());
-        ackHistoryWindow.add(sentAckNumber);
-        // Store ack number for next iteration
-        lastAckNumber = ackNumber;
     }
 
     /**
@@ -424,10 +376,19 @@ public class BoltReceiver {
             onDataPacketReceived((DataPacket) p);
             statistics.endDataProcess();
         }
-        else if (p.getControlPacketType() == ControlPacketType.ACK2.getTypeId()) {
-            final Ack2 ack2 = (Ack2) p;
-            onAck2PacketReceived(ack2);
+        else {
+            final PacketType packetType = p.getPacketType();
+            // TODO implement first part of below comment
+            // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
+            if (PacketType.NAK == packetType || PacketType.ACK == packetType) {
+                resetEXPTimer();
+            }
+            else if (p.getPacketType() == PacketType.ACK2) {
+                final Ack2 ack2 = (Ack2) p;
+                onAck2PacketReceived(ack2);
+            }
         }
+
     }
 
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
@@ -524,7 +485,7 @@ public class BoltReceiver {
     }
 
     private long sendLightAcknowledgment(final int ackNumber) throws IOException {
-        Ack acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
+        final Ack acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
         endpoint.doSend(acknowledgmentPkt, session);
         statistics.incNumberOfACKSent();
         return acknowledgmentPkt.getAckSequenceNumber();
@@ -584,12 +545,11 @@ public class BoltReceiver {
     }
 
     public void resetEXPTimer() {
-        nextEXP = Util.getCurrentTime() + expTimerInterval;
-        resetEXPCount();
+        nextEXP = Util.getCurrentTime() + config.getExpTimerInterval();
     }
 
     protected void resetEXPCount() {
-        expCount = 0;
+        expCount = 1;
     }
 
     private boolean isArtificialDrop() {

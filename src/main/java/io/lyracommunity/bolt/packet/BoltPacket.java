@@ -17,9 +17,9 @@ public interface BoltPacket extends Comparable<BoltPacket> {
     boolean isControlPacket();
 
     /**
-     * Get the ID of the control packet type. Equates to {@link ControlPacketType#getTypeId()}.
+     * Get the {@link PacketType packet type}.
      */
-    int getControlPacketType();
+    PacketType getPacketType();
 
     /**
      * Get the binary encoded form of the packet.

@@ -15,7 +15,7 @@ public class AckHistoryEntry {
     /** Time when the Acknowledgement entry was sent. */
     private final long sentTime;
 
-    public AckHistoryEntry(long ackSequenceNumber, long ackNumber, long sentTime) {
+    public AckHistoryEntry(final long ackSequenceNumber, final long ackNumber, final long sentTime) {
         this.ackSequenceNumber = ackSequenceNumber;
         this.ackNumber = ackNumber;
         this.sentTime = sentTime;

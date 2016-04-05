@@ -78,7 +78,7 @@ public class ReceiveBuffer
                     return OfferResult.ERROR_LOOKAHEAD;
                 }
             }
-            if (duplicateDetector.checkDuplicatePacket(data)) {
+            if (duplicateDetector.receivePacket(data)) {
                 return OfferResult.ERROR_DUPLICATE;
             }
             // Else compute insert position.

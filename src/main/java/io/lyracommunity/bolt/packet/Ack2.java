@@ -21,7 +21,7 @@ public class Ack2 extends ControlPacket {
     }
 
     public Ack2() {
-        this.controlPacketType = ControlPacketType.ACK2.getTypeId();
+        this.controlPacketType = PacketType.ACK2.getTypeId();
     }
 
     Ack2(long ackSeqNo, byte[] controlInformation) {

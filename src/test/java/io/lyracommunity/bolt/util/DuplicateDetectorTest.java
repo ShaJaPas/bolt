@@ -31,24 +31,24 @@ public class DuplicateDetectorTest {
 
     @Test
     public void checkDuplicatePacket_isDuplicate() throws Exception {
-        assertFalse(classUnderTest.checkDuplicatePacket(dataPacket(1)));
-        assertTrue(classUnderTest.checkDuplicatePacket(dataPacket(1)));
+        assertFalse(classUnderTest.receivePacket(dataPacket(1)));
+        assertTrue(classUnderTest.receivePacket(dataPacket(1)));
     }
 
     @Test
     public void checkDuplicatePacket_noDuplicates() throws Exception {
-        assertFalse(classUnderTest.checkDuplicatePacket(dataPacket(1)));
-        assertFalse(classUnderTest.checkDuplicatePacket(dataPacket(2)));
+        assertFalse(classUnderTest.receivePacket(dataPacket(1)));
+        assertFalse(classUnderTest.receivePacket(dataPacket(2)));
     }
 
     @Test
     public void checkDuplicatePacket_overflow() throws Exception {
         setUp(100);
         for (int i = 0; i < size * 3; i++) {
-            assertFalse(classUnderTest.checkDuplicatePacket(dataPacket(i)));
+            assertFalse(classUnderTest.receivePacket(dataPacket(i)));
         }
         for (int i = 0; i < size; i++) {
-            assertFalse(classUnderTest.checkDuplicatePacket(dataPacket(i)));
+            assertFalse(classUnderTest.receivePacket(dataPacket(i)));
         }
     }
 
@@ -56,12 +56,12 @@ public class DuplicateDetectorTest {
     public void checkDuplicatePacket_invalidateSegment() throws Exception {
         setUp(128);
 
-        assertFalse(classUnderTest.checkDuplicatePacket(firstPacketInSegment(0)));
-        assertTrue(classUnderTest.checkDuplicatePacket(firstPacketInSegment(0)));
+        assertFalse(classUnderTest.receivePacket(firstPacketInSegment(0)));
+        assertTrue(classUnderTest.receivePacket(firstPacketInSegment(0)));
         for (int i = 1; i < DuplicateDetector.DEFAULT_SEGMENT_COUNT; i++) {
-            assertFalse(classUnderTest.checkDuplicatePacket(firstPacketInSegment(i)));
+            assertFalse(classUnderTest.receivePacket(firstPacketInSegment(i)));
         }
-        assertFalse(classUnderTest.checkDuplicatePacket(firstPacketInSegment(0)));
+        assertFalse(classUnderTest.receivePacket(firstPacketInSegment(0)));
     }
 
     private DataPacket dataPacket(final int packetSeqNum) {

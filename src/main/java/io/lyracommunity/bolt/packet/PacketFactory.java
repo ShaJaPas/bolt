@@ -40,25 +40,25 @@ public class PacketFactory {
         byte[] controlInformation = new byte[length - 12];
         System.arraycopy(encodedData, 12, controlInformation, 0, controlInformation.length);
 
-        if (ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == pktType) {
+        if (PacketType.CONNECTION_HANDSHAKE.getTypeId() == pktType) {
             packet = new ConnectionHandshake(controlInformation);
         }
-        else if (ControlPacketType.KEEP_ALIVE.getTypeId() == pktType) {
+        else if (PacketType.KEEP_ALIVE.getTypeId() == pktType) {
             packet = new KeepAlive();
         }
-        else if (ControlPacketType.ACK.getTypeId() == pktType) {
+        else if (PacketType.ACK.getTypeId() == pktType) {
             packet = new Ack(additionalInfo, controlInformation);
         }
-        else if (ControlPacketType.NAK.getTypeId() == pktType) {
+        else if (PacketType.NAK.getTypeId() == pktType) {
             packet = new NegAck(controlInformation);
             if (((NegAck) packet).getDecodedLossInfo().isEmpty()) {
                 System.out.println("NO");
             }
         }
-        else if (ControlPacketType.SHUTDOWN.getTypeId() == pktType) {
+        else if (PacketType.SHUTDOWN.getTypeId() == pktType) {
             packet = new Shutdown();
         }
-        else if (ControlPacketType.ACK2.getTypeId() == pktType) {
+        else if (PacketType.ACK2.getTypeId() == pktType) {
             packet = new Ack2(additionalInfo, controlInformation);
         }
 

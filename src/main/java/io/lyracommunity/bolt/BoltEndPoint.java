@@ -162,13 +162,13 @@ public class BoltEndPoint {
                 final long destID = packet.getDestinationID();
                 final BoltSession session = sessions.get(destID);
 
-                final boolean isConnectionHandshake = ControlPacketType.CONNECTION_HANDSHAKE.getTypeId() == packet.getControlPacketType();
+                final boolean isConnectionHandshake = PacketType.CONNECTION_HANDSHAKE == packet.getPacketType();
                 if (isConnectionHandshake) {
                     final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
                     if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
                 }
                 else if (session != null) {
-                    if (ControlPacketType.SHUTDOWN.getTypeId() == packet.getControlPacketType()) {
+                    if (PacketType.SHUTDOWN == packet.getPacketType()) {
                         endSession(subscriber, packet.getDestinationID(), "Shutdown received");
                     }
                     // Dispatch to existing session.
