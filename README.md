@@ -29,6 +29,7 @@ Bolt UDP
 - [ ] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
 - [ ] Review level of each log statement
 - [ ] Review Javadoc
+- [ ] Remove BoltPacket forSender filtering functionality.
 - [ ] Test keepalives and session expiry
 - [X] Change Test classes names from (Test.*.java) to (.*Test.java)
 - [X] Add group to base of package (before bolt.*)
