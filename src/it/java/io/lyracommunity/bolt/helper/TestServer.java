@@ -58,7 +58,7 @@ public class TestServer {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), PortUtil.nextServerPort()));
         if (init != null) init.accept(server);
-        TestPackets.registerAll(server.codecs());
+        TestObjects.registerAll(server.codecs());
 
         final Subscription subscription = server.bind()
                 .subscribeOn(Schedulers.io())

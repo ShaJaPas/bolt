@@ -2,7 +2,7 @@ package io.lyracommunity.bolt.performance;
 
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestData;
-import io.lyracommunity.bolt.helper.TestPackets;
+import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
@@ -36,14 +36,14 @@ public class BulkPackIT
 
     @Test
     public void testBulkPackets_reliableOrdered() throws Exception {
-        doTest(true, TestPackets.reliableOrdered(SIZE));
+        doTest(true, TestObjects.reliableOrdered(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
     }
 
     @Test
     public void testBulkPackets_reliableUnordered() throws Exception {
-        doTest(true, TestPackets.reliableUnordered(SIZE));
+        doTest(true, TestObjects.reliableUnordered(SIZE));
 //        doTest(true, TestData.getRandomData(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
@@ -51,7 +51,7 @@ public class BulkPackIT
 
     @Test
     public void testBulkPackets_unreliable() throws Exception {
-        doTest(false, TestPackets.unreliableUnordered(SIZE));
+        doTest(false, TestObjects.unreliableUnordered(SIZE));
     }
 
     private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {

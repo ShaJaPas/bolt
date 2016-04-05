@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 /**
  * Created by omahoc9 on 3/25/16.
  */
-public class TestPackets {
+public class TestObjects {
 
     public static void registerAll(final CodecRepository xcoding) {
         final PacketCodec<Finished> finishedXCoderChain = new PacketCodec<>(new ObjectCodec<Finished>() {

@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.helper.TestClient;
-import io.lyracommunity.bolt.helper.TestPackets;
+import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
@@ -34,14 +34,14 @@ public class DeliveryReliabilityIT
         final Consumer<BoltClient> onReady = c -> {
 
             // Send unreliable
-            for (int i = 0; i < sendCount; i++) c.send(TestPackets.unreliableUnordered(100));
+            for (int i = 0; i < sendCount; i++) c.send(TestObjects.unreliableUnordered(100));
             try {
                 Thread.sleep(20L);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            c.sendBlocking(TestPackets.finished());
+            c.sendBlocking(TestObjects.finished());
         };
 
         startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
@@ -56,16 +56,16 @@ public class DeliveryReliabilityIT
         final Consumer<BoltClient> onReady = c -> {
 
             // Send unreliable
-            for (int i = 0; i < sendCount; i++) c.send(TestPackets.unreliableUnordered(100));
+            for (int i = 0; i < sendCount; i++) c.send(TestObjects.unreliableUnordered(100));
             for (int i = 0; i < sendCount; i++)
-                c.send(TestPackets.reliableUnordered(100)); // TODO unordered is sending more packets than expected
+                c.send(TestObjects.reliableUnordered(100)); // TODO unordered is sending more packets than expected
             try {
                 Thread.sleep(20L);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            c.sendBlocking(TestPackets.finished());
+            c.sendBlocking(TestObjects.finished());
         };
 
         startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
@@ -84,11 +84,11 @@ public class DeliveryReliabilityIT
     private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
         final TestServer srv = TestServer.runObjectServer(Object.class,
                 x -> {
-                    if (x.getPayload() instanceof TestPackets.BaseDataClass) {
+                    if (x.getPayload() instanceof TestObjects.BaseDataClass) {
                         deliveryCount.incrementAndGet();
                         System.out.println(format("Recv {0} {1}", x.getClass().getSimpleName(), deliveryCount.get()));
                     }
-                    else if (x.getPayload() instanceof TestPackets.Finished) {
+                    else if (x.getPayload() instanceof TestObjects.Finished) {
                         completed.set(true);
                     }
                 },

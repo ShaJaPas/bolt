@@ -532,7 +532,7 @@ public class BoltReceiver {
             else roundTripTime = rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
             ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
-//            ackTimerInterval = Math.min(1_000, 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime());
+            if (config.getMaxAckTimerInterval() > 0) ackTimerInterval = Math.min(config.getMaxAckTimerInterval(), ackTimerInterval);
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }

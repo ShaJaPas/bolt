@@ -12,6 +12,12 @@ public class Config
 
     private volatile float packetDropRate;
 
+    /** Simulated network latency, in milliseconds. */
+    private int simulatedLatency;
+
+    /** Simulated network jitter, in milliseconds. */
+    private int simulatedMaxJitter;
+
     private InetAddress localAddress;
 
     private int localPort;
@@ -36,6 +42,9 @@ public class Config
      * Microseconds to next EXP event. Default to 500 millis.
      */
     private long expTimerInterval = 50 * Util.getSYNTime();
+
+    /** Max ACK timer interval, in microseconds. */
+    private long maxAckTimerInterval = 50_000;
 
     /**
      * Create a new instance.
@@ -122,6 +131,30 @@ public class Config
     public void setExpTimerInterval(long expTimerInterval)
     {
         this.expTimerInterval = expTimerInterval;
+    }
+
+    public long getMaxAckTimerInterval() {
+        return maxAckTimerInterval;
+    }
+
+    public void setMaxAckTimerInterval(long maxAckTimerInterval) {
+        this.maxAckTimerInterval = maxAckTimerInterval;
+    }
+
+    public int getSimulatedLatency() {
+        return simulatedLatency;
+    }
+
+    public void setSimulatedLatency(int simulatedLatency) {
+        this.simulatedLatency = simulatedLatency;
+    }
+
+    public int getSimulatedMaxJitter() {
+        return simulatedMaxJitter;
+    }
+
+    public void setSimulatedMaxJitter(final int simulatedMaxJitter) {
+        this.simulatedMaxJitter = simulatedMaxJitter;
     }
 
 }

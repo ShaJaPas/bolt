@@ -2,7 +2,7 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.PeerDisconnected;
 import io.lyracommunity.bolt.helper.TestClient;
-import io.lyracommunity.bolt.helper.TestPackets;
+import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 import rx.functions.Action1;
@@ -55,7 +55,7 @@ public class MultiClientIT {
 
     @Test
     public void testReceiveFromMultipleClients() throws Throwable {
-        final TestPackets.ReliableUnordered toSend = TestPackets.reliableUnordered(100);
+        final TestObjects.ReliableUnordered toSend = TestObjects.reliableUnordered(100);
         final int packetCount = 500;
         final int clientCount = 4;
 //        final int clientCount = 2 + new Random().nextInt(4);

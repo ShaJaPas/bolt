@@ -11,7 +11,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
 
 /**
  * Created by keen on 24/03/16.
@@ -45,7 +44,7 @@ public class TestClient {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
         if (init != null) init.accept(client);
-        TestPackets.registerAll(client.codecs());
+        TestObjects.registerAll(client.codecs());
 
         final Subscription subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())
