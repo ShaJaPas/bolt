@@ -201,7 +201,7 @@ public abstract class BoltSession {
     }
 
     public void setState(final SessionState state) {
-        LOG.info(toString() + " connection state CHANGED to <" + state + ">");
+        LOG.info("{} connection state CHANGED to [{}]", this, state);
         this.state = state;
     }
 

@@ -4,7 +4,6 @@ import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.KeepAlive;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

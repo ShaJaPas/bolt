@@ -64,7 +64,7 @@ public class ClientSession extends BoltSession {
                 }
             }
             cc.init();
-            LOG.info("Connected, " + n + " handshake packets sent");
+            LOG.info("Connected, {} handshake packets sent", n);
             subscriber.onCompleted();
         }).subscribeOn(Schedulers.io());
     }
@@ -74,7 +74,7 @@ public class ClientSession extends BoltSession {
                                     final Destination peer) {
         boolean readyToStart = false;
         if (getState() == HANDSHAKING) {
-            LOG.info("Received initial handshake response from " + peer + "\n" + handshake);
+            LOG.info("Received initial handshake response from {}\n{}", peer, handshake);
             if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
                 try {
                     // TODO validate parameters sent by peer
@@ -99,7 +99,7 @@ public class ClientSession extends BoltSession {
         }
         else if (getState() == HANDSHAKING2) {
             try {
-                LOG.info("Received confirmation handshake response from " + peer + "\n" + handshake);
+                LOG.info("Received confirmation handshake response from {}\n{}", peer, handshake);
                 // TODO validate parameters sent by peer
                 setState(READY);
                 readyToStart = true;

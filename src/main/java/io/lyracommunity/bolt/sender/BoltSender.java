@@ -7,11 +7,9 @@ import io.lyracommunity.bolt.packet.Ack;
 import io.lyracommunity.bolt.packet.Ack2;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.KeepAlive;
 import io.lyracommunity.bolt.packet.NegAck;
+import io.lyracommunity.bolt.packet.PacketType;
 import io.lyracommunity.bolt.receiver.BoltReceiver;
-import io.lyracommunity.bolt.sender.FlowWindow;
-import io.lyracommunity.bolt.sender.SenderLossList;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -215,13 +213,11 @@ public class BoltSender {
      */
     public void receive(final BoltPacket p) throws IOException {
         if (p.isControlPacket()) {
-            if (p instanceof Ack) {
-                final Ack ack = (Ack) p;
-                onAcknowledge(ack);
+            if (PacketType.ACK == p.getPacketType()) {
+                onAcknowledge((Ack) p);
             }
-            else if (p instanceof NegAck) {
-                final NegAck nak = (NegAck) p;
-                onNAKPacketReceived(nak);
+            else if (PacketType.NAK == p.getPacketType()) {
+                onNAKPacketReceived((NegAck) p);
             }
         }
     }
@@ -253,7 +249,7 @@ public class BoltSender {
         final CongestionControl cc = session.getCongestionControl();
         final long rtt = ack.getRoundTripTime();
         if (rtt > 0) {
-            long rttVar = ack.getRoundTripTimeVar();
+            final long rttVar = ack.getRoundTripTimeVar();
             cc.setRTT(rtt, rttVar);
             statistics.setRTT(rtt, rttVar);
         }
@@ -269,9 +265,7 @@ public class BoltSender {
         statistics.setCongestionWindowSize((long) cc.getCongestionWindowSize());
         // Need to remove all sequence numbers up the ACK number from the sendBuffer.
         boolean removed;
-        for (int s = lastAckReliabilitySequenceNumber;
-             SeqNum.compare16(s, ackNumber) < 0;
-             s = SeqNum.increment16(s)) {
+        for (int s = lastAckReliabilitySequenceNumber; SeqNum.compare16(s, ackNumber) < 0; s = SeqNum.increment16(s)) {
             synchronized (sendLock) {
                 removed = sendBuffer.remove(s) != null;
                 senderLossList.remove(s);
@@ -303,7 +297,6 @@ public class BoltSender {
             senderLossList.insert(i);
         }
         session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
-//        session.getSocket().getReceiver().resetEXPTimer();
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {
@@ -481,7 +474,7 @@ public class BoltSender {
      *
      * @throws InterruptedException
      */
-    public void waitForAck(int relSequenceNumber) throws InterruptedException {
+    public void waitForAck(final int relSequenceNumber) throws InterruptedException {
         while (!session.isShutdown() && !haveAcknowledgementFor(relSequenceNumber)) {
             ackLock.lock();
             try {
