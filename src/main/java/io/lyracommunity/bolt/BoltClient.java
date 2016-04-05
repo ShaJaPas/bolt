@@ -50,8 +50,8 @@ public class BoltClient implements Client {
                 endpointAndSession = Observable.merge(startEndPoint(), startSession(address, port))
                         .subscribe(subscriber::onNext, subscriber::onError, subscriber::onCompleted);
                 while (!subscriber.isUnsubscribed()) {
-                    if (clientSession != null && clientSession.getSocket() != null) {
-                        final DataPacket packet = clientSession.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
+                    if (clientSession != null) {
+                        final DataPacket packet = clientSession.pollReceiveBuffer(10, TimeUnit.MILLISECONDS);
 
                         if (packet != null) {
                             final Object decoded = codecs.decode(packet);
@@ -127,7 +127,7 @@ public class BoltClient implements Client {
      * @throws IOException
      */
     public void send(final DataPacket dataPacket) throws IOException {
-        clientSession.getSocket().doWrite(dataPacket);
+        clientSession.doWrite(dataPacket);
     }
 
     /**
@@ -137,7 +137,7 @@ public class BoltClient implements Client {
      */
     public void flush() throws BoltException {
         try {
-            clientSession.getSocket().flush();
+            clientSession.flush();
         }
         catch (InterruptedException | IllegalStateException e) {
             throw new BoltException(e);

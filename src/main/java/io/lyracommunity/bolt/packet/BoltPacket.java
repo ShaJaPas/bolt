@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.packet;
 
 
-import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.util.SeqNum;
 
 public interface BoltPacket extends Comparable<BoltPacket> {
@@ -25,11 +24,6 @@ public interface BoltPacket extends Comparable<BoltPacket> {
      * Get the binary encoded form of the packet.
      */
     byte[] getEncoded();
-
-    /**
-     * Returns true if this packet should be routed to the {@link BoltSender}.
-     */
-    boolean forSender();
 
     /**
      * Get the packet sequence number.

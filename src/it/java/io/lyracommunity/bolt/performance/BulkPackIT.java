@@ -28,8 +28,23 @@ public class BulkPackIT
 
 
     @Test
-    public void testBulkPackets() throws Exception {
+    public void testBulkPackets_randomData() throws Exception {
         doTest(true, TestData.getRandomData(SIZE));
+
+        assertEquals(PACKET_COUNT, received.get());
+    }
+
+    @Test
+    public void testBulkPackets_reliableOrdered() throws Exception {
+        doTest(true, TestPackets.reliableOrdered(SIZE));
+
+        assertEquals(PACKET_COUNT, received.get());
+    }
+
+    @Test
+    public void testBulkPackets_reliableUnordered() throws Exception {
+        doTest(true, TestPackets.reliableUnordered(SIZE));
+//        doTest(true, TestData.getRandomData(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
     }

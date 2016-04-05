@@ -45,10 +45,6 @@ public class Ack2 extends ControlPacket {
         ackSequenceNumber = PacketUtil.decode(data, 0);
     }
 
-    public boolean forSender() {
-        return false;
-    }
-
     @Override
     public byte[] encodeControlInformation() {
         return PacketUtil.encode(ackSequenceNumber);

@@ -18,9 +18,4 @@ public class KeepAlive extends ControlPacket {
         return null;
     }
 
-    @Override
-    public boolean forSender() {
-        return false;
-    }
-
 }

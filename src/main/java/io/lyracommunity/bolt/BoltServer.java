@@ -70,14 +70,12 @@ public class BoltServer implements Server {
 
     private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
         for (BoltSession session : serverEndpoint.getSessions()) {
-            if (session.getSocket() != null) {
-                final DataPacket packet = session.getSocket().getReceiveBuffer().poll(10, TimeUnit.MILLISECONDS);
+            final DataPacket packet = session.pollReceiveBuffer(10, TimeUnit.MILLISECONDS);
 
-                if (packet != null) {
-                    final Object decoded = codecs.decode(packet);
-                    if (decoded != null) {
-                        subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
-                    }
+            if (packet != null) {
+                final Object decoded = codecs.decode(packet);
+                if (decoded != null) {
+                    subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
                 }
             }
         }
@@ -106,7 +104,7 @@ public class BoltServer implements Server {
             if (session != null) {
                 if (data == null) data = codecs.encode(obj);
                 for (final DataPacket dp : data) {
-                    session.getSocket().doWrite(dp);
+                    session.doWrite(dp);
                 }
             }
         }

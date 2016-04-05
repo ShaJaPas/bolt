@@ -251,10 +251,6 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         return false;
     }
 
-    public boolean forSender() {
-        return false;
-    }
-
     public boolean isReliable() {
         return delivery.isReliable();
     }

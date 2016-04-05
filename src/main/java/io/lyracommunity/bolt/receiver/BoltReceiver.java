@@ -149,7 +149,7 @@ public class BoltReceiver {
                 final String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
                 Thread.currentThread().setName("Bolt-Receiver-" + s + Util.THREAD_INDEX.incrementAndGet());
 
-                while (session.getSocket() == null) Thread.sleep(100);
+                while (!session.isStarted()) Thread.sleep(100);
 
                 LOG.info("STARTING RECEIVER for {}", session);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
@@ -349,8 +349,8 @@ public class BoltReceiver {
      * @throws IOException if shutdown, stop or send of keep-alive fails.
      */
     private void processEXPEvent(final Subscriber<? super Object> subscriber) throws IOException {
-        if (session.getSocket() == null || !session.getSocket().isActive()) return;
-        final BoltSender sender = session.getSocket().getSender();
+        if (!session.isStarted()) return;
+        final BoltSender sender = session.getSender();
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
         if (isSessionExpired() && !subscriber.isUnsubscribed()) {
@@ -400,7 +400,7 @@ public class BoltReceiver {
             return;
         }
 
-        ReceiveBuffer.OfferResult OK = session.getSocket().haveNewData(dp);
+        ReceiveBuffer.OfferResult OK = session.haveNewData(dp);
         if (!OK.success) {
             if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
             LOG.info("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
@@ -544,11 +544,11 @@ public class BoltReceiver {
         endpoint.doSend(ka, session);
     }
 
-    public void resetEXPTimer() {
+    private void resetEXPTimer() {
         nextEXP = Util.getCurrentTime() + config.getExpTimerInterval();
     }
 
-    protected void resetEXPCount() {
+    private void resetEXPCount() {
         expCount = 1;
     }
 

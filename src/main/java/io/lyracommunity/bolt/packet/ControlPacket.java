@@ -185,10 +185,6 @@ public abstract class ControlPacket implements BoltPacket {
         return true;
     }
 
-    public boolean forSender() {
-        return true;
-    }
-
     public int getPacketSeqNumber() {
         return -1;
     }

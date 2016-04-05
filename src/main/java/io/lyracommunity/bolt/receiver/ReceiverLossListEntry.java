@@ -72,7 +72,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        ReceiverLossListEntry that = (ReceiverLossListEntry) o;
+        final ReceiverLossListEntry that = (ReceiverLossListEntry) o;
         return sequenceNumber == that.sequenceNumber;
     }
 

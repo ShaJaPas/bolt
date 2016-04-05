@@ -218,7 +218,7 @@ public class BoltCongestionControl implements CongestionControl {
         }
 
         // TODO make sure this is valid
-        long currentMaxRelSequenceNumber = session.getSocket().getSender().getCurrentReliabilitySequenceNumber();
+        long currentMaxRelSequenceNumber = session.getSender().getCurrentReliabilitySequenceNumber();
         // 2) If this NAK starts a new congestion epoch
         if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {
             // -increase inter-packet interval

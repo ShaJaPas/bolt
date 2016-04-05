@@ -104,7 +104,7 @@ public class ReceiveBuffer
      * elapses before an element is available.
      * @throws InterruptedException if interrupted while waiting
      */
-    public DataPacket poll(int timeout, TimeUnit unit) throws InterruptedException {
+    public DataPacket poll(final int timeout, TimeUnit unit) throws InterruptedException {
         lock.lockInterruptibly();
         long nanos = unit.toNanos(timeout);
 

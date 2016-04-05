@@ -34,19 +34,4 @@ public class Util {
         return 10000.0;
     }
 
-    /**
-     * Perform UDP hole punching to the specified client by sending
-     * a dummy packet. A local port will be chosen automatically.
-     *
-     * @param client - client address
-     * @return the local port that can now be accessed by the client
-     * @throws IOException
-     */
-    public static void doHolePunch(BoltEndPoint endpoint, InetAddress client, int clientPort) throws IOException {
-        DatagramPacket p = new DatagramPacket(new byte[1], 1);
-        p.setAddress(client);
-        p.setPort(clientPort);
-        endpoint.sendRaw(p);
-    }
-
 }

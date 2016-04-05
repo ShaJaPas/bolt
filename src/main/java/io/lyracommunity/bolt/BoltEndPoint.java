@@ -52,9 +52,9 @@ public class BoltEndPoint {
      * @param localAddress the local address to bind.
      * @param localPort    the port to bind to. If the port is zero, the system will pick an ephemeral port.
      * @throws SocketException      if for example if the port is already bound to.
-     * @throws UnknownHostException
+     * @throws UnknownHostException if the host could not be resolved.
      */
-    public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException, IOException {
+    public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
         this(new Config(localAddress, localPort));
     }
 
@@ -65,7 +65,7 @@ public class BoltEndPoint {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public BoltEndPoint(final Config config) throws UnknownHostException, SocketException, IOException {
+    public BoltEndPoint(final Config config) throws UnknownHostException, SocketException {
         this.config = config;
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
@@ -73,9 +73,9 @@ public class BoltEndPoint {
         configureSocket();
     }
 
-    protected void configureSocket() throws SocketException, IOException {
+    private void configureSocket() throws SocketException {
         // set a time out to avoid blocking in doReceive()
-        dgSocket.setSoTimeout(100_000);
+        dgSocket.setSoTimeout(50_000);
         // buffer size
         dgSocket.setReceiveBufferSize(128 * 1024);
         dgSocket.setReuseAddress(false);
@@ -101,7 +101,7 @@ public class BoltEndPoint {
     private void endSession(final Subscriber<? super Object> subscriber, final long destinationID, final String reason) {
         final BoltSession session = sessions.remove(destinationID);
         final Subscription sessionSub = sessionSubscriptions.remove(destinationID);
-        if (session != null) session.close();
+        if (session != null) session.cleanup();
         if (sessionSub != null) sessionSub.unsubscribe();
         if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
     }
@@ -124,16 +124,16 @@ public class BoltEndPoint {
         return dgSocket;
     }
 
-    public void addSession(final Long destinationID, final BoltSession session) {
+    void addSession(final Long destinationID, final BoltSession session) {
         LOG.info("Storing session [{}]", destinationID);
         sessions.put(destinationID, session);
     }
 
-    public BoltSession getSession(Long destinationID) {
+    BoltSession getSession(Long destinationID) {
         return sessions.get(destinationID);
     }
 
-    public Collection<BoltSession> getSessions() {
+    Collection<BoltSession> getSessions() {
         return sessions.values();
     }
 
@@ -145,7 +145,7 @@ public class BoltEndPoint {
      * <li>dispatches the Bolt packets according to their destination ID.
      * </ul>
      */
-    protected void doReceive(final Subscriber<? super Object> subscriber) {
+    private void doReceive(final Subscriber<? super Object> subscriber) {
         Thread.currentThread().setName("Bolt-Endpoint" + Util.THREAD_INDEX.incrementAndGet());
         LOG.info("BoltEndpoint started.");
         while (!subscriber.isUnsubscribed()) {
@@ -204,14 +204,14 @@ public class BoltEndPoint {
      * Called when a "connection handshake" packet was received and no
      * matching session yet exists.
      *
-     * @param packet
-     * @param peer
+     * @param packet the received handshake packet.
+     * @param peer   peer that sent the handshake.
      * @throws IOException
      * @throws InterruptedException
      */
-    protected synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
-                                                           final ConnectionHandshake packet, final Destination peer,
-                                                           final BoltSession existingSession) throws IOException, InterruptedException {
+    private synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
+                                                         final ConnectionHandshake packet, final Destination peer,
+                                                         final BoltSession existingSession) throws IOException, InterruptedException {
         final long destID = packet.getDestinationID();
         BoltSession session = existingSession;
         if (session == null) {
@@ -259,7 +259,7 @@ public class BoltEndPoint {
         return "BoltEndpoint port=" + port;
     }
 
-    public void sendRaw(DatagramPacket p) throws IOException {
+    void sendRaw(DatagramPacket p) throws IOException {
         dgSocket.send(p);
     }
 

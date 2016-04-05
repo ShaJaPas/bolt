@@ -4,11 +4,11 @@ import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ConnectionHandshake;
-import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.packet.Shutdown;
+import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
+import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +18,7 @@ import rx.Subscriber;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -121,17 +122,17 @@ public abstract class BoltSession {
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
 
     private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
-    protected final    BoltStatistics    statistics;
-    protected final    CongestionControl cc;
+    private final    BoltStatistics    statistics;
+    final    CongestionControl cc;
     /**
      * remote Bolt entity (address and socket ID)
      */
     protected final    Destination       destination;
-    protected final    int               mySocketID;
+    final    int               mySocketID;
     protected volatile SessionSocket     socket;
-    protected final    BoltEndPoint      endPoint;
+    final    BoltEndPoint      endPoint;
 
-    protected int receiveBufferSize = 64 * 32768;
+    private int receiveBufferSize = 64 * 32768;
     /**
      * Session cookie created during handshake.
      */
@@ -171,25 +172,46 @@ public abstract class BoltSession {
         return socket.start();
     }
 
-    public void close() {
+    public void cleanup() {
         try {
             setState(SessionState.SHUTDOWN);
-            if (getSocket() != null) getSocket().close();
+            if (socket != null) socket.close();
             if (endPoint.isOpen()) {
                 endPoint.doSend(new Shutdown(getDestination().getSocketID()), this);
             }
         }
         catch (IOException ex) {
-            LOG.warn("Could not close Session cleanly: {}", ex.getMessage());
+            LOG.warn("Could not cleanup Session cleanly: {}", ex.getMessage());
         }
     }
 
-    public SessionSocket getSocket() {
-        return socket;
+    public void doWrite(final DataPacket dataPacket) throws IOException {
+        socket.doWrite(dataPacket);
     }
 
-    public void setSocket(SessionSocket socket) {
-        this.socket = socket;
+    public void flush() throws InterruptedException, IllegalStateException {
+        socket.flush();
+    }
+
+    public DataPacket pollReceiveBuffer(final int timeout, final TimeUnit unit) throws InterruptedException {
+        return (socket == null) ? null : socket.getReceiveBuffer().poll(timeout, unit);
+    }
+
+    public ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
+        return socket.haveNewData(packet);
+    }
+
+    public boolean isStarted() {
+        return (socket != null) && socket.isActive();
+    }
+
+
+    public BoltSender getSender() {
+        return socket.getSender();
+    }
+
+    public int getNumChunks() {
+        return socket.getReceiveBuffer().getNumChunks();
     }
 
     public CongestionControl getCongestionControl() {
