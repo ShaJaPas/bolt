@@ -6,7 +6,7 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestControlPacketType {
+public class PacketTypeTest {
 
     @Test
     public void testSequenceNumber1() {
@@ -38,5 +38,18 @@ public class TestControlPacketType {
         final long distinctTypeCount = Stream.of(PacketType.values()).map(PacketType::getTypeId).distinct().count();
         assertEquals(typeCount, distinctTypeCount);
     }
+
+    private static class DummyControlPacket extends ControlPacket {
+
+        public DummyControlPacket() {
+
+        }
+
+        @Override
+        public byte[] encodeControlInformation() {
+            return null;
+        }
+    }
+
 
 }

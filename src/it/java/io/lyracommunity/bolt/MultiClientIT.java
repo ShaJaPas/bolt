@@ -44,11 +44,11 @@ public class MultiClientIT {
 
         if (!awaitingConnectionReady.await(5, TimeUnit.SECONDS)) throw new RuntimeException("Timed out");
 
-        clients.forEach(TestClient::cleanup);
+        for (TestClient c : clients) c.close();
 
         while (errors.isEmpty() && serverDisconnectedEvents.get() < numClients) Thread.sleep(10);
 
-        srv.printStatistics().cleanup();
+        srv.close();
 
         assertEquals(numClients, serverDisconnectedEvents.get());
     }
@@ -77,20 +77,20 @@ public class MultiClientIT {
         while (done.get() && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
 
-        clients.forEach(c -> c.printStatistics().cleanup());
-        srv.printStatistics().cleanup();
+        for (AutoCloseable c : clients) c.close();
+        srv.close();
 
         assertEquals(packetCount * clientCount, received.get());
     }
 
     @Test
     public void testBroadcastToEachClient() throws Throwable {
-
+        // TODO implement test
     }
 
     @Test
     public void testClientsReactToServerShutdown() throws Throwable {
-
+        // TODO implement test
     }
 
     private <T> TestServer createObjectServer(final boolean sessionExpirable, final T toSend) throws Exception {

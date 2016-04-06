@@ -20,31 +20,31 @@ public class ClientSessionTest
     @Test
     public void testConnect() throws Exception
     {
-
+        // TODO implement test
     }
 
     @Test
     public void testReceiveHandshake() throws Exception
     {
-
+        // TODO implement test
     }
 
     @Test
     public void testReceived() throws Exception
     {
-
+        // TODO implement test
     }
 
     @Test
     public void testSendInitialHandShake() throws Exception
     {
-
+        // TODO implement test
     }
 
     @Test
     public void testSendSecondHandshake() throws Exception
     {
-
+        // TODO implement test
     }
 
 }

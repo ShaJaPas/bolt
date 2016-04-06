@@ -20,12 +20,12 @@ public class ServerSessionTest
     @Test
     public void testReceiveHandshake() throws Exception
     {
-
+        // TODO implement test
     }
 
     @Test
     public void testReceived() throws Exception
     {
-
+        // TODO implement test
     }
 }

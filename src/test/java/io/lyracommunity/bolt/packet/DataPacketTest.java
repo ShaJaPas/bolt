@@ -7,7 +7,8 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestDataPacket {
+public class DataPacketTest
+{
 
 
     private DataPacket createRandomPacket() {

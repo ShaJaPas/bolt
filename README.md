@@ -13,6 +13,7 @@ Bolt UDP
 - [X] Simulated latency
 - [X] Simulated jitter
 - [ ] Simulated bandwidth
+- [ ] Handle duplicate ConnectionReady events
 - [ ] Multi-client
 - [X] Distinguish unit/integration tests and use both surefire/failsafe
 - [ ] IPv6 support

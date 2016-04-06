@@ -55,7 +55,7 @@ public class UdpEndpointIT
         assertEquals(numPackets, sent);
         assertEquals(numPackets, received);
 
-        cli.cleanup();
+        cli.close();
     }
 
     /**

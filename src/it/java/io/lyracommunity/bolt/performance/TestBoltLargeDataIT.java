@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.security.MessageDigest;
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
@@ -105,8 +106,8 @@ public class TestBoltLargeDataIT
 
         assertEquals(md5Sent, md5Received);
 
-        cli.printStatistics().cleanup();
-        srv.printStatistics().cleanup();
+
+        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
 
 //        // store stat history to csv file
 //        client.getStatistics().writeParameterHistory(File.createTempFile("/boltstats-", ".csv"));

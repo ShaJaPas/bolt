@@ -5,6 +5,7 @@ import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,12 +74,12 @@ public class DeliveryReliabilityIT
 
     @Test
     public void testReliableWithPacketLoss() throws Throwable {
-
+        // TODO implement test
     }
 
     @Test
     public void testSendingReliablePacketsWithSequenceNumberOverflow() {
-
+        // TODO implement test
     }
 
     private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
@@ -106,8 +107,7 @@ public class DeliveryReliabilityIT
                 deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));
         assertTrue(deliveryCount.get() <= maxExpectedDeliveryCount && deliveryCount.get() >= minExpectedDeliveryCount);
 
-        srv.cleanup();
-        cli.cleanup();
+        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
     }
 
 }

@@ -145,7 +145,7 @@ public class Config
         return simulatedLatency;
     }
 
-    public void setSimulatedLatency(int simulatedLatency) {
+    public void setSimulatedLatency(final int simulatedLatency) {
         this.simulatedLatency = simulatedLatency;
     }
 

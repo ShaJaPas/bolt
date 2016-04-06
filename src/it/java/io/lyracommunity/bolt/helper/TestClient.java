@@ -15,14 +15,18 @@ import java.util.function.Consumer;
 /**
  * Created by keen on 24/03/16.
  */
-public class TestClient {
+public class TestClient implements AutoCloseable {
 
-    public final BoltClient client;
-    public final Subscription subscription;
+    public final  BoltClient                client;
+    public final  Subscription              subscription;
+    private final TestServer.PacketReceiver receivedByType;
+    private final List<Throwable>           errors;
 
-    public TestClient(BoltClient client, Subscription subscription) {
+    public TestClient(BoltClient client, Subscription subscription, TestServer.PacketReceiver receivedByType, List<Throwable> errors) {
         this.client = client;
         this.subscription = subscription;
+        this.receivedByType = receivedByType;
+        this.errors = errors;
     }
 
     public TestClient printStatistics() {
@@ -30,8 +34,13 @@ public class TestClient {
         return this;
     }
 
-    public void cleanup() {
-        subscription.unsubscribe();
+    public List<Throwable> getErrors()
+    {
+        return errors;
+    }
+
+    public int getTotalReceived(final Class clazz) {
+        return receivedByType.getTotalReceived(clazz);
     }
 
     public static TestClient runClient(final int serverPort, final Action1<BoltClient> onReady,
@@ -46,13 +55,23 @@ public class TestClient {
         if (init != null) init.accept(client);
         TestObjects.registerAll(client.codecs());
 
+        final TestServer.PacketReceiver packetReceiver = new TestServer.PacketReceiver();
+        final List<Throwable> errors = new ArrayList<>();
+
         final Subscription subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())
-                .ofType(ConnectionReady.class)
                 .observeOn(Schedulers.computation())
-                .subscribe(__ -> onReady.call(client), onError);
+                .subscribe(
+                        x -> {
+                            packetReceiver.receive(x);
+                            if (onReady != null && x instanceof ConnectionReady) onReady.call(client);
+                        },
+                        ex -> {
+                            errors.add(ex);
+                            if (onError != null) onError.call(ex);
+                        });
 
-        return new TestClient(client, subscription);
+        return new TestClient(client, subscription, packetReceiver, errors);
     }
 
     public static List<TestClient> runClients(final int clientCount, final int serverPort, final Action1<BoltClient> onReady,
@@ -63,6 +82,13 @@ public class TestClient {
             clients.add(runClient(serverPort, onReady, onError, init));
         }
         return clients;
+    }
+
+    @Override
+    public void close() throws Exception
+    {
+        printStatistics();
+        subscription.unsubscribe();
     }
 
 }

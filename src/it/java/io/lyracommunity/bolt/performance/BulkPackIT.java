@@ -6,6 +6,7 @@ import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -83,8 +84,7 @@ public class BulkPackIT
         while (done.get() && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
 
-        cli.printStatistics().cleanup();
-        srv.printStatistics().cleanup();
+        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
     }
 
 }

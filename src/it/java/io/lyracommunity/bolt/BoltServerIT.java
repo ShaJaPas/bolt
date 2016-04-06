@@ -6,6 +6,7 @@ import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -84,8 +85,7 @@ public class BoltServerIT
         assertEquals(N, total);
         assertEquals(md5_sent, md5_received);
 
-        server.cleanup();
-        client.cleanup();
+        for (AutoCloseable c : Arrays.asList(server, client)) c.close();
     }
 
     private TestServer runServer() throws Exception {

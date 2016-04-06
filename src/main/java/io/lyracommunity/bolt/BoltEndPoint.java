@@ -2,7 +2,11 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ConnectionHandshake;
+import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.PacketFactory;
+import io.lyracommunity.bolt.packet.PacketType;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
@@ -15,7 +19,12 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
@@ -130,7 +139,7 @@ public class BoltEndPoint {
         sessions.put(destinationID, session);
     }
 
-    BoltSession getSession(Long destinationID) {
+    BoltSession getSession(final Long destinationID) {
         return sessions.get(destinationID);
     }
 
@@ -189,11 +198,10 @@ public class BoltEndPoint {
 
     private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
         final long destID = packet.getDestinationID();
-        final BoltSession session = sessions.get(destID);
+        final BoltSession session = getSession(destID);
 
         if (PacketType.HANDSHAKE == packet.getPacketType()) {
-            final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
-            if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
+            connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
         }
         else if (session != null) {
             if (PacketType.SHUTDOWN == packet.getPacketType()) {
@@ -217,6 +225,7 @@ public class BoltEndPoint {
      * @param peer   peer that sent the handshake.
      * @throws IOException
      * @throws InterruptedException
+     * @return true if connection is ready to start, otherwise false.
      */
     private synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
                                                          final ConnectionHandshake packet, final Destination peer,
@@ -248,6 +257,7 @@ public class BoltEndPoint {
                     ex -> endSession(subscriber, destID, ex.getMessage()),
                     () -> endSession(subscriber, destID, "Session ended successfully"));
             sessionSubscriptions.put(destID, sessionSubscription);
+            subscriber.onNext(new ConnectionReady(session));
         }
         return session;
     }

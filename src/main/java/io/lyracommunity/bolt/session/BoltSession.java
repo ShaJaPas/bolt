@@ -132,7 +132,8 @@ public abstract class BoltSession {
     protected volatile SessionSocket     socket;
     final    BoltEndPoint      endPoint;
 
-    private int receiveBufferSize = 64 * 32768;
+    private final int receiveBufferSize = 64 * 32768;
+
     /**
      * Session cookie created during handshake.
      */

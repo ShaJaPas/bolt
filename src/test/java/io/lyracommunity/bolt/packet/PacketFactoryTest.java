@@ -11,7 +11,8 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
-public class TestPacketFactory {
+public class PacketFactoryTest
+{
 
     private static void print(byte[] arr) {
         System.out.print("[");
@@ -121,8 +122,6 @@ public class TestPacketFactory {
         BoltPacket p = PacketFactory.createPacket(p1_data);
         NegAck p2 = (NegAck) p;
         assertEquals(p1, p2);
-
-
     }
 
     @Test
