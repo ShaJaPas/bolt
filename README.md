@@ -10,8 +10,8 @@ Bolt UDP
 - [ ] Retransmit strategy (aggressive, on NACK)
 - [X] Trim control and data packets
 - [X] Simulated packet-loss
-- [ ] Simulated latency
-- [ ] Simulated jitter
+- [X] Simulated latency
+- [X] Simulated jitter
 - [ ] Simulated bandwidth
 - [ ] Multi-client
 - [X] Distinguish unit/integration tests and use both surefire/failsafe
