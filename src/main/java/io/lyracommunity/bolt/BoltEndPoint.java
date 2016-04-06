@@ -5,6 +5,7 @@ import io.lyracommunity.bolt.event.PeerDisconnected;
 import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,6 +149,10 @@ public class BoltEndPoint {
     private void doReceive(final Subscriber<? super Object> subscriber) {
         Thread.currentThread().setName("Bolt-Endpoint" + Util.THREAD_INDEX.incrementAndGet());
         LOG.info("BoltEndpoint started.");
+
+        final NetworkQoSSimulationPipeline qosSimulationPipeline = new NetworkQoSSimulationPipeline(config,
+                (peer, pkt) -> processPacket(subscriber, peer, pkt));
+
         while (!subscriber.isUnsubscribed()) {
             try {
                 // Will block until a packet is received or timeout has expired.
@@ -159,28 +164,10 @@ public class BoltEndPoint {
 
                 if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
 
-                final long destID = packet.getDestinationID();
-                final BoltSession session = sessions.get(destID);
+                qosSimulationPipeline.offer(packet, peer);
 
-                final boolean isConnectionHandshake = PacketType.CONNECTION_HANDSHAKE == packet.getPacketType();
-                if (isConnectionHandshake) {
-                    final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
-                    if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
-                }
-                else if (session != null) {
-                    if (PacketType.SHUTDOWN == packet.getPacketType()) {
-                        endSession(subscriber, packet.getDestinationID(), "Shutdown received");
-                    }
-                    // Dispatch to existing session.
-                    else {
-                        session.received(packet, peer, subscriber);
-                    }
-                }
-                else {
-                    LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getClass().getName());
-                }
             }
-            catch (InterruptedException | AsynchronousCloseException ex) {
+            catch (AsynchronousCloseException ex) {
                 LOG.info("Endpoint interrupted.");
             }
             catch (SocketTimeoutException ex) {
@@ -200,6 +187,28 @@ public class BoltEndPoint {
         stop(subscriber);
     }
 
+    private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
+        final long destID = packet.getDestinationID();
+        final BoltSession session = sessions.get(destID);
+
+        if (PacketType.HANDSHAKE == packet.getPacketType()) {
+            final BoltSession result = connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
+            if (result.isReady()) subscriber.onNext(new ConnectionReady(result));
+        }
+        else if (session != null) {
+            if (PacketType.SHUTDOWN == packet.getPacketType()) {
+                endSession(subscriber, packet.getDestinationID(), "Shutdown received");
+            }
+            // Dispatch to existing session.
+            else {
+                session.received(packet, subscriber);
+            }
+        }
+        else {
+            LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
+        }
+    }
+
     /**
      * Called when a "connection handshake" packet was received and no
      * matching session yet exists.
@@ -211,25 +220,24 @@ public class BoltEndPoint {
      */
     private synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
                                                          final ConnectionHandshake packet, final Destination peer,
-                                                         final BoltSession existingSession) throws IOException, InterruptedException {
+                                                         final BoltSession existingSession) {
         final long destID = packet.getDestinationID();
         BoltSession session = existingSession;
         if (session == null) {
-            final Destination p = new Destination(peer.getAddress(), peer.getPort());
             session = sessionsBeingConnected.get(peer);
             // New session
             if (session == null) {
                 session = new ServerSession(peer, this);
-                sessionsBeingConnected.put(p, session);
+                sessionsBeingConnected.put(peer, session);
                 sessions.put(session.getSocketID(), session);
             }
             // Confirmation handshake
             else if (session.getSocketID() == destID) {
-                sessionsBeingConnected.remove(p);
+                sessionsBeingConnected.remove(peer);
                 addSession(destID, session);
             }
             else if (destID > 0) {  // Ignore dest == 0, as it must be a duplicate client initial handshake packet.
-                throw new IOException("Destination ID sent by client does not match");
+                subscriber.onError(new IOException("Destination ID sent by client does not match"));
             }
             Integer peerSocketID = packet.getSocketID();
             peer.setSocketID(peerSocketID);

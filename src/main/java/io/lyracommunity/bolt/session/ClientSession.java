@@ -114,7 +114,7 @@ public class ClientSession extends BoltSession {
     }
 
     @Override
-    public void received(BoltPacket packet, Destination peer, Subscriber subscriber) {
+    public void received(final BoltPacket packet, final Subscriber subscriber) {
         if (getState() == READY) {
             socket.setActive(true);
             try {

@@ -18,7 +18,7 @@ public class TestControlPacketType {
 
     @Test
     public void testControlPacketTypes() {
-        PacketType t = PacketType.CONNECTION_HANDSHAKE;
+        PacketType t = PacketType.HANDSHAKE;
         assertEquals(0, t.getTypeId());
         t = PacketType.KEEP_ALIVE;
         assertEquals(1, t.getTypeId());

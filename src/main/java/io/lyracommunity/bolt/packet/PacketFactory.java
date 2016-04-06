@@ -40,7 +40,7 @@ public class PacketFactory {
         byte[] controlInformation = new byte[length - 12];
         System.arraycopy(encodedData, 12, controlInformation, 0, controlInformation.length);
 
-        if (PacketType.CONNECTION_HANDSHAKE.getTypeId() == pktType) {
+        if (PacketType.HANDSHAKE.getTypeId() == pktType) {
             packet = new ConnectionHandshake(controlInformation);
         }
         else if (PacketType.KEEP_ALIVE.getTypeId() == pktType) {

@@ -43,8 +43,8 @@ public class UdpEndpointIT
         while (!done) {
             Thread.sleep(10);
             List<BoltSession> sessions = new ArrayList<>(server.getSessions());
-            Integer s = sessions.isEmpty() ? null : sessions.get(0).getNumChunks();
-            done = (s != null && s >= numPackets);
+            BoltSession s = sessions.isEmpty() ? null : sessions.get(0);
+            done = (s != null && s.isStarted() && s.getNumChunks() >= numPackets);
         }
 
         System.out.println(cli.client.getStatistics());

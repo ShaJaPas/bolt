@@ -161,12 +161,12 @@ public abstract class BoltSession {
         this.cc = new BoltCongestionControl(this);
     }
 
-    public abstract void received(BoltPacket packet, Destination peer, Subscriber subscriber);
+    public abstract void received(BoltPacket packet, Subscriber subscriber);
 
     public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
 
 
-    public Observable<?> start() throws IOException, IllegalStateException {
+    public Observable<?> start() throws IllegalStateException {
         if (socket != null) throw new IllegalStateException();
         socket = new SessionSocket(endPoint, this);
         return socket.start();

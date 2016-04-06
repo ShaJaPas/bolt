@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 public enum PacketType {
 
     DATA(-1),
-    CONNECTION_HANDSHAKE(0),
+    HANDSHAKE(0),
     KEEP_ALIVE(1),
     ACK(2),
     NAK(3),

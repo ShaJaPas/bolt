@@ -109,9 +109,6 @@ public class BoltReceiver {
     private long nextNAK;
     private long nextEXP;
 
-    /** Number of total received data packets. */
-    private int n = 0;
-
     /** Number of reliable received data packets. */
     private int reliableN = 0;
 
@@ -392,13 +389,6 @@ public class BoltReceiver {
     }
 
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
-        n++;
-
-        if (isArtificialDrop()) {
-            statistics.incNumberOfArtificialDrops();
-            LOG.debug("Artificial packet loss, dropping packet");
-            return;
-        }
 
         ReceiveBuffer.OfferResult OK = session.haveNewData(dp);
         if (!OK.success) {
@@ -550,11 +540,6 @@ public class BoltReceiver {
 
     private void resetEXPCount() {
         expCount = 1;
-    }
-
-    private boolean isArtificialDrop() {
-        final float dropRate = config.getPacketDropRate();
-        return dropRate > 0 && (n % dropRate < 1f);
     }
 
     public String toString() {

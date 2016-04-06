@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import rx.Subscriber;
 
 import java.io.IOException;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.text.MessageFormat;
 
 import static io.lyracommunity.bolt.session.BoltSession.SessionState.*;
@@ -26,7 +24,7 @@ public class ServerSession extends BoltSession {
 
     private ConnectionHandshake finalConnectionHandshake;
 
-    public ServerSession(final Destination peer, final BoltEndPoint endPoint) throws SocketException, UnknownHostException {
+    public ServerSession(final Destination peer, final BoltEndPoint endPoint) {
         super(endPoint, MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()), peer);
         LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
     }
@@ -80,7 +78,7 @@ public class ServerSession extends BoltSession {
     }
 
     @Override
-    public void received(final BoltPacket packet, final Destination peer, final Subscriber subscriber) {
+    public void received(final BoltPacket packet, final Subscriber subscriber) {
 
         if (getState() == READY) {
             socket.setActive(true);

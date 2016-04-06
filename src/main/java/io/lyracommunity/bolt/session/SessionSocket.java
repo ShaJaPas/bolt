@@ -31,11 +31,12 @@ public class SessionSocket
     private final ReceiveBuffer receiveBuffer;
 
     /**
-     * @param endpoint
-     * @param session
-     * @throws SocketException, UnknownHostException
+     * Create a new session socket.
+     *
+     * @param endpoint the endpoint.
+     * @param session the owning session.
      */
-    SessionSocket(final BoltEndPoint endpoint, final BoltSession session) throws SocketException, UnknownHostException {
+    SessionSocket(final BoltEndPoint endpoint, final BoltSession session) {
         this.session = session;
         this.receiver = new BoltReceiver(session, endpoint, endpoint.getConfig());
         this.sender = new BoltSender(session, endpoint);
