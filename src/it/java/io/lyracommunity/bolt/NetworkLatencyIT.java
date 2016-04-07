@@ -86,7 +86,7 @@ public class NetworkLatencyIT
         System.out.println("Receive took " + millisTaken + " ms.");
 
         assertEquals(NUM_PACKETS, server.getTotalReceived(ReliableOrdered.class));
-        assertTrue(millisTaken > latencyInMillis);
+        assertTrue(latencyInMillis <= millisTaken);
 
         for (AutoCloseable c : Arrays.asList(server, client)) c.close();
     }

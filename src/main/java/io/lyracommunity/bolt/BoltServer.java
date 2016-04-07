@@ -86,20 +86,20 @@ public class BoltServer implements Server {
     }
 
     public void sendToAll(final Object obj) throws IOException {
-        final List<Long> ids = serverEndpoint.getSessions().stream()
+        final List<Integer> ids = serverEndpoint.getSessions().stream()
                 .map(BoltSession::getSocketID)
                 .collect(Collectors.toList());
         send(obj, ids);
     }
 
     @Override
-    public void send(final Object obj, final long destID) throws IOException {
+    public void send(final Object obj, final int destID) throws IOException {
         send(obj, Collections.singletonList(destID));
     }
 
-    public void send(final Object obj, final List<Long> destIDs) throws IOException {
+    public void send(final Object obj, final List<Integer> destIDs) throws IOException {
         Collection<DataPacket> data = null;
-        for (final long destID : destIDs) {
+        for (final Integer destID : destIDs) {
             final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
             if (session != null) {
                 if (data == null) data = codecs.encode(obj);

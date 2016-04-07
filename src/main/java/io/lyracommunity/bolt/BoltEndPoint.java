@@ -2,7 +2,11 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ConnectionHandshake;
+import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.PacketFactory;
+import io.lyracommunity.bolt.packet.PacketType;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.session.SessionState;
@@ -16,7 +20,12 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
@@ -42,11 +51,11 @@ public class BoltEndPoint {
     /**
      * Active sessions keyed by socket ID.
      */
-    private final Map<Long, BoltSession> sessions = new ConcurrentHashMap<>();
+    private final Map<Integer, BoltSession> sessions = new ConcurrentHashMap<>();
 
     private final Map<Destination, BoltSession> sessionsBeingConnected = new ConcurrentHashMap<>();
 
-    private final Map<Long, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
+    private final Map<Integer, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
 
     /**
      * Bind to the given address and port
@@ -92,7 +101,7 @@ public class BoltEndPoint {
 
     void stop(final Subscriber<? super Object> subscriber) {
         sessionsBeingConnected.clear();
-        final Set<Long> destIDs = Stream.concat(sessions.keySet().stream(), sessionSubscriptions.keySet().stream())
+        final Set<Integer> destIDs = Stream.concat(sessions.keySet().stream(), sessionSubscriptions.keySet().stream())
                 .collect(Collectors.toSet());
         destIDs.forEach(destID -> endSession(subscriber, destID, "Endpoint is closing."));
         sessions.clear();
@@ -100,7 +109,7 @@ public class BoltEndPoint {
         dgSocket.close();
     }
 
-    private void endSession(final Subscriber<? super Object> subscriber, final long destinationID, final String reason) {
+    private void endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
         final BoltSession session = sessions.remove(destinationID);
         final Subscription sessionSub = sessionSubscriptions.remove(destinationID);
         if (session != null) session.cleanup();
@@ -126,12 +135,12 @@ public class BoltEndPoint {
         return dgSocket;
     }
 
-    void addSession(final Long destinationID, final BoltSession session) {
+    void addSession(final Integer destinationID, final BoltSession session) {
         LOG.info("Storing session [{}]", destinationID);
         sessions.put(destinationID, session);
     }
 
-    BoltSession getSession(final Long destinationID) {
+    BoltSession getSession(final Integer destinationID) {
         return sessions.get(destinationID);
     }
 
@@ -189,7 +198,7 @@ public class BoltEndPoint {
     }
 
     private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
-        final long destID = packet.getDestinationID();
+        final int destID = packet.getDestinationID();
         final BoltSession session = getSession(destID);
 
         if (PacketType.HANDSHAKE == packet.getPacketType()) {
@@ -222,7 +231,7 @@ public class BoltEndPoint {
     private synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
                                                          final ConnectionHandshake packet, final Destination peer,
                                                          final BoltSession existingSession) {
-        final long destID = packet.getDestinationID();
+        final int destID = packet.getDestinationID();
         BoltSession session = existingSession;
         if (session == null) {
             session = sessionsBeingConnected.get(peer);

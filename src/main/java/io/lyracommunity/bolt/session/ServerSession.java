@@ -81,10 +81,10 @@ public class ServerSession extends BoltSession {
     public void received(final BoltPacket packet, final Subscriber subscriber) {
 
         if (getStatus() == READY) {
-            socket.setActive(true);
+            state.setActive(true);
             try {
-                socket.getSender().receive(packet);
-                socket.getReceiver().receive(packet);
+                sender.receive(packet);
+                receiver.receive(packet);
             }
             catch (Exception ex) {
                 // Invalidate session
@@ -125,15 +125,15 @@ public class ServerSession extends BoltSession {
     private void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
         // Compare the packet size and choose minimum.
         final long clientBufferSize = handshake.getPacketSize();
-        final long myBufferSize = getDatagramSize();
+        final long myBufferSize = state.getDatagramSize();
         final long bufferSize = Math.min(clientBufferSize, myBufferSize);
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         state.setInitialSequenceNumber(initialSequenceNumber);
-        setDatagramSize((int) bufferSize);
+        state.setDatagramSize((int) bufferSize);
         state.setSessionCookie(SeqNum.randomInt());
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                handshake.getMaxFlowWndSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+                handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending reply {}", responseHandshake);
         endPoint.doSend(responseHandshake, state);
     }
@@ -143,14 +143,14 @@ public class ServerSession extends BoltSession {
         if (finalConnectionHandshake == null) {
             // Compare the packet size and choose minimum
             final long clientBufferSize = handshake.getPacketSize();
-            final long myBufferSize = getDatagramSize();
+            final long myBufferSize = state.getDatagramSize();
             final long bufferSize = Math.min(clientBufferSize, myBufferSize);
             final int initialSequenceNumber = handshake.getInitialSeqNo();
             state.setInitialSequenceNumber(initialSequenceNumber);
-            setDatagramSize((int) bufferSize);
+            state.setDatagramSize((int) bufferSize);
 
             finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                    handshake.getMaxFlowWndSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+                    handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         }
         LOG.info("Sending final handshake ack {}", finalConnectionHandshake);
         endPoint.doSend(finalConnectionHandshake, state);

@@ -1,10 +1,14 @@
 package io.lyracommunity.bolt.receiver;
 
+import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.session.SessionStatus;
 import org.junit.After;
 import org.junit.Assert;
@@ -45,12 +49,15 @@ public class BoltReceiverTest
         final BoltEndPoint endpoint = new BoltEndPoint(config);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), 65321);
         final BoltSession session = new ServerSession(peer, endpoint);
+        final SessionState sessionState = new SessionState(peer, "Server");
+        final CongestionControl cc = new BoltCongestionControl(sessionState);
+        final BoltSender sender = new BoltSender(sessionState, endpoint, cc);
         session.setStatus(SessionStatus.READY);
-        receiver = new BoltReceiver(session, endpoint, config);
+        receiver = new BoltReceiver(sessionState, endpoint, sender, config);
         events = new ArrayList<>();
         errors = new ArrayList<>();
         completed = new AtomicBoolean(false);
-        subscription = receiver.start().subscribeOn(Schedulers.io()).observeOn(Schedulers.computation())
+        subscription = receiver.start("ServerSession").subscribeOn(Schedulers.io()).observeOn(Schedulers.computation())
                 .subscribe(events::add, errors::add, () -> completed.set(true));
     }
 

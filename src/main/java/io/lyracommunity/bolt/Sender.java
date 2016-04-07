@@ -8,7 +8,7 @@ import java.io.IOException;
 public interface Sender {
 
 
-    void send(Object obj, long destId) throws IOException;
+    void send(Object obj, int destId) throws IOException;
 
 
 }

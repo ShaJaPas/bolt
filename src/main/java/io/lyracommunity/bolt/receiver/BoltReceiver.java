@@ -47,6 +47,7 @@ public class BoltReceiver {
     private final BoltEndPoint endpoint;
     private final SessionState sessionState;
     private final BoltStatistics statistics;
+    private final BoltSender     sender;
 
     /**
      * Record seqNo of detected lost data and latest feedback time.
@@ -148,19 +149,23 @@ public class BoltReceiver {
 
     private volatile int ackSequenceNumber = 0;
 
+    final ReceiveBuffer receiveBuffer;
+
     /**
      * Create a receiver with a valid {@link BoltSession}.
      *
      * @param sessionState the owning session state.
      * @param endpoint     the network endpoint.
+     * @param sender       the matching sender.
      * @param config       bolt configuration.
      */
-    public BoltReceiver(final SessionState sessionState, final BoltEndPoint endpoint, final Config config) {
-        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
+    public BoltReceiver(final SessionState sessionState, final BoltEndPoint endpoint, final BoltSender sender, final Config config) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
+        this.sender = sender;
+        this.config = config;
         this.sessionUpSince = System.currentTimeMillis();
-        this.statistics = session.getStatistics();
+        this.statistics = sessionState.getStatistics();
         this.ackHistoryWindow = new AckHistoryWindow(16);
         this.packetHistoryWindow = new PacketHistoryWindow(16);
         this.receiverLossList = new ReceiverLossList();
@@ -168,20 +173,21 @@ public class BoltReceiver {
         this.largestReceivedRelSeqNumber = 0;
         this.bufferSize = sessionState.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * sessionState.getFlowWindowSize());
-        this.config = config;
+        this.receiveBuffer = new ReceiveBuffer(2 * sessionState.getFlowWindowSize());
     }
 
     /**
      * Starts the sender algorithm.
      */
     public Observable<?> start(final String threadSuffix) {
+        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         return Observable.create(subscriber -> {
             try {
                 Thread.currentThread().setName("Bolt-Receiver-" + threadSuffix);
 
-                while (!session.isStarted()) Thread.sleep(100);
+                while (!sessionState.isActive()) Thread.sleep(100);
 
-                LOG.info("STARTING RECEIVER for {}", session);
+                LOG.info("STARTING RECEIVER for {}", sessionState);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * config.getExpTimerInterval();
@@ -196,9 +202,13 @@ public class BoltReceiver {
                 LOG.error("Unexpected receiver exception", ex);
                 subscriber.onError(ex);
             }
-            LOG.info("STOPPING RECEIVER for {}", session);
+            LOG.info("STOPPING RECEIVER for {}", sessionState);
             subscriber.onCompleted();
         });
+    }
+
+    public DataPacket pollReceiveBuffer(final int timeout, final TimeUnit unit) throws InterruptedException {
+        return receiveBuffer.poll(timeout, unit);
     }
 
     /**
@@ -379,13 +389,12 @@ public class BoltReceiver {
      * @throws IOException if shutdown, stop or send of keep-alive fails.
      */
     private void processEXPEvent(final Subscriber<? super Object> subscriber) throws IOException {
-        if (!session.isStarted()) return;
-        final BoltSender sender = session.getSender();
+        if (!sessionState.isActive()) return;
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
         if (isSessionExpired() && !subscriber.isUnsubscribed()) {
             subscriber.onError(new IllegalStateException("Session expired."));
-            LOG.info("Session {} expired.", session);
+            LOG.info("Session {} expired.", sessionState);
         }
         else if (!sender.haveLostPackets()) {
             sendKeepAlive();
@@ -418,12 +427,11 @@ public class BoltReceiver {
                 onAck2PacketReceived(ack2);
             }
         }
-
     }
 
     private void onDataPacketReceived(final DataPacket dp) throws IOException {
 
-        ReceiveBuffer.OfferResult OK = session.haveNewData(dp);
+        ReceiveBuffer.OfferResult OK = receiveBuffer.offer(dp);
         if (!OK.success) {
             if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
             LOG.info("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
@@ -529,7 +537,7 @@ public class BoltReceiver {
     // Builds a "light" Acknowledgement
     private Ack buildLightAcknowledgement(final int ackNumber) {
         return Ack.buildLightAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar, bufferSize,
-                session.getDestination().getSocketID());
+                sessionState.getDestinationSocketID());
     }
 
     /**
@@ -577,7 +585,7 @@ public class BoltReceiver {
     }
 
     public String toString() {
-        return "BoltReceiver " + session + "\n" + "LossList: " + receiverLossList;
+        return "BoltReceiver " + sessionState + "\n" + "LossList: " + receiverLossList;
     }
 
 }

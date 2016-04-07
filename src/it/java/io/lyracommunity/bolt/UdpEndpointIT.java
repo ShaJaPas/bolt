@@ -1,11 +1,10 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.PortUtil;
+import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestData;
+import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.BoltSession;
-import io.lyracommunity.bolt.session.SessionSocket;
 import org.junit.Test;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
@@ -44,7 +43,7 @@ public class UdpEndpointIT
             Thread.sleep(10);
             List<BoltSession> sessions = new ArrayList<>(server.getSessions());
             BoltSession s = sessions.isEmpty() ? null : sessions.get(0);
-            done = (s != null && s.isStarted() && s.getNumChunks() >= numPackets);
+            done = (s != null && s.isStarted() && s.getStatistics().getNumberOfReceivedDataPackets() >= numPackets);
         }
 
         System.out.println(cli.client.getStatistics());

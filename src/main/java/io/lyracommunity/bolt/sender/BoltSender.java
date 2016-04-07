@@ -3,7 +3,12 @@ package io.lyracommunity.bolt.sender;
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.Ack;
+import io.lyracommunity.bolt.packet.Ack2;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.packet.NegAck;
+import io.lyracommunity.bolt.packet.PacketType;
 import io.lyracommunity.bolt.receiver.BoltReceiver;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -108,11 +113,9 @@ public class BoltSender {
 
 
     public BoltSender(final SessionState state, final BoltEndPoint endpoint, final CongestionControl cc) {
-        if (!state.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
-//        this.session = session;
         this.cc = cc;
-        this.statistics = session.getStatistics();
+        this.statistics = state.getStatistics();
         this.sessionState = state;
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(sessionState.getFlowWindowSize(), 0.75f, 2);
@@ -134,9 +137,10 @@ public class BoltSender {
     }
 
     /**
-     * Starts the sender algorithm
+     * Starts the sender algorithm.
      */
     public Observable<?> doStart(final String threadSuffix) {
+        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         return Observable.create(subscriber -> {
             try {
                 Thread.currentThread().setName("Bolt-Sender-" + threadSuffix);
@@ -294,7 +298,7 @@ public class BoltSender {
         for (Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }
-        cc.onLoss(nak.getDecodedLossInfo());
+        cc.onLoss(nak.getDecodedLossInfo(), getCurrentReliabilitySequenceNumber());
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {

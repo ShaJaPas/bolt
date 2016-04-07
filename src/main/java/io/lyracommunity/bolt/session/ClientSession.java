@@ -17,7 +17,6 @@ import static io.lyracommunity.bolt.session.SessionStatus.*;
 
 /**
  * Client side of a client-server Bolt connection.
- * Once established, the session provides a valid {@link SessionSocket}.
  */
 public class ClientSession extends BoltSession {
 
@@ -116,11 +115,11 @@ public class ClientSession extends BoltSession {
     @Override
     public void received(final BoltPacket packet, final Subscriber subscriber) {
         if (getStatus() == READY) {
-            socket.setActive(true);
+            state.setActive(true);
             try {
                 // Send all packets to both sender and receiver
-                socket.getSender().receive(packet);
-                socket.getReceiver().receive(packet);
+                sender.receive(packet);
+                receiver.receive(packet);
             }
             catch (Exception ex) {
                 // Session is invalid.
@@ -135,21 +134,20 @@ public class ClientSession extends BoltSession {
      * Initial handshake for connect.
      */
     protected void sendInitialHandShake() throws IOException {
-        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), state.getInitialSequenceNumber(),
-                state.getFlowWindowSize(), mySocketID, endPoint.getLocalAddress());
+        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(state.getDatagramSize(), state.getInitialSequenceNumber(),
+                state.getFlowWindowSize(), state.getSocketID(), endPoint.getLocalAddress());
         LOG.info("Sending {}", handshake);
-        endPoint.doSend(handshake, this);
+        endPoint.doSend(handshake, state);
     }
 
     /**
      * Second handshake for connect.
      */
     protected void sendSecondHandshake() throws IOException {
-        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), state.getInitialSequenceNumber(),
-                state.getFlowWindowSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(state.getDatagramSize(), state.getInitialSequenceNumber(),
+                state.getFlowWindowSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending confirmation {}", ch);
-        endPoint.doSend(ch, this);
+        endPoint.doSend(ch, state);
     }
-
 
 }

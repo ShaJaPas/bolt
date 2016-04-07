@@ -2,22 +2,24 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.packet.*;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.ConnectionHandshake;
+import io.lyracommunity.bolt.packet.DataPacket;
+import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.Shutdown;
+import io.lyracommunity.bolt.receiver.BoltReceiver;
 import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
-import io.lyracommunity.bolt.util.ReceiveBuffer;
+import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -119,26 +121,22 @@ public abstract class BoltSession {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
 
-    private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
     final SessionState state;
     final CongestionControl cc;
-    final int mySocketID;
     final BoltEndPoint endPoint;
-    private final BoltStatistics statistics;
-    protected volatile SessionSocket socket;
 
-    /**
-     * Buffer size (i.e. datagram size). This is negotiated during connection setup.
-     */
-    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
+    // Processing received data
+    final BoltReceiver  receiver;
+    final BoltSender    sender;
 
 
-    public BoltSession(final BoltEndPoint endPoint, final String description, final Destination destination) {
-        this.endPoint = endPoint;
-        this.statistics = new BoltStatistics(description, datagramSize);
-        this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
-        this.state = new SessionState(destination);
-        this.cc = new BoltCongestionControl(this);
+    public BoltSession(final BoltEndPoint endpoint, final String description, final Destination destination) {
+        this.endPoint = endpoint;
+        this.state = new SessionState(destination, description);
+        this.cc = new BoltCongestionControl(state);
+
+        this.sender = new BoltSender(state, endpoint, cc);
+        this.receiver = new BoltReceiver(state, endpoint, sender, endpoint.getConfig());
     }
 
     public abstract void received(BoltPacket packet, Subscriber subscriber);
@@ -147,15 +145,19 @@ public abstract class BoltSession {
 
 
     public Observable<?> start() throws IllegalStateException {
-        if (socket != null) throw new IllegalStateException();
-        socket = new SessionSocket(endPoint, state);
-        return socket.start();
+        if (state.isActive()) throw new IllegalStateException();
+
+        final String threadSuffix = ((this instanceof ServerSession) ? "Server" : "Client") + "Session-"
+                + getSocketID() + "-" + Util.THREAD_INDEX.incrementAndGet();
+        return Observable.merge(
+                receiver.start(threadSuffix).subscribeOn(Schedulers.io()),
+                sender.doStart(threadSuffix).subscribeOn(Schedulers.io()))
+                .doOnSubscribe(() -> state.setActive(true));
     }
 
     public void cleanup() {
         try {
-            setStatus(SessionStatus.SHUTDOWN);
-            if (socket != null) socket.close();
+            close();
             if (endPoint.isOpen()) {
                 endPoint.doSend(new Shutdown(state.getDestinationSocketID()), state);
             }
@@ -166,36 +168,63 @@ public abstract class BoltSession {
     }
 
     public void doWrite(final DataPacket dataPacket) throws IOException {
-        socket.doWrite(dataPacket);
+        try {
+            sender.sendPacket(dataPacket, 10, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ie) {
+            throw new IOException(ie);
+        }
+        if (dataPacket.getDataLength() > 0) state.setActive(true);
     }
 
+    protected void doWriteBlocking(final DataPacket dataPacket) throws IOException, InterruptedException {
+        doWrite(dataPacket);
+        flush();
+    }
+
+    /**
+     * Will block until the outstanding packets have really been sent out
+     * and acknowledged.
+     */
     public void flush() throws InterruptedException, IllegalStateException {
-        socket.flush();
+        if (!state.isActive()) return;
+        // TODO change to reliability seq number. Also, logic needs careful looking over.
+        final int seqNo = sender.getCurrentSequenceNumber();
+        final int relSeqNo = sender.getCurrentReliabilitySequenceNumber();
+        if (seqNo < 0) throw new IllegalStateException();
+        while (state.isActive() && !sender.isSentOut(seqNo)) {
+            Thread.sleep(5);
+        }
+        if (seqNo > -1) {
+            // Wait until data has been sent out and acknowledged.
+            while (state.isActive() && !sender.haveAcknowledgementFor(relSeqNo)) {
+                sender.waitForAck(seqNo);
+            }
+        }
+        // TODO need to check if we can pause the sender...
+        //        sender.pause();
     }
 
     public DataPacket pollReceiveBuffer(final int timeout, final TimeUnit unit) throws InterruptedException {
-        return (socket == null) ? null : socket.getReceiveBuffer().poll(timeout, unit);
+        return receiver.pollReceiveBuffer(timeout, unit);
     }
 
-    public ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
-        return socket.haveNewData(packet);
+    /**
+     * Close the connection.
+     *
+     * @throws IOException
+     */
+    public void close() throws IOException {
+        setStatus(SessionStatus.SHUTDOWN);
+        state.setActive(false);
     }
 
     public boolean isStarted() {
-        return (socket != null) && socket.isActive();
+        return state.isActive();
     }
 
 
     public BoltSender getSender() {
-        return socket.getSender();
-    }
-
-    public int getNumChunks() {
-        return socket.getReceiveBuffer().getNumChunks();
-    }
-
-    CongestionControl getCongestionControl() {
-        return cc;
+        return sender;
     }
 
     SessionStatus getStatus() {
@@ -207,25 +236,17 @@ public abstract class BoltSession {
         state.setStatus(status);
     }
 
-    int getDatagramSize() {
-        return datagramSize;
-    }
-
-    void setDatagramSize(int datagramSize) {
-        this.datagramSize = datagramSize;
+    public int getSocketID() {
+        return state.getSocketID();
     }
 
     public BoltStatistics getStatistics() {
-        return statistics;
-    }
-
-    public long getSocketID() {
-        return mySocketID;
+        return state.getStatistics();
     }
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "{" + "mySocketID=" + mySocketID + '}';
+        return this.getClass().getSimpleName() + "{" + state + '}';
     }
 
 }

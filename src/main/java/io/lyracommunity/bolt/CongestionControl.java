@@ -60,10 +60,10 @@ public interface CongestionControl {
 
     /**
      * Callback function to be called when a loss report is received.
-     *
-     * @param lossInfo - list of sequence number of packets
+     *  @param lossInfo list of sequence number of packets
+     * @param currentReliabilitySequenceNumber the current highest reliability seq num.
      */
-    void onLoss(List<Integer> lossInfo);
+    void onLoss(List<Integer> lossInfo, int currentReliabilitySequenceNumber);
 
     /**
      * Callback function to be called when a timeout event occurs

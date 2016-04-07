@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -20,7 +20,7 @@ public class BoltCongestionControl implements CongestionControl {
     private static final long   PS          = Config.DEFAULT_DATAGRAM_SIZE;
     private static final double BETA_DIV_PS = 0.0000015 / PS;
 
-    protected final BoltSession session;
+    protected final SessionState sessionState;
 
     private final BoltStatistics statistics;
 
@@ -90,10 +90,10 @@ public class BoltCongestionControl implements CongestionControl {
     private boolean loss = false;
 
 
-    public BoltCongestionControl(final BoltSession session) {
-        this.session = session;
-        this.statistics = session.getStatistics();
-        this.lastDecreaseSeqNo = session.getInitialSequenceNumber() - 1;
+    public BoltCongestionControl(final SessionState sessionState) {
+        this.sessionState = sessionState;
+        this.statistics = sessionState.getStatistics();
+        this.lastDecreaseSeqNo = sessionState.getInitialSequenceNumber() - 1;
     }
 
     public void init() {
@@ -144,7 +144,7 @@ public class BoltCongestionControl implements CongestionControl {
             congestionWindowSize += ackSeqNo - lastAckSeqNumber;
             lastAckSeqNumber = ackSeqNo;
             // But not beyond a maximum size.
-            if (congestionWindowSize > session.getFlowWindowSize()) {
+            if (congestionWindowSize > sessionState.getFlowWindowSize()) {
                 slowStartPhase = false;
                 if (packetArrivalRate > 0) {
                     packetSendingPeriod = 1000000.0 / packetArrivalRate;
@@ -201,7 +201,7 @@ public class BoltCongestionControl implements CongestionControl {
         }
     }
 
-    public void onLoss(final List<Integer> lossInfo) {
+    public void onLoss(final List<Integer> lossInfo, final int currentMaxRelSequenceNumber) {
         loss = true;
         long firstBiggestLossSeqNo = lossInfo.get(0);
         nACKCount++;
@@ -217,8 +217,6 @@ public class BoltCongestionControl implements CongestionControl {
             return;
         }
 
-        // TODO make sure this is valid
-        long currentMaxRelSequenceNumber = session.getSender().getCurrentReliabilitySequenceNumber();
         // 2) If this NAK starts a new congestion epoch
         if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {
             // -increase inter-packet interval
