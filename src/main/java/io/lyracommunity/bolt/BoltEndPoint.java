@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
 import io.lyracommunity.bolt.packet.BoltPacket;
@@ -7,7 +8,7 @@ import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.PacketFactory;
 import io.lyracommunity.bolt.packet.PacketType;
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
@@ -37,7 +38,7 @@ import java.util.stream.Stream;
 
 /**
  * The UDPEndpoint takes care of sending and receiving UDP network packets,
- * dispatching them to the correct {@link BoltSession}
+ * dispatching them to the correct {@link Session}
  */
 public class BoltEndPoint implements ChannelOut {
 
@@ -51,9 +52,9 @@ public class BoltEndPoint implements ChannelOut {
     /**
      * Active sessions keyed by socket ID.
      */
-    private final Map<Integer, BoltSession> sessions = new ConcurrentHashMap<>();
+    private final Map<Integer, Session> sessions = new ConcurrentHashMap<>();
 
-    private final Map<Destination, BoltSession> sessionsBeingConnected = new ConcurrentHashMap<>();
+    private final Map<Destination, Session> sessionsBeingConnected = new ConcurrentHashMap<>();
 
     private final Map<Integer, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
 
@@ -110,7 +111,7 @@ public class BoltEndPoint implements ChannelOut {
     }
 
     private void endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
-        final BoltSession session = sessions.remove(destinationID);
+        final Session session = sessions.remove(destinationID);
         final Subscription sessionSub = sessionSubscriptions.remove(destinationID);
         if (session != null) session.cleanup();
         if (sessionSub != null) sessionSub.unsubscribe();
@@ -128,16 +129,16 @@ public class BoltEndPoint implements ChannelOut {
         return dgSocket;
     }
 
-    void addSession(final Integer destinationID, final BoltSession session) {
+    void addSession(final Integer destinationID, final Session session) {
         LOG.info("Storing session [{}]", destinationID);
         sessions.put(destinationID, session);
     }
 
-    BoltSession getSession(final Integer destinationID) {
+    Session getSession(final Integer destinationID) {
         return sessions.get(destinationID);
     }
 
-    Collection<BoltSession> getSessions() {
+    Collection<Session> getSessions() {
         return sessions.values();
     }
 
@@ -192,7 +193,7 @@ public class BoltEndPoint implements ChannelOut {
 
     private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
         final int destID = packet.getDestinationID();
-        final BoltSession session = getSession(destID);
+        final Session session = getSession(destID);
 
         if (PacketType.HANDSHAKE == packet.getPacketType()) {
             connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
@@ -221,11 +222,11 @@ public class BoltEndPoint implements ChannelOut {
      * @throws InterruptedException
      * @return true if connection is ready to start, otherwise false.
      */
-    private synchronized BoltSession connectionHandshake(final Subscriber<? super Object> subscriber,
+    private synchronized Session connectionHandshake(final Subscriber<? super Object> subscriber,
                                                          final ConnectionHandshake packet, final Destination peer,
-                                                         final BoltSession existingSession) {
+                                                         final Session existingSession) {
         final int destID = packet.getDestinationID();
-        BoltSession session = existingSession;
+        Session session = existingSession;
         if (session == null) {
             session = sessionsBeingConnected.get(peer);
             // New session

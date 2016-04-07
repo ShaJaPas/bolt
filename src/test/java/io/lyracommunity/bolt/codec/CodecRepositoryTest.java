@@ -1,12 +1,9 @@
 package io.lyracommunity.bolt.codec;
 
-import io.lyracommunity.bolt.BoltException;
-import io.lyracommunity.bolt.codec.PacketCodec;
+import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.PacketUtil;
-import io.lyracommunity.bolt.codec.ObjectCodec;
-import io.lyracommunity.bolt.codec.CodecRepository;
 import org.junit.Test;
 
 import java.util.*;

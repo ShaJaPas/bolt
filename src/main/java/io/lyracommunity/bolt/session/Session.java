@@ -2,15 +2,15 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.Shutdown;
-import io.lyracommunity.bolt.receiver.BoltReceiver;
-import io.lyracommunity.bolt.sender.BoltSender;
+import io.lyracommunity.bolt.receiver.Receiver;
+import io.lyracommunity.bolt.sender.Sender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -117,26 +117,27 @@ import java.util.concurrent.TimeUnit;
  * In our reference implementation, we use 3 seconds and 30 seconds,
  * respectively.
  */
-public abstract class BoltSession {
+public abstract class Session
+{
 
-    private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Session.class);
 
     final SessionState      state;
     final CongestionControl cc;
     final ChannelOut        endPoint;
 
     // Processing received data
-    final BoltReceiver  receiver;
-    final BoltSender    sender;
+    final Receiver receiver;
+    final Sender   sender;
 
 
-    BoltSession(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
+    Session(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
         this.endPoint = endpoint;
         this.state = new SessionState(destination, description);
         this.cc = new BoltCongestionControl(state);
 
-        this.sender = new BoltSender(config, state, endpoint, cc);
-        this.receiver = new BoltReceiver(config, state, endpoint, sender);
+        this.sender = new Sender(config, state, endpoint, cc);
+        this.receiver = new Receiver(config, state, endpoint, sender);
     }
 
     public abstract void received(BoltPacket packet, Subscriber subscriber);
@@ -223,7 +224,7 @@ public abstract class BoltSession {
     }
 
 
-    public BoltSender getSender() {
+    public Sender getSender() {
         return sender;
     }
 

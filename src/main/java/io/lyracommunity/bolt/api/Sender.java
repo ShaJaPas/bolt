@@ -1,4 +1,4 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.api;
 
 import java.io.IOException;
 

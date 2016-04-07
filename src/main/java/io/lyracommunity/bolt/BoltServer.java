@@ -1,10 +1,12 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.api.Server;
 import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import rx.Observable;
@@ -23,7 +25,8 @@ import java.util.stream.Collectors;
 /**
  * Created by omahoc9 on 3/3/16.
  */
-public class BoltServer implements Server {
+public class BoltServer implements Server
+{
 
     private final CodecRepository codecs;
 
@@ -69,7 +72,7 @@ public class BoltServer implements Server {
     }
 
     private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
-        for (BoltSession session : serverEndpoint.getSessions()) {
+        for (Session session : serverEndpoint.getSessions()) {
             final DataPacket packet = session.pollReceiveBuffer(10, TimeUnit.MILLISECONDS);
 
             if (packet != null) {
@@ -87,7 +90,7 @@ public class BoltServer implements Server {
 
     public void sendToAll(final Object obj) throws IOException {
         final List<Integer> ids = serverEndpoint.getSessions().stream()
-                .map(BoltSession::getSocketID)
+                .map(Session::getSocketID)
                 .collect(Collectors.toList());
         send(obj, ids);
     }
@@ -100,7 +103,7 @@ public class BoltServer implements Server {
     public void send(final Object obj, final List<Integer> destIDs) throws IOException {
         Collection<DataPacket> data = null;
         for (final Integer destID : destIDs) {
-            final BoltSession session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
+            final Session session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
             if (session != null) {
                 if (data == null) data = codecs.encode(obj);
                 for (final DataPacket dp : data) {
@@ -119,7 +122,7 @@ public class BoltServer implements Server {
 //    }
 
     public List<BoltStatistics> getStatistics() {
-        return serverEndpoint.getSessions().stream().map(BoltSession::getStatistics).collect(Collectors.toList());
+        return serverEndpoint.getSessions().stream().map(Session::getStatistics).collect(Collectors.toList());
     }
 
     public Config config() {

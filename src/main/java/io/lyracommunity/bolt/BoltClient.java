@@ -1,5 +1,8 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltException;
+import io.lyracommunity.bolt.api.Client;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
@@ -20,7 +23,8 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-public class BoltClient implements Client {
+public class BoltClient implements Client
+{
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
@@ -81,7 +85,8 @@ public class BoltClient implements Client {
         send(obj);
     }
 
-    public void send(final Object obj) throws BoltException {
+    public void send(final Object obj) throws BoltException
+    {
         final Collection<DataPacket> data = codecs.encode(obj);
         for (final DataPacket dp : data) {
             try {

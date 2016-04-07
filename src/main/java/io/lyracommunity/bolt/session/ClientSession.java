@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -19,7 +19,7 @@ import static io.lyracommunity.bolt.session.SessionStatus.*;
 /**
  * Client side of a client-server Bolt connection.
  */
-public class ClientSession extends BoltSession {
+public class ClientSession extends Session {
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 

@@ -2,7 +2,7 @@ package io.lyracommunity.bolt.sender;
 
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.Ack;
 import io.lyracommunity.bolt.packet.Ack2;
@@ -10,7 +10,7 @@ import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.NegAck;
 import io.lyracommunity.bolt.packet.PacketType;
-import io.lyracommunity.bolt.receiver.BoltReceiver;
+import io.lyracommunity.bolt.receiver.Receiver;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -36,9 +36,10 @@ import java.util.function.Supplier;
  * The sender sends (and retransmits) application data according to the
  * flow control and congestion control.
  *
- * @see BoltReceiver
+ * @see Receiver
  */
-public class BoltSender {
+public class Sender
+{
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
@@ -111,7 +112,7 @@ public class BoltSender {
     private final SessionState sessionState;
 
 
-    public BoltSender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc) {
+    public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc) {
         this.endpoint = endpoint;
         this.cc = cc;
         this.statistics = state.getStatistics();
@@ -139,7 +140,7 @@ public class BoltSender {
      * Starts the sender algorithm.
      */
     public Observable<?> doStart(final String threadSuffix) {
-        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
+        if (!sessionState.isReady()) throw new IllegalStateException("Session is not ready.");
         return Observable.create(subscriber -> {
             try {
                 Thread.currentThread().setName("Bolt-Sender-" + threadSuffix);

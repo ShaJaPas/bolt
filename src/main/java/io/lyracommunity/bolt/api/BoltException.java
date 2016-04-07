@@ -1,4 +1,4 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.api;
 
 /**
  * Created by keen on 06/03/16.

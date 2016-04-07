@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.event;
 
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.session.Session;
 
 /**
  * Created by keen on 03/03/16.
@@ -8,13 +8,13 @@ import io.lyracommunity.bolt.session.BoltSession;
 public class ConnectionReady
 {
 
-    private final BoltSession session;
+    private final Session session;
 
-    public ConnectionReady(final BoltSession session) {
+    public ConnectionReady(final Session session) {
         this.session = session;
     }
 
-    public BoltSession getSession() {
+    public Session getSession() {
         return session;
     }
 

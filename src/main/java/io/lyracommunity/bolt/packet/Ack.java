@@ -1,12 +1,12 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.receiver.BoltReceiver;
-import io.lyracommunity.bolt.sender.BoltSender;
+import io.lyracommunity.bolt.receiver.Receiver;
+import io.lyracommunity.bolt.sender.Sender;
 
 import java.io.ByteArrayOutputStream;
 
 /**
- * Acknowledgement (ACK) is sent by the {@link BoltReceiver} to the {@link BoltSender}
+ * Acknowledgement (ACK) is sent by the {@link Receiver} to the {@link Sender}
  * to acknowledge receipt of packets.
  * <p>
  * Additional Info: ACK sequence number     <br>

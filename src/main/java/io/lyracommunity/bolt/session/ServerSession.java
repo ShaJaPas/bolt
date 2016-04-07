@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -18,7 +18,7 @@ import static io.lyracommunity.bolt.session.SessionStatus.*;
 /**
  * Server side session in client-server mode.
  */
-public class ServerSession extends BoltSession {
+public class ServerSession extends Session {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServerSession.class);
     private static final String DESCRIPTION_TEMPLATE = "ServerSession localPort={0} peer={1}:{2}";

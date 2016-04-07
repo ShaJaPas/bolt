@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.util;
 
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
 import org.junit.Before;

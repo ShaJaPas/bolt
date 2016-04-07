@@ -1,8 +1,7 @@
 package io.lyracommunity.bolt.codec;
 
-import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.BoltException;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.BoltException;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.PacketUtil;

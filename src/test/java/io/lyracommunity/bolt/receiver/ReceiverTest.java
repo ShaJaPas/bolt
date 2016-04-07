@@ -2,11 +2,11 @@ package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.BoltEndPoint;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.sender.BoltSender;
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.sender.Sender;
+import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.session.SessionStatus;
@@ -26,15 +26,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Created by omahoc9 on 4/5/16.
  */
-public class BoltReceiverTest
+public class ReceiverTest
 {
 
-    private Config config;
-    private BoltReceiver receiver;
-    private List<Object> events;
+    private Config          config;
+    private Receiver        receiver;
+    private List<Object>    events;
     private List<Throwable> errors;
-    private AtomicBoolean completed;
-    private Subscription subscription;
+    private AtomicBoolean   completed;
+    private Subscription    subscription;
 
     @Before
     public void setUp() throws Exception
@@ -48,12 +48,12 @@ public class BoltReceiverTest
 
         final BoltEndPoint endpoint = new BoltEndPoint(config);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), 65321);
-        final BoltSession session = new ServerSession(config, endpoint, peer);
+        final Session session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer, "Server");
         final CongestionControl cc = new BoltCongestionControl(sessionState);
-        final BoltSender sender = new BoltSender(config, sessionState, endpoint, cc);
+        final Sender sender = new Sender(config, sessionState, endpoint, cc);
         session.setStatus(SessionStatus.READY);
-        receiver = new BoltReceiver(config, sessionState, endpoint, sender);
+        receiver = new Receiver(config, sessionState, endpoint, sender);
         events = new ArrayList<>();
         errors = new ArrayList<>();
         completed = new AtomicBoolean(false);

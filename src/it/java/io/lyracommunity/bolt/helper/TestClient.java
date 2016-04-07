@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltClient;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
 import rx.Subscription;
 import rx.functions.Action1;

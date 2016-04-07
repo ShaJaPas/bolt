@@ -1,9 +1,9 @@
 package io.lyracommunity.bolt.packet;
 
-import io.lyracommunity.bolt.sender.BoltSender;
+import io.lyracommunity.bolt.sender.Sender;
 
 /**
- * Acknowledgement of Acknowledgement (ACK2) is sent by the {@link BoltSender}
+ * Acknowledgement of Acknowledgement (ACK2) is sent by the {@link Sender}
  * as immediate reply to an {@link Ack}.
  * <p>
  * Additional Info: ACK sequence number

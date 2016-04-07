@@ -3,7 +3,7 @@ package io.lyracommunity.bolt;
 import java.util.List;
 
 /**
- * congestion control interface
+ * Congestion control interface.
  */
 public interface CongestionControl {
 
@@ -16,8 +16,8 @@ public interface CongestionControl {
     /**
      * Set round-trip time and associated variance.
      *
-     * @param rtt    - round trip time in microseconds
-     * @param rttVar - round trip time variance in microseconds
+     * @param rtt    round trip time, in microseconds.
+     * @param rttVar round trip time variance, in microseconds.
      */
     void setRTT(long rtt, long rttVar);
 
@@ -31,12 +31,12 @@ public interface CongestionControl {
     void updatePacketArrivalRate(long rate, long linkCapacity);
 
     /**
-     * get the current value of the packet arrival
+     * @return the current value of the packet arrival.
      */
     long getPacketArrivalRate();
 
     /**
-     * get the current value of the estimated link capacity
+     * @return the current value of the estimated link capacity.
      */
     long getEstimatedLinkCapacity();
 

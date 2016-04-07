@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;

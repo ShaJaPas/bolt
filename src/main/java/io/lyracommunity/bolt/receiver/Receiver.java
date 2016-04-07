@@ -1,11 +1,10 @@
 package io.lyracommunity.bolt.receiver;
 
-import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.Config;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.*;
-import io.lyracommunity.bolt.sender.BoltSender;
-import io.lyracommunity.bolt.session.BoltSession;
+import io.lyracommunity.bolt.sender.Sender;
+import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
@@ -34,11 +33,12 @@ import java.util.concurrent.TimeUnit;
  * their related mechanisms such as RTT estimation, bandwidth estimation,
  * acknowledging and retransmission.
  *
- * @see BoltSender
+ * @see Sender
  */
-public class BoltReceiver {
+public class Receiver
+{
 
-    private static final Logger LOG = LoggerFactory.getLogger(BoltReceiver.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
 
     /**
      * Milliseconds to timeout a new session that stays idle.
@@ -48,7 +48,7 @@ public class BoltReceiver {
     private final ChannelOut     endpoint;
     private final SessionState   sessionState;
     private final BoltStatistics statistics;
-    private final BoltSender     sender;
+    private final Sender         sender;
 
     /**
      * Record seqNo of detected lost data and latest feedback time.
@@ -153,14 +153,14 @@ public class BoltReceiver {
     final ReceiveBuffer receiveBuffer;
 
     /**
-     * Create a receiver with a valid {@link BoltSession}.
+     * Create a receiver with a valid {@link Session}.
      *
      * @param config       bolt configuration.
      * @param sessionState the owning session state.
      * @param endpoint     the network endpoint.
      * @param sender       the matching sender.
      */
-    public BoltReceiver(final Config config, final SessionState sessionState, final ChannelOut endpoint, final BoltSender sender) {
+    public Receiver(final Config config, final SessionState sessionState, final ChannelOut endpoint, final Sender sender) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
         this.sender = sender;
@@ -181,7 +181,7 @@ public class BoltReceiver {
      * Starts the sender algorithm.
      */
     public Observable<?> start(final String threadSuffix) {
-        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
+        if (!sessionState.isReady()) throw new IllegalStateException("Session is not ready.");
         return Observable.create(subscriber -> {
             try {
                 Thread.currentThread().setName("Bolt-Receiver-" + threadSuffix);
@@ -586,7 +586,7 @@ public class BoltReceiver {
     }
 
     public String toString() {
-        return "BoltReceiver " + sessionState + "\n" + "LossList: " + receiverLossList;
+        return "Receiver " + sessionState + "\n" + "LossList: " + receiverLossList;
     }
 
 }
