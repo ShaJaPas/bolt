@@ -48,12 +48,12 @@ public class BoltReceiverTest
 
         final BoltEndPoint endpoint = new BoltEndPoint(config);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), 65321);
-        final BoltSession session = new ServerSession(peer, endpoint);
+        final BoltSession session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer, "Server");
         final CongestionControl cc = new BoltCongestionControl(sessionState);
-        final BoltSender sender = new BoltSender(sessionState, endpoint, cc);
+        final BoltSender sender = new BoltSender(config, sessionState, endpoint, cc);
         session.setStatus(SessionStatus.READY);
-        receiver = new BoltReceiver(sessionState, endpoint, sender, config);
+        receiver = new BoltReceiver(config, sessionState, endpoint, sender);
         events = new ArrayList<>();
         errors = new ArrayList<>();
         completed = new AtomicBoolean(false);

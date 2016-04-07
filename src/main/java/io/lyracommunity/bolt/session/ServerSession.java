@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -24,8 +25,9 @@ public class ServerSession extends BoltSession {
 
     private ConnectionHandshake finalConnectionHandshake;
 
-    public ServerSession(final Destination peer, final BoltEndPoint endPoint) {
-        super(endPoint, MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()), peer);
+    public ServerSession(final Config config, final BoltEndPoint endPoint, final Destination peer) {
+        super(config,
+                endPoint, peer, MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()));
         LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
     }
 

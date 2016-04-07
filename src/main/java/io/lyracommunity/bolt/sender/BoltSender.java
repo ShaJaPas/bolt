@@ -1,7 +1,8 @@
 package io.lyracommunity.bolt.sender;
 
 import io.lyracommunity.bolt.BoltClient;
-import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.Ack;
 import io.lyracommunity.bolt.packet.Ack2;
@@ -41,9 +42,7 @@ public class BoltSender {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
-    private final BoltEndPoint endpoint;
-
-//    private final BoltSession session;
+    private final ChannelOut endpoint;
 
     private final BoltStatistics statistics;
 
@@ -112,7 +111,7 @@ public class BoltSender {
     private final SessionState sessionState;
 
 
-    public BoltSender(final SessionState state, final BoltEndPoint endpoint, final CongestionControl cc) {
+    public BoltSender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc) {
         this.endpoint = endpoint;
         this.cc = cc;
         this.statistics = state.getStatistics();
@@ -123,7 +122,7 @@ public class BoltSender {
         this.lastAckReliabilitySequenceNumber = 0;
         this.currentSequenceNumber = state.getInitialSequenceNumber() - 1;
 
-        final int chunkSize = endpoint.getConfig().getDatagramSize() - 24;
+        final int chunkSize = config.getDatagramSize() - 24;
         this.flowWindow = new FlowWindow(sessionState.getFlowWindowSize(), chunkSize);
     }
 

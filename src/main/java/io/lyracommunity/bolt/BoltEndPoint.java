@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  * The UDPEndpoint takes care of sending and receiving UDP network packets,
  * dispatching them to the correct {@link BoltSession}
  */
-public class BoltEndPoint {
+public class BoltEndPoint implements ChannelOut {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltEndPoint.class);
 
@@ -122,13 +122,6 @@ public class BoltEndPoint {
      */
     public int getLocalPort() {
         return this.dgSocket.getLocalPort();
-    }
-
-    /**
-     * @return Gets the local address to which the socket is bound
-     */
-    public InetAddress getLocalAddress() {
-        return this.dgSocket.getLocalAddress();
     }
 
     DatagramSocket getSocket() {
@@ -237,7 +230,7 @@ public class BoltEndPoint {
             session = sessionsBeingConnected.get(peer);
             // New session
             if (session == null) {
-                session = new ServerSession(peer, this);
+                session = new ServerSession(config, this, peer);
                 sessionsBeingConnected.put(peer, session);
                 sessions.put(session.getSocketID(), session);
             }
@@ -263,10 +256,17 @@ public class BoltEndPoint {
         return session;
     }
 
+    @Override
+    public InetAddress getLocalAddress() {
+        return this.dgSocket.getLocalAddress();
+    }
+
+    @Override
     public boolean isOpen() {
         return !dgSocket.isClosed();
     }
 
+    @Override
     public void doSend(final BoltPacket packet, final SessionState sessionState) throws IOException {
         final byte[] data = packet.getEncoded();
         final DatagramPacket dgp = sessionState.getDatagram();

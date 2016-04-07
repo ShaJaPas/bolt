@@ -114,7 +114,7 @@ public class BoltClient implements Client {
     private Observable<?> startSession(final InetAddress address, final int port) throws InterruptedException, IOException {
         final Destination destination = new Destination(address, port);
         // Create client session
-        clientSession = new ClientSession(clientEndpoint, destination);
+        clientSession = new ClientSession(config, clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
         LOG.info("The BoltClient is connecting");
         return clientSession.connect();

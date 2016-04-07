@@ -1,7 +1,8 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
-import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
@@ -118,25 +119,24 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class BoltSession {
 
-
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
 
-    final SessionState state;
+    final SessionState      state;
     final CongestionControl cc;
-    final BoltEndPoint endPoint;
+    final ChannelOut        endPoint;
 
     // Processing received data
     final BoltReceiver  receiver;
     final BoltSender    sender;
 
 
-    public BoltSession(final BoltEndPoint endpoint, final String description, final Destination destination) {
+    BoltSession(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
         this.endPoint = endpoint;
         this.state = new SessionState(destination, description);
         this.cc = new BoltCongestionControl(state);
 
-        this.sender = new BoltSender(state, endpoint, cc);
-        this.receiver = new BoltReceiver(state, endpoint, sender, endpoint.getConfig());
+        this.sender = new BoltSender(config, state, endpoint, cc);
+        this.receiver = new BoltReceiver(config, state, endpoint, sender);
     }
 
     public abstract void received(BoltPacket packet, Subscriber subscriber);

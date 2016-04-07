@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.sender.BoltSender;
@@ -44,8 +45,8 @@ public class BoltReceiver {
      */
     private static final long IDLE_TIMEOUT = 3 * 1000;
 
-    private final BoltEndPoint endpoint;
-    private final SessionState sessionState;
+    private final ChannelOut     endpoint;
+    private final SessionState   sessionState;
     private final BoltStatistics statistics;
     private final BoltSender     sender;
 
@@ -154,12 +155,12 @@ public class BoltReceiver {
     /**
      * Create a receiver with a valid {@link BoltSession}.
      *
+     * @param config       bolt configuration.
      * @param sessionState the owning session state.
      * @param endpoint     the network endpoint.
      * @param sender       the matching sender.
-     * @param config       bolt configuration.
      */
-    public BoltReceiver(final SessionState sessionState, final BoltEndPoint endpoint, final BoltSender sender, final Config config) {
+    public BoltReceiver(final Config config, final SessionState sessionState, final ChannelOut endpoint, final BoltSender sender) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
         this.sender = sender;
