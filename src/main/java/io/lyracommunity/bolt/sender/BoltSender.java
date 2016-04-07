@@ -3,15 +3,9 @@ package io.lyracommunity.bolt.sender;
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.packet.Ack;
-import io.lyracommunity.bolt.packet.Ack2;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.NegAck;
-import io.lyracommunity.bolt.packet.PacketType;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.receiver.BoltReceiver;
-import io.lyracommunity.bolt.session.BoltSession;
-import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
@@ -44,7 +38,7 @@ public class BoltSender {
 
     private final BoltEndPoint endpoint;
 
-    private final BoltSession session;
+//    private final BoltSession session;
 
     private final BoltStatistics statistics;
 
@@ -108,27 +102,33 @@ public class BoltSender {
      */
     private volatile CountDownLatch startLatch = new CountDownLatch(1);
 
+    private final CongestionControl cc;
 
-    public BoltSender(final BoltSession session, final BoltEndPoint endpoint) {
-        if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
+    private final SessionState sessionState;
+
+
+    public BoltSender(final SessionState state, final BoltEndPoint endpoint, final CongestionControl cc) {
+        if (!state.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
-        this.session = session;
+//        this.session = session;
+        this.cc = cc;
         this.statistics = session.getStatistics();
+        this.sessionState = state;
         this.senderLossList = new SenderLossList();
-        this.sendBuffer = new ConcurrentHashMap<>(session.getFlowWindowSize(), 0.75f, 2);
+        this.sendBuffer = new ConcurrentHashMap<>(sessionState.getFlowWindowSize(), 0.75f, 2);
 
         this.lastAckReliabilitySequenceNumber = 0;
-        this.currentSequenceNumber = session.getInitialSequenceNumber() - 1;
+        this.currentSequenceNumber = state.getInitialSequenceNumber() - 1;
 
         final int chunkSize = endpoint.getConfig().getDatagramSize() - 24;
-        this.flowWindow = new FlowWindow(session.getFlowWindowSize(), chunkSize);
+        this.flowWindow = new FlowWindow(sessionState.getFlowWindowSize(), chunkSize);
     }
 
     /**
      * Start the sender thread.
      */
     public void start() {
-        LOG.info("STARTING SENDER for {}", session);
+        LOG.info("STARTING SENDER for {}", sessionState);
         startLatch.countDown();
         started = true;
     }
@@ -136,11 +136,10 @@ public class BoltSender {
     /**
      * Starts the sender algorithm
      */
-    public Observable<?> doStart() {
+    public Observable<?> doStart(final String threadSuffix) {
         return Observable.create(subscriber -> {
             try {
-                String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-                Thread.currentThread().setName("Bolt-Sender-" + s + Util.THREAD_INDEX.incrementAndGet());
+                Thread.currentThread().setName("Bolt-Sender-" + threadSuffix);
 
                 final Supplier<Boolean> stopped = subscriber::isUnsubscribed;
 //                while (!stopped.get()) {
@@ -156,7 +155,7 @@ public class BoltSender {
                 LOG.error("Sender error", ex);
                 subscriber.onError(ex);
             }
-            LOG.info("STOPPING SENDER for {}", session);
+            LOG.info("STOPPING SENDER for {}", threadSuffix);
             subscriber.onCompleted();
         });
     }
@@ -168,7 +167,7 @@ public class BoltSender {
         synchronized (sendLock) {
             statistics.beginSend();
 
-            endpoint.doSend(dp, session);
+            endpoint.doSend(dp, sessionState);
 
             statistics.endSend();
 
@@ -196,7 +195,7 @@ public class BoltSender {
      */
     public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
         if (!started) start();
-        src.setDestinationID(session.getDestination().getSocketID());
+        src.setDestinationID(sessionState.getDestinationSocketID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
         src.setReliabilitySeqNumber(src.isReliable() ? nextReliabilitySequenceNumber() : 0);
         src.setOrderSeqNumber(src.isOrdered() ? nextOrderSequenceNumber() : 0);
@@ -246,7 +245,6 @@ public class BoltSender {
         ackLock.unlock();
 
         // TODO this method needs to perform better.
-        final CongestionControl cc = session.getCongestionControl();
         final long rtt = ack.getRoundTripTime();
         if (rtt > 0) {
             final long rttVar = ack.getRoundTripTimeVar();
@@ -296,18 +294,18 @@ public class BoltSender {
         for (Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }
-        session.getCongestionControl().onLoss(nak.getDecodedLossInfo());
+        cc.onLoss(nak.getDecodedLossInfo());
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("NAK for {} packets lost, set send period to {}",
-                    nak.getDecodedLossInfo().size(), session.getCongestionControl().getSendInterval());
+                    nak.getDecodedLossInfo().size(), cc.getSendInterval());
         }
     }
 
-    protected void sendAck2(long ackSequenceNumber) throws IOException {
-        final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, session.getDestination().getSocketID());
-        endpoint.doSend(ackOfAckPkt, session);
+    private void sendAck2(long ackSequenceNumber) throws IOException {
+        final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, sessionState.getDestinationSocketID());
+        endpoint.doSend(ackOfAckPkt, sessionState);
     }
 
     /**
@@ -347,8 +345,8 @@ public class BoltSender {
                     // and the flow window sizes, pack a new packet.
                     int unAcknowledged = unacknowledged.get();
 
-                    if (unAcknowledged < session.getCongestionControl().getCongestionWindowSize()
-                            && unAcknowledged < session.getFlowWindowSize()) {
+                    if (unAcknowledged < cc.getCongestionWindowSize()
+                            && unAcknowledged < sessionState.getFlowWindowSize()) {
                         // Check for application data
                         final DataPacket dp = flowWindow.consumeData();
                         if (dp != null) {
@@ -360,7 +358,7 @@ public class BoltSender {
                     }
                     else {
                         // Congestion window full, wait for an ack
-                        if (unAcknowledged >= session.getCongestionControl().getCongestionWindowSize()) {
+                        if (unAcknowledged >= cc.getCongestionWindowSize()) {
                             statistics.incNumberOfCCWindowExceededEvents();
                         }
                         waitForAck();
@@ -369,7 +367,7 @@ public class BoltSender {
 
                 // Wait
                 if (largestSentSequenceNumber % 16 != 0) {
-                    long snd = (long) session.getCongestionControl().getSendInterval();
+                    final long snd = (long) cc.getSendInterval();
                     long passed = Util.getCurrentTime() - iterationStart;
                     int x = 0;
                     while (snd - passed > 0) {
@@ -401,8 +399,8 @@ public class BoltSender {
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
-                retransmit.setDestinationID(session.getDestination().getSocketID());
-                endpoint.doSend(retransmit, session);
+                retransmit.setDestinationID(sessionState.getDestinationSocketID());
+                endpoint.doSend(retransmit, sessionState);
                 statistics.incNumberOfRetransmittedDataPackets();
             }
             else {
@@ -475,7 +473,7 @@ public class BoltSender {
      * @throws InterruptedException
      */
     public void waitForAck(final int relSequenceNumber) throws InterruptedException {
-        while (!session.isShutdown() && !haveAcknowledgementFor(relSequenceNumber)) {
+        while (!sessionState.isShutdown() && !haveAcknowledgementFor(relSequenceNumber)) {
             ackLock.lock();
             try {
                 ackCondition.await(100, TimeUnit.MICROSECONDS);

@@ -9,14 +9,12 @@ import io.lyracommunity.bolt.packet.Shutdown;
 import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
-import io.lyracommunity.bolt.util.SeqNum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,43 +120,24 @@ public abstract class BoltSession {
     private static final Logger LOG = LoggerFactory.getLogger(BoltSession.class);
 
     private final static AtomicInteger NEXT_SOCKET_ID = new AtomicInteger(20 + new Random().nextInt(5000));
-    private final    BoltStatistics    statistics;
-    final    CongestionControl cc;
-    /**
-     * remote Bolt entity (address and socket ID)
-     */
-    protected final    Destination       destination;
-    final    int               mySocketID;
-    protected volatile SessionSocket     socket;
-    final    BoltEndPoint      endPoint;
+    final SessionState state;
+    final CongestionControl cc;
+    final int mySocketID;
+    final BoltEndPoint endPoint;
+    private final BoltStatistics statistics;
+    protected volatile SessionSocket socket;
 
-    private final int receiveBufferSize = 64 * 32768;
-
-    /**
-     * Session cookie created during handshake.
-     */
-    protected long sessionCookie = 0;
-
-    /**
-     * Flow window size (how many data packets are in-flight at a single time).
-     */
-    protected int flowWindowSize = 1024 * 10;
     /**
      * Buffer size (i.e. datagram size). This is negotiated during connection setup.
      */
-    protected int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
-    protected Integer initialSequenceNumber = null;
-    private volatile SessionState state = SessionState.START;
+    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
 
-    // Cache dgPacket (peer stays the same always)
-    private DatagramPacket dgPacket;
 
     public BoltSession(final BoltEndPoint endPoint, final String description, final Destination destination) {
         this.endPoint = endPoint;
         this.statistics = new BoltStatistics(description, datagramSize);
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
-        this.destination = destination;
-        this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
+        this.state = new SessionState(destination);
         this.cc = new BoltCongestionControl(this);
     }
 
@@ -169,16 +148,16 @@ public abstract class BoltSession {
 
     public Observable<?> start() throws IllegalStateException {
         if (socket != null) throw new IllegalStateException();
-        socket = new SessionSocket(endPoint, this);
+        socket = new SessionSocket(endPoint, state);
         return socket.start();
     }
 
     public void cleanup() {
         try {
-            setState(SessionState.SHUTDOWN);
+            setStatus(SessionStatus.SHUTDOWN);
             if (socket != null) socket.close();
             if (endPoint.isOpen()) {
-                endPoint.doSend(new Shutdown(getDestination().getSocketID()), this);
+                endPoint.doSend(new Shutdown(state.getDestinationSocketID()), state);
             }
         }
         catch (IOException ex) {
@@ -215,45 +194,25 @@ public abstract class BoltSession {
         return socket.getReceiveBuffer().getNumChunks();
     }
 
-    public CongestionControl getCongestionControl() {
+    CongestionControl getCongestionControl() {
         return cc;
     }
 
-    public SessionState getState() {
-        return state;
+    SessionStatus getStatus() {
+        return state.getStatus();
     }
 
-    public void setState(final SessionState state) {
-        LOG.info("{} connection state CHANGED to [{}]", this, state);
-        this.state = state;
+    public void setStatus(final SessionStatus status) {
+        LOG.info("{} connection status CHANGED to [{}]", this, status);
+        state.setStatus(status);
     }
 
-    public boolean isReady() {
-        return state == SessionState.READY;
-    }
-
-    public boolean isShutdown() {
-        return state == SessionState.SHUTDOWN || state == SessionState.INVALID;
-    }
-
-    public Destination getDestination() {
-        return destination;
-    }
-
-    public int getDatagramSize() {
+    int getDatagramSize() {
         return datagramSize;
     }
 
-    public void setDatagramSize(int datagramSize) {
+    void setDatagramSize(int datagramSize) {
         this.datagramSize = datagramSize;
-    }
-
-    public int getReceiveBufferSize() {
-        return receiveBufferSize;
-    }
-
-    public int getFlowWindowSize() {
-        return flowWindowSize;
     }
 
     public BoltStatistics getStatistics() {
@@ -264,45 +223,9 @@ public abstract class BoltSession {
         return mySocketID;
     }
 
-    public synchronized int getInitialSequenceNumber() {
-        if (initialSequenceNumber == null) {
-            initialSequenceNumber = SeqNum.randomPacketSeqNum();
-        }
-        return initialSequenceNumber;
-    }
-
-    public synchronized void setInitialSequenceNumber(int initialSequenceNumber) {
-        this.initialSequenceNumber = initialSequenceNumber;
-    }
-
-    public enum SessionState {
-        START(0),
-        HANDSHAKING(1),
-        HANDSHAKING2(2),
-        READY(50),
-        SHUTDOWN(90),
-        INVALID(99);
-
-        final int seqNo;
-
-        SessionState(final int seqNo) {
-            this.seqNo = seqNo;
-        }
-
-        public int seqNo() {
-            return seqNo;
-        }
-    }
-
-    public DatagramPacket getDatagram() {
-        return dgPacket;
-    }
-
     @Override
-    public String toString()
-    {
-        return this.getClass().getSimpleName() + "{" + "mySocketID=" + mySocketID +
-                '}';
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" + "mySocketID=" + mySocketID + '}';
     }
 
 }

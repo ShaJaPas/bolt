@@ -5,7 +5,7 @@ import io.lyracommunity.bolt.Config;
 import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.sender.BoltSender;
 import io.lyracommunity.bolt.session.BoltSession;
-import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -39,21 +39,29 @@ public class BoltReceiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltReceiver.class);
 
-    /** Milliseconds to timeout a new session that stays idle. */
+    /**
+     * Milliseconds to timeout a new session that stays idle.
+     */
     private static final long IDLE_TIMEOUT = 3 * 1000;
 
     private final BoltEndPoint endpoint;
-    private final BoltSession session;
+    private final SessionState sessionState;
     private final BoltStatistics statistics;
 
-    /** Record seqNo of detected lost data and latest feedback time. */
+    /**
+     * Record seqNo of detected lost data and latest feedback time.
+     */
     private final ReceiverLossList receiverLossList;
 
-    /** Record each sent ACK and the sent time. */
+    /**
+     * Record each sent ACK and the sent time.
+     */
     private final AckHistoryWindow ackHistoryWindow;
 
     // ACK event related
-    /** Packet history window that stores the time interval between the current and the last seq. */
+    /**
+     * Packet history window that stores the time interval between the current and the last seq.
+     */
     private final PacketHistoryWindow packetHistoryWindow;
 
     /**
@@ -64,23 +72,35 @@ public class BoltReceiver {
     private final PacketPairWindow packetPairWindow;
 
     // EXP event related
-    /** Instant when the session was created (for expiry checking). */
+    /**
+     * Instant when the session was created (for expiry checking).
+     */
     private final long sessionUpSince;
 
-    /** Buffer size for storing data. */
+    /**
+     * Buffer size for storing data.
+     */
     private final long bufferSize;
 
-    /** Stores received packets to be sent. */
+    /**
+     * Stores received packets to be sent.
+     */
     private final BlockingQueue<BoltPacket> handOffQueue;
     private final Config config;
 
-    /** Round trip time, calculated from ACK/ACK2 pairs. */
+    /**
+     * Round trip time, calculated from ACK/ACK2 pairs.
+     */
     private long roundTripTime = 0;
 
-    /** Round trip time variance. */
+    /**
+     * Round trip time variance.
+     */
     private long roundTripTimeVar = roundTripTime / 2;
 
-    /** For storing the arrival time of the last received data packet. */
+    /**
+     * For storing the arrival time of the last received data packet.
+     */
     private volatile long lastDataPacketArrivalTime = 0;
 
     /**
@@ -88,28 +108,42 @@ public class BoltReceiver {
      */
     private volatile int largestReceivedRelSeqNumber = 0;
 
-    /** Last Ack number. */
+    /**
+     * Last Ack number.
+     */
     private long lastAckNumber = 0;
 
-    /** largest Ack number ever acknowledged by ACK2 */
+    /**
+     * largest Ack number ever acknowledged by ACK2
+     */
     private volatile long largestAcknowledgedAckNumber = -1;
 
-    /** Record number of consecutive EXP time-out events. */
+    /**
+     * Record number of consecutive EXP time-out events.
+     */
     private volatile long expCount = 0;
 
-    /** to check the ACK, NAK, or EXP timer */
+    /**
+     * to check the ACK, NAK, or EXP timer
+     */
     private long nextACK;
 
-    /** Microseconds to next ACK event. */
+    /**
+     * Microseconds to next ACK event.
+     */
     private long ackTimerInterval = Util.getSYNTime();
 
-    /** Microseconds to next NAK event. */
+    /**
+     * Microseconds to next NAK event.
+     */
     private long nakTimerInterval = Util.getSYNTime();
 
     private long nextNAK;
     private long nextEXP;
 
-    /** Number of reliable received data packets. */
+    /**
+     * Number of reliable received data packets.
+     */
     private int reliableN = 0;
 
     private volatile int ackSequenceNumber = 0;
@@ -117,14 +151,14 @@ public class BoltReceiver {
     /**
      * Create a receiver with a valid {@link BoltSession}.
      *
-     * @param session the owning session.
-     * @param endpoint the network endpoint.
-     * @param config bolt configuration.
+     * @param sessionState the owning session state.
+     * @param endpoint     the network endpoint.
+     * @param config       bolt configuration.
      */
-    public BoltReceiver(final BoltSession session, final BoltEndPoint endpoint, final Config config) {
-        if (!session.isReady()) throw new IllegalStateException("BoltSession is not ready.");
+    public BoltReceiver(final SessionState sessionState, final BoltEndPoint endpoint, final Config config) {
+        if (!sessionState.isReady()) throw new IllegalStateException("BoltSession is not ready.");
         this.endpoint = endpoint;
-        this.session = session;
+        this.sessionState = sessionState;
         this.sessionUpSince = System.currentTimeMillis();
         this.statistics = session.getStatistics();
         this.ackHistoryWindow = new AckHistoryWindow(16);
@@ -132,19 +166,18 @@ public class BoltReceiver {
         this.receiverLossList = new ReceiverLossList();
         this.packetPairWindow = new PacketPairWindow(16);
         this.largestReceivedRelSeqNumber = 0;
-        this.bufferSize = session.getReceiveBufferSize();
-        this.handOffQueue = new ArrayBlockingQueue<>(4 * session.getFlowWindowSize());
+        this.bufferSize = sessionState.getReceiveBufferSize();
+        this.handOffQueue = new ArrayBlockingQueue<>(4 * sessionState.getFlowWindowSize());
         this.config = config;
     }
 
     /**
      * Starts the sender algorithm.
      */
-    public Observable<?> start() {
+    public Observable<?> start(final String threadSuffix) {
         return Observable.create(subscriber -> {
             try {
-                final String s = (session instanceof ServerSession) ? "ServerSession" : "ClientSession";
-                Thread.currentThread().setName("Bolt-Receiver-" + s + Util.THREAD_INDEX.incrementAndGet());
+                Thread.currentThread().setName("Bolt-Receiver-" + threadSuffix);
 
                 while (!session.isStarted()) Thread.sleep(100);
 
@@ -451,7 +484,7 @@ public class BoltReceiver {
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
         NegAck nAckPacket = new NegAck();
         nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
-        nAckPacket.setDestinationID(session.getDestination().getSocketID());
+        nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
         for (int i = SeqNum.increment16(largestReceivedRelSeqNumber);
              SeqNum.compare16(i, currentRelSequenceNumber) < 0;
@@ -459,7 +492,7 @@ public class BoltReceiver {
             final ReceiverLossListEntry detectedLossSeqNumber = new ReceiverLossListEntry(i);
             receiverLossList.insert(detectedLossSeqNumber);
         }
-        endpoint.doSend(nAckPacket, session);
+        endpoint.doSend(nAckPacket, sessionState);
         LOG.debug("NAK for {}", currentRelSequenceNumber);
         statistics.incNumberOfNAKSent();
     }
@@ -469,24 +502,24 @@ public class BoltReceiver {
         final List<Integer> toSend = (seqNums.size() > 300) ? seqNums.subList(0, 300) : seqNums;
         final NegAck nAckPacket = new NegAck();
         nAckPacket.addLossInfo(toSend);
-        nAckPacket.setDestinationID(session.getDestination().getSocketID());
-        endpoint.doSend(nAckPacket, session);
+        nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
+        endpoint.doSend(nAckPacket, sessionState);
         statistics.incNumberOfNAKSent();
     }
 
     private long sendLightAcknowledgment(final int ackNumber) throws IOException {
         final Ack acknowledgmentPkt = buildLightAcknowledgement(ackNumber);
-        endpoint.doSend(acknowledgmentPkt, session);
+        endpoint.doSend(acknowledgmentPkt, sessionState);
         statistics.incNumberOfACKSent();
         return acknowledgmentPkt.getAckSequenceNumber();
     }
 
     private long sendAcknowledgment(final int ackNumber) throws IOException {
         final Ack ack = Ack.buildAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar,
-                bufferSize, session.getDestination().getSocketID(),
+                bufferSize, sessionState.getDestinationSocketID(),
                 packetPairWindow.getEstimatedLinkCapacity(), packetHistoryWindow.getPacketArrivalSpeed());
 
-        endpoint.doSend(ack, session);
+        endpoint.doSend(ack, sessionState);
 
         statistics.incNumberOfACKSent();
         statistics.setPacketArrivalRate(ack.getPacketReceiveRate(), ack.getEstimatedLinkCapacity());
@@ -522,7 +555,8 @@ public class BoltReceiver {
             else roundTripTime = rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
             ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
-            if (config.getMaxAckTimerInterval() > 0) ackTimerInterval = Math.min(config.getMaxAckTimerInterval(), ackTimerInterval);
+            if (config.getMaxAckTimerInterval() > 0)
+                ackTimerInterval = Math.min(config.getMaxAckTimerInterval(), ackTimerInterval);
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }
@@ -530,8 +564,8 @@ public class BoltReceiver {
 
     private void sendKeepAlive() throws IOException {
         final KeepAlive ka = new KeepAlive();
-        ka.setDestinationID(session.getDestination().getSocketID());
-        endpoint.doSend(ka, session);
+        ka.setDestinationID(sessionState.getDestinationSocketID());
+        endpoint.doSend(ka, sessionState);
     }
 
     private void resetEXPTimer() {

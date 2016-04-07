@@ -2,13 +2,10 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ConnectionHandshake;
-import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.PacketFactory;
-import io.lyracommunity.bolt.packet.PacketType;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -19,12 +16,7 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
@@ -266,9 +258,9 @@ public class BoltEndPoint {
         return !dgSocket.isClosed();
     }
 
-    public void doSend(final BoltPacket packet, final BoltSession session) throws IOException {
+    public void doSend(final BoltPacket packet, final SessionState sessionState) throws IOException {
         final byte[] data = packet.getEncoded();
-        DatagramPacket dgp = session.getDatagram();
+        final DatagramPacket dgp = sessionState.getDatagram();
         dgp.setData(data);
         dgSocket.send(dgp);
     }

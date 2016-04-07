@@ -1,16 +1,15 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.receiver.BoltReceiver;
 import io.lyracommunity.bolt.sender.BoltSender;
-import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.util.ReceiveBuffer;
+import io.lyracommunity.bolt.util.Util;
 import rx.Observable;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -22,7 +21,7 @@ public class SessionSocket
 {
 
     // Endpoint
-    private final BoltSession session;
+    private final SessionState state;
     private volatile boolean active;
 
     // Processing received data
@@ -34,22 +33,24 @@ public class SessionSocket
      * Create a new session socket.
      *
      * @param endpoint the endpoint.
-     * @param session the owning session.
+     * @param state the owning session state.
      */
-    SessionSocket(final BoltEndPoint endpoint, final BoltSession session) {
-        this.session = session;
-        this.receiver = new BoltReceiver(session, endpoint, endpoint.getConfig());
-        this.sender = new BoltSender(session, endpoint);
+    SessionSocket(final BoltEndPoint endpoint, final SessionState state) {
+        this.state = state;
+        this.receiver = new BoltReceiver(state, endpoint, endpoint.getConfig());
+        this.sender = new BoltSender(state, endpoint, session.getCongestionControl());
 
-        final int capacity = 2 * session.getFlowWindowSize();
+        final int capacity = 2 * state.getFlowWindowSize();
 
         this.receiveBuffer = new ReceiveBuffer(capacity);
     }
 
     public Observable<?> start() {
+        final String threadSuffix = ((session instanceof ServerSession) ? "Server" : "Client") + "Session-"
+                + session.getSocketID() + "-" + Util.THREAD_INDEX.incrementAndGet();
         return Observable.merge(
-                receiver.start().subscribeOn(Schedulers.io()),
-                sender.doStart().subscribeOn(Schedulers.io()))
+                receiver.start(threadSuffix).subscribeOn(Schedulers.io()),
+                sender.doStart(threadSuffix).subscribeOn(Schedulers.io()))
                 .doOnSubscribe(() -> setActive(true));
     }
 
@@ -72,10 +73,6 @@ public class SessionSocket
      */
     public ReceiveBuffer.OfferResult haveNewData(final DataPacket packet) throws IOException {
         return receiveBuffer.offer(packet);
-    }
-
-    public final BoltSession getSession() {
-        return session;
     }
 
     public void doWrite(final DataPacket dataPacket) throws IOException {

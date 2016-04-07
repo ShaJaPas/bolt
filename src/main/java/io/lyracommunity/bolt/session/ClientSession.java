@@ -13,7 +13,7 @@ import rx.schedulers.Schedulers;
 import java.io.IOException;
 import java.net.SocketException;
 
-import static io.lyracommunity.bolt.session.BoltSession.SessionState.*;
+import static io.lyracommunity.bolt.session.SessionStatus.*;
 
 /**
  * Client side of a client-server Bolt connection.
@@ -38,20 +38,20 @@ public class ClientSession extends BoltSession {
     public Observable<?> connect() throws InterruptedException, IOException {
         return Observable.create(subscriber -> {
             int n = 0;
-            while (getState() != READY && !subscriber.isUnsubscribed()) {
+            while (getStatus() != READY && !subscriber.isUnsubscribed()) {
                 try {
-                    if (getState() == INVALID) {
+                    if (getStatus() == INVALID) {
                         throw new IOException("Can't connect!");
                     }
-                    if (getState().seqNo() <= HANDSHAKING.seqNo()) {
-                        setState(HANDSHAKING);
+                    if (getStatus().seqNo() <= HANDSHAKING.seqNo()) {
+                        setStatus(HANDSHAKING);
                         sendInitialHandShake();
                     }
-                    else if (getState() == HANDSHAKING2) {
+                    else if (getStatus() == HANDSHAKING2) {
                         sendSecondHandshake();
                     }
 
-                    if (getState() == INVALID) throw new IOException("Can't connect!");
+                    if (getStatus() == INVALID) throw new IOException("Can't connect!");
                     if (n++ > 40) throw new IOException("Could not connect to server within the timeout.");
 
                     Thread.sleep(500);
@@ -73,40 +73,40 @@ public class ClientSession extends BoltSession {
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
         boolean readyToStart = false;
-        if (getState() == HANDSHAKING) {
+        if (getStatus() == HANDSHAKING) {
             LOG.info("Received initial handshake response from {}\n{}", peer, handshake);
             if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
                 try {
                     // TODO validate parameters sent by peer
                     int peerSocketID = handshake.getSocketID();
-                    sessionCookie = handshake.getCookie();
-                    destination.setSocketID(peerSocketID);
-                    setState(HANDSHAKING2);
+                    state.setSessionCookie(handshake.getCookie());
+                    state.getDestination().setSocketID(peerSocketID);
+                    setStatus(HANDSHAKING2);
 //                    sendSecondHandshake();
                 }
                 catch (Exception ex) {
                     LOG.warn("Error creating socket", ex);
-                    setState(INVALID);
+                    setStatus(INVALID);
                     subscriber.onError(ex);
                 }
             }
             else {
                 final Exception ex = new IllegalStateException("Unexpected type of handshake packet received");
                 LOG.error("Bad connection type received", ex);
-                setState(INVALID);
+                setStatus(INVALID);
                 subscriber.onError(ex);
             }
         }
-        else if (getState() == HANDSHAKING2) {
+        else if (getStatus() == HANDSHAKING2) {
             try {
                 LOG.info("Received confirmation handshake response from {}\n{}", peer, handshake);
                 // TODO validate parameters sent by peer
-                setState(READY);
+                setStatus(READY);
                 readyToStart = true;
             }
             catch (Exception ex) {
                 LOG.error("Error creating socket", ex);
-                setState(INVALID);
+                setStatus(INVALID);
                 subscriber.onError(ex);
             }
         }
@@ -115,7 +115,7 @@ public class ClientSession extends BoltSession {
 
     @Override
     public void received(final BoltPacket packet, final Subscriber subscriber) {
-        if (getState() == READY) {
+        if (getStatus() == READY) {
             socket.setActive(true);
             try {
                 // Send all packets to both sender and receiver
@@ -126,7 +126,7 @@ public class ClientSession extends BoltSession {
                 // Session is invalid.
                 LOG.error("Error in " + toString(), ex);
                 subscriber.onError(ex);
-                setState(INVALID);
+                setStatus(INVALID);
             }
         }
     }
@@ -135,8 +135,8 @@ public class ClientSession extends BoltSession {
      * Initial handshake for connect.
      */
     protected void sendInitialHandShake() throws IOException {
-        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), getInitialSequenceNumber(),
-                flowWindowSize, mySocketID, endPoint.getLocalAddress());
+        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), state.getInitialSequenceNumber(),
+                state.getFlowWindowSize(), mySocketID, endPoint.getLocalAddress());
         LOG.info("Sending {}", handshake);
         endPoint.doSend(handshake, this);
     }
@@ -145,8 +145,8 @@ public class ClientSession extends BoltSession {
      * Second handshake for connect.
      */
     protected void sendSecondHandshake() throws IOException {
-        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), getInitialSequenceNumber(),
-                flowWindowSize, mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
+        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), state.getInitialSequenceNumber(),
+                state.getFlowWindowSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending confirmation {}", ch);
         endPoint.doSend(ch, this);
     }

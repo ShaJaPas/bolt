@@ -2,10 +2,10 @@ package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.Config;
-import io.lyracommunity.bolt.packet.Ack;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.BoltSession;
 import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.SessionStatus;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,7 +45,7 @@ public class BoltReceiverTest
         final BoltEndPoint endpoint = new BoltEndPoint(config);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), 65321);
         final BoltSession session = new ServerSession(peer, endpoint);
-        session.setState(BoltSession.SessionState.READY);
+        session.setStatus(SessionStatus.READY);
         receiver = new BoltReceiver(session, endpoint, config);
         events = new ArrayList<>();
         errors = new ArrayList<>();

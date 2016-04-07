@@ -12,7 +12,7 @@ import rx.Subscriber;
 import java.io.IOException;
 import java.text.MessageFormat;
 
-import static io.lyracommunity.bolt.session.BoltSession.SessionState.*;
+import static io.lyracommunity.bolt.session.SessionStatus.*;
 
 /**
  * Server side session in client-server mode.
@@ -32,16 +32,16 @@ public class ServerSession extends BoltSession {
     /**
      * Reply to a connection handshake message.
      *
-     * @param subscriber
+     * @param subscriber the reactive subscriber.
      * @param handshake  incoming connection handshake from the client.
-     * @param peer
+     * @param peer the destination from where the packet was sent.
      */
     @Override
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
-        LOG.info("Received {} in state [{}]", handshake, getState());
+        LOG.info("Received {} in state [{}]", handshake, getStatus());
         boolean readyToStart = false;
-        if (getState() == READY) {
+        if (getStatus() == READY) {
             // Just send confirmation packet again.
             try {
                 sendFinalHandShake(handshake);
@@ -51,18 +51,18 @@ public class ServerSession extends BoltSession {
             }
         }
 
-        else if (getState().seqNo() < READY.seqNo()) {
-            destination.setSocketID(handshake.getSocketID());
+        else if (getStatus().seqNo() < READY.seqNo()) {
+            state.setDestinationSocketID(handshake.getSocketID());
 
-            if (getState().seqNo() < HANDSHAKING.seqNo()) {
-                setState(HANDSHAKING);
+            if (getStatus().seqNo() < HANDSHAKING.seqNo()) {
+                setStatus(HANDSHAKING);
             }
 
             try {
                 boolean handShakeComplete = handleSecondHandShake(handshake);
                 if (handShakeComplete) {
                     LOG.info("Client/Server handshake complete!");
-                    setState(READY);
+                    setStatus(READY);
                     readyToStart = true;
                     cc.init();
                 }
@@ -70,7 +70,7 @@ public class ServerSession extends BoltSession {
             catch (IOException ex) {
                 // Session invalid.
                 LOG.warn("Error processing ConnectionHandshake", ex);
-                setState(INVALID);
+                setStatus(INVALID);
                 subscriber.onError(ex);
             }
         }
@@ -80,7 +80,7 @@ public class ServerSession extends BoltSession {
     @Override
     public void received(final BoltPacket packet, final Subscriber subscriber) {
 
-        if (getState() == READY) {
+        if (getStatus() == READY) {
             socket.setActive(true);
             try {
                 socket.getSender().receive(packet);
@@ -89,7 +89,7 @@ public class ServerSession extends BoltSession {
             catch (Exception ex) {
                 // Invalidate session
                 LOG.error("Session error receiving packet", ex);
-                setState(INVALID);
+                setStatus(INVALID);
                 subscriber.onError(ex);
             }
         }
@@ -102,16 +102,17 @@ public class ServerSession extends BoltSession {
      * @throws IOException if the received cookie doesn't equal the expected cookie.
      */
     private boolean handleSecondHandShake(final ConnectionHandshake handshake) throws IOException {
-        if (sessionCookie == 0) {
+        if (state.getSessionCookie() == 0) {
             ackInitialHandshake(handshake);
             // Need one more handshake.
             return false;
         }
 
-        long otherCookie = handshake.getCookie();
-        if (sessionCookie != otherCookie) {
-            setState(INVALID);
-            throw new IOException(MessageFormat.format("Invalid cookie [{0}] received; Expected cookie is [{1}]", otherCookie, sessionCookie));
+        final long otherCookie = handshake.getCookie();
+        if (state.getSessionCookie() != otherCookie) {
+            setStatus(INVALID);
+            throw new IOException(MessageFormat.format("Invalid cookie [{0}] received; Expected cookie is [{1}]",
+                    otherCookie, state.getSessionCookie()));
         }
         sendFinalHandShake(handshake);
         return true;
@@ -127,32 +128,32 @@ public class ServerSession extends BoltSession {
         final long myBufferSize = getDatagramSize();
         final long bufferSize = Math.min(clientBufferSize, myBufferSize);
         final int initialSequenceNumber = handshake.getInitialSeqNo();
-        setInitialSequenceNumber(initialSequenceNumber);
+        state.setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        sessionCookie = SeqNum.randomInt();
+        state.setSessionCookie(SeqNum.randomInt());
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
+                handshake.getMaxFlowWndSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending reply {}", responseHandshake);
-        endPoint.doSend(responseHandshake, this);
+        endPoint.doSend(responseHandshake, state);
     }
 
     private void sendFinalHandShake(final ConnectionHandshake handshake) throws IOException {
 
         if (finalConnectionHandshake == null) {
             // Compare the packet size and choose minimum
-            long clientBufferSize = handshake.getPacketSize();
-            long myBufferSize = getDatagramSize();
-            long bufferSize = Math.min(clientBufferSize, myBufferSize);
-            int initialSequenceNumber = handshake.getInitialSeqNo();
-            setInitialSequenceNumber(initialSequenceNumber);
+            final long clientBufferSize = handshake.getPacketSize();
+            final long myBufferSize = getDatagramSize();
+            final long bufferSize = Math.min(clientBufferSize, myBufferSize);
+            final int initialSequenceNumber = handshake.getInitialSeqNo();
+            state.setInitialSequenceNumber(initialSequenceNumber);
             setDatagramSize((int) bufferSize);
 
             finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                    handshake.getMaxFlowWndSize(), mySocketID, getDestination().getSocketID(), sessionCookie, endPoint.getLocalAddress());
+                    handshake.getMaxFlowWndSize(), mySocketID, state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         }
         LOG.info("Sending final handshake ack {}", finalConnectionHandshake);
-        endPoint.doSend(finalConnectionHandshake, this);
+        endPoint.doSend(finalConnectionHandshake, state);
     }
 
 }
