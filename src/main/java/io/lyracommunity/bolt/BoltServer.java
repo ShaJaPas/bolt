@@ -113,14 +113,6 @@ public class BoltServer implements Server
         }
     }
 
-    // TODO should not be needed as server endpoint can clean itself up.
-//    private void shutdown() {
-//        if (this.serverEndpoint != null) {
-//            this.serverEndpoint.stop();
-//            this.serverEndpoint = null;
-//        }
-//    }
-
     public List<BoltStatistics> getStatistics() {
         return serverEndpoint.getSessions().stream().map(Session::getStatistics).collect(Collectors.toList());
     }

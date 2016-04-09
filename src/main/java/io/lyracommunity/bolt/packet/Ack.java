@@ -4,13 +4,15 @@ import io.lyracommunity.bolt.receiver.Receiver;
 import io.lyracommunity.bolt.sender.Sender;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Objects;
 
 /**
  * Acknowledgement (ACK) is sent by the {@link Receiver} to the {@link Sender}
  * to acknowledge receipt of packets.
  * <p>
- * Additional Info: ACK sequence number     <br>
- * Control Info:                            <br>
+ * Additional Info: ACK sequence number
+ * <p>
+ * Control Info:
  * <ol>
  * <li> 32 bits: The packet sequence number to which all the
  * previous packets have been received (excluding)
@@ -45,8 +47,14 @@ public class Ack extends ControlPacket {
     /** Estimated link capacity in number of packets per second */
     private long estimatedLinkCapacity;
 
-    public Ack() {
+    Ack() {
         this.controlPacketType = PacketType.ACK.getTypeId();
+    }
+
+    Ack(int ackSeqNo, byte[] controlInformation) {
+        this();
+        this.ackSequenceNumber = ackSeqNo;
+        decodeControlInformation(controlInformation);
     }
 
     public static Ack buildAcknowledgement(final int ackNumber, final int ackSequenceNumber,
@@ -75,13 +83,7 @@ public class Ack extends ControlPacket {
         return ack;
     }
 
-    public Ack(int ackSeqNo, byte[] controlInformation) {
-        this();
-        this.ackSequenceNumber = ackSeqNo;
-        decodeControlInformation(controlInformation);
-    }
-
-    void decodeControlInformation(final byte[] data) {
+    private void decodeControlInformation(final byte[] data) {
         ackNumber = PacketUtil.decodeInt(data, 0);
         if (data.length > 4) {
             roundTripTime = PacketUtil.decode(data, 4);
@@ -103,45 +105,40 @@ public class Ack extends ControlPacket {
         return ackSequenceNumber;
     }
 
-    public void setAckSequenceNumber(final int ackSequenceNumber) {
+    void setAckSequenceNumber(final int ackSequenceNumber) {
         this.ackSequenceNumber = ackSequenceNumber;
     }
 
-
     /**
-     * get the ack number (the number up to which all packets have been received (excluding))
-     *
-     * @return
+     * @return the ACK number (the number up to which all packets have been received, exclusive).
      */
     public int getAckNumber() {
         return ackNumber;
     }
 
     /**
-     * set the ack number (the number up to which all packets have been received (excluding))
+     * Set the ack number (the number up to which all packets have been received, exclusive).
      *
-     * @param ackNumber
+     * @param ackNumber the ack number as described above.
      */
-    public void setAckNumber(int ackNumber) {
+    void setAckNumber(final int ackNumber) {
         this.ackNumber = ackNumber;
     }
 
     /**
-     * get the round trip time (microseconds)
-     *
-     * @return
+     * @return the round trip time, in microseconds.
      */
     public long getRoundTripTime() {
         return roundTripTime;
     }
 
     /**
-     * set the round trip time (in microseconds)
+     * Set the round trip time, in microseconds.
      *
-     * @param RoundTripTime
+     * @param roundTripTime the value to set.
      */
-    public void setRoundTripTime(long RoundTripTime) {
-        roundTripTime = RoundTripTime;
+    void setRoundTripTime(final long roundTripTime) {
+        this.roundTripTime = roundTripTime;
     }
 
     public long getRoundTripTimeVar() {
@@ -149,19 +146,15 @@ public class Ack extends ControlPacket {
     }
 
     /**
-     * set the variance of the round trip time (in microseconds)
+     * Set the variance of the round trip time, in microseconds.
      *
-     * @param roundTripTimeVar
+     * @param roundTripTimeVar the variance as described above.
      */
-    public void setRoundTripTimeVar(long roundTripTimeVar) {
+    void setRoundTripTimeVar(final long roundTripTimeVar) {
         roundTripTimeVariance = roundTripTimeVar;
     }
 
-    public long getBufferSize() {
-        return bufferSize;
-    }
-
-    public void setBufferSize(long bufferSiZe) {
+    void setBufferSize(final long bufferSiZe) {
         this.bufferSize = bufferSiZe;
     }
 
@@ -169,31 +162,28 @@ public class Ack extends ControlPacket {
         return pktArrivalSpeed;
     }
 
-    public void setPacketReceiveRate(long packetReceiveRate) {
+    void setPacketReceiveRate(final long packetReceiveRate) {
         this.pktArrivalSpeed = packetReceiveRate;
     }
-
 
     public long getEstimatedLinkCapacity() {
         return estimatedLinkCapacity;
     }
 
-    public void setEstimatedLinkCapacity(long estimatedLinkCapacity) {
+    void setEstimatedLinkCapacity(final long estimatedLinkCapacity) {
         this.estimatedLinkCapacity = estimatedLinkCapacity;
     }
 
     @Override
     public byte[] encodeControlInformation() {
         try {
-            // TODO shorten packing
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            final ByteArrayOutputStream bos = new ByteArrayOutputStream();
             bos.write(PacketUtil.encode(ackNumber));
             bos.write(PacketUtil.encode(roundTripTime));
             bos.write(PacketUtil.encode(roundTripTimeVariance));
             bos.write(PacketUtil.encode(bufferSize));
             bos.write(PacketUtil.encode(pktArrivalSpeed));
             bos.write(PacketUtil.encode(estimatedLinkCapacity));
-
             return bos.toByteArray();
         } catch (Exception e) {
             // can't happen
@@ -201,30 +191,25 @@ public class Ack extends ControlPacket {
         }
     }
 
-    // TODO should ackSequenceNumber be included in this? Also, implement hashCode.
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Ack other = (Ack) obj;
-        if (ackNumber != other.ackNumber)
-            return false;
-        if (roundTripTime != other.roundTripTime)
-            return false;
-        if (roundTripTimeVariance != other.roundTripTimeVariance)
-            return false;
-        if (bufferSize != other.bufferSize)
-            return false;
-        if (estimatedLinkCapacity != other.estimatedLinkCapacity)
-            return false;
-        if (pktArrivalSpeed != other.pktArrivalSpeed)
-            return false;
-        return true;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        final Ack ack = (Ack) o;
+        return ackSequenceNumber == ack.ackSequenceNumber &&
+                ackNumber == ack.ackNumber &&
+                roundTripTime == ack.roundTripTime &&
+                roundTripTimeVariance == ack.roundTripTimeVariance &&
+                bufferSize == ack.bufferSize &&
+                pktArrivalSpeed == ack.pktArrivalSpeed &&
+                estimatedLinkCapacity == ack.estimatedLinkCapacity;
     }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), ackSequenceNumber, ackNumber, roundTripTime, roundTripTimeVariance,
+                bufferSize, pktArrivalSpeed, estimatedLinkCapacity);
+    }
 
 }

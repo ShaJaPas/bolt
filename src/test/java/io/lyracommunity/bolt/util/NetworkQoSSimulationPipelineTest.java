@@ -35,7 +35,7 @@ public class NetworkQoSSimulationPipelineTest {
     public void test_noLatency_noJitter() throws Exception {
         final BoltPacket p = createPacket(0);
 
-        subject.offer(p, null);
+        subject.offer(null, p);
 
         assertEquals(p, output.poll());
     }
@@ -45,7 +45,7 @@ public class NetworkQoSSimulationPipelineTest {
         setUp(50, 0, 0);
         final BoltPacket p = createPacket(0);
 
-        subject.offer(p, null);
+        subject.offer(null, p);
 
         assertNull(output.poll());
         Thread.sleep(80);
@@ -60,7 +60,7 @@ public class NetworkQoSSimulationPipelineTest {
         setUp(0, 100, 0, rand);
 
         // When
-        IntStream.range(0, 4).forEach(i -> subject.offer(createPacket(i), null));
+        IntStream.range(0, 4).forEach(i -> subject.offer(null, createPacket(i)));
 
         // Then
         assertEquals(3, output.poll(100, TimeUnit.MILLISECONDS).getPacketSeqNumber());
@@ -77,7 +77,7 @@ public class NetworkQoSSimulationPipelineTest {
         setUp(0, 0, 1f);
 
         // When
-        IntStream.range(0, count).forEach(i -> subject.offer(createPacket(i), null));
+        IntStream.range(0, count).forEach(i -> subject.offer(null, createPacket(i)));
 
         // Then
         for (int i = 0; i < count; i++) assertNull(output.poll());
@@ -89,7 +89,7 @@ public class NetworkQoSSimulationPipelineTest {
         setUp(0, 0, 0.5f);
 
         // When
-        IntStream.range(0, count).forEach(i -> subject.offer(createPacket(i), null));
+        IntStream.range(0, count).forEach(i -> subject.offer(null, createPacket(i)));
 
         // Then
         assertEquals(0, output.poll().getPacketSeqNumber());

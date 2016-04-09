@@ -26,30 +26,34 @@ public class SessionState {
      */
     private final int receiveBufferSize = 64 * 32768;
     /**
+     * Statistics for the session.
+     */
+    private final BoltStatistics statistics;
+    /**
+     * The socket ID of this session.
+     */
+    private final int mySocketID;
+    /**
      * Session cookie created during handshake.
      */
-    protected long sessionCookie = 0;
+    private long sessionCookie = 0;
     /**
      * Flow window size (how many data packets are in-flight at a single time).
      */
-    protected int flowWindowSize = 1024 * 10;
+    private int flowWindowSize = 1024 * 10;
+
+    // TODO review whether statstics belongs to this class or outside
     /**
      * Initial packet sequence number.
      */
-    protected Integer initialSequenceNumber = null;
+    private Integer initialSequenceNumber = null;
     /**
      * Cache dgPacket (peer stays the same always).
      */
     private DatagramPacket dgPacket;
-
-    // TODO review whether statstics belongs to this class or outside
-    /** Statistics for the session. */
-    private final BoltStatistics statistics;
-
-    /** The socket ID of this session. */
-    private final int mySocketID;
-
-    /** Whether the session is started and active. */
+    /**
+     * Whether the session is started and active.
+     */
     private volatile boolean active;
 
     private volatile SessionStatus status = SessionStatus.START;
@@ -67,7 +71,7 @@ public class SessionState {
         this.statistics = new BoltStatistics(description, datagramSize);
     }
 
-    public int getSocketID() {
+    int getSocketID() {
         return mySocketID;
     }
 
@@ -83,7 +87,7 @@ public class SessionState {
         return destination.getSocketID();
     }
 
-    public void setDestinationSocketID(final int destSocketID) {
+    void setDestinationSocketID(final int destSocketID) {
         destination.setSocketID(destSocketID);
     }
 
@@ -95,19 +99,19 @@ public class SessionState {
         return status == SessionStatus.SHUTDOWN || status == SessionStatus.INVALID;
     }
 
-    public SessionStatus getStatus() {
+    SessionStatus getStatus() {
         return status;
     }
 
-    public void setStatus(final SessionStatus status) {
+    void setStatus(final SessionStatus status) {
         this.status = status;
     }
 
-    public long getSessionCookie() {
+    long getSessionCookie() {
         return sessionCookie;
     }
 
-    public void setSessionCookie(long sessionCookie) {
+    void setSessionCookie(long sessionCookie) {
         this.sessionCookie = sessionCookie;
     }
 
@@ -138,22 +142,20 @@ public class SessionState {
         this.active = active;
     }
 
-    void setDatagramSize(int datagramSize) {
-        this.datagramSize = datagramSize;
-    }
-
     int getDatagramSize() {
         return datagramSize;
     }
 
-    public BoltStatistics getStatistics()
-    {
+    void setDatagramSize(int datagramSize) {
+        this.datagramSize = datagramSize;
+    }
+
+    public BoltStatistics getStatistics() {
         return statistics;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "SessionState{" + "mySocketID=" + mySocketID + '}';
     }
 

@@ -3,13 +3,9 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ConnectionHandshake;
-import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.PacketFactory;
-import io.lyracommunity.bolt.packet.PacketType;
-import io.lyracommunity.bolt.session.Session;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
 import io.lyracommunity.bolt.util.Util;
@@ -21,12 +17,7 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
@@ -155,8 +146,7 @@ public class BoltEndPoint implements ChannelOut {
         LOG.info("BoltEndpoint started.");
 
         final NetworkQoSSimulationPipeline qosSimulationPipeline = new NetworkQoSSimulationPipeline(config,
-                (peer, pkt) -> processPacket(subscriber, peer, pkt));
-
+                (peer, pkt) -> processPacket(subscriber, peer, pkt), (peer, pkt) -> markPacketAsDropped(pkt));
         while (!subscriber.isUnsubscribed()) {
             try {
                 // Will block until a packet is received or timeout has expired.
@@ -168,7 +158,7 @@ public class BoltEndPoint implements ChannelOut {
 
                 if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
 
-                qosSimulationPipeline.offer(packet, peer);
+                qosSimulationPipeline.offer(peer, packet);
 
             }
             catch (AsynchronousCloseException ex) {
@@ -188,7 +178,13 @@ public class BoltEndPoint implements ChannelOut {
                 LOG.error("Unexpected endpoint error", ex);
             }
         }
+        qosSimulationPipeline.close();
         stop(subscriber);
+    }
+
+    private void markPacketAsDropped(final BoltPacket packet) {
+        final Session session = sessions.get(packet.getDestinationID());
+        if (session != null) session.getStatistics().incNumberOfArtificialDrops();
     }
 
     private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
@@ -208,7 +204,7 @@ public class BoltEndPoint implements ChannelOut {
             }
         }
         else {
-            LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
+            LOG.info("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
         }
     }
 
@@ -218,13 +214,13 @@ public class BoltEndPoint implements ChannelOut {
      *
      * @param packet the received handshake packet.
      * @param peer   peer that sent the handshake.
+     * @return true if connection is ready to start, otherwise false.
      * @throws IOException
      * @throws InterruptedException
-     * @return true if connection is ready to start, otherwise false.
      */
     private synchronized Session connectionHandshake(final Subscriber<? super Object> subscriber,
-                                                         final ConnectionHandshake packet, final Destination peer,
-                                                         final Session existingSession) {
+                                                     final ConnectionHandshake packet, final Destination peer,
+                                                     final Session existingSession) {
         final int destID = packet.getDestinationID();
         Session session = existingSession;
         if (session == null) {

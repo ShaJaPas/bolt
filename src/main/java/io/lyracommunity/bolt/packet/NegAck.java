@@ -4,7 +4,6 @@ import io.lyracommunity.bolt.util.SeqNum;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,17 +20,20 @@ import java.util.List;
  */
 public class NegAck extends ControlPacket {
 
-    /** After decoding this contains the lost sequence numbers. */
-    List<Integer> lostSequenceNumbers;
-
-    /** This contains the loss information intervals. */
+    /**
+     * This contains the loss information intervals.
+     */
     final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
+    /**
+     * After decoding this contains the lost sequence numbers.
+     */
+    private List<Integer> lostSequenceNumbers;
 
     public NegAck() {
         this.controlPacketType = PacketType.NAK.getTypeId();
     }
 
-    public NegAck(final byte[] controlInformation) {
+    NegAck(final byte[] controlInformation) {
         this();
         lostSequenceNumbers = decode(controlInformation);
     }
@@ -41,9 +43,9 @@ public class NegAck extends ControlPacket {
      *
      * @param lossInfo list of lost sequence numbers.
      */
-    private List<Integer> decode(byte[] lossInfo) {
-        List<Integer> lostSequenceNumbers = new ArrayList<>();
-        ByteBuffer bb = ByteBuffer.wrap(lossInfo);
+    private List<Integer> decode(final byte[] lossInfo) {
+        final List<Integer> lostSequenceNumbers = new ArrayList<>();
+        final ByteBuffer bb = ByteBuffer.wrap(lossInfo);
         byte[] buffer = new byte[4];
         while (bb.remaining() > 0) {
             // Read 4 bytes
@@ -51,24 +53,19 @@ public class NegAck extends ControlPacket {
             buffer[1] = bb.get();
             buffer[2] = bb.get();
             buffer[3] = bb.get();
-            boolean isNotSingle = (buffer[0] & 128) != 0;
+            final boolean isNotSingle = (buffer[0] & 128) != 0;
             // Set highest bit back to 0
             buffer[0] = (byte) (buffer[0] & 0x7f);
-            int lost = ByteBuffer.wrap(buffer).getInt();
+            final int lost = ByteBuffer.wrap(buffer).getInt();
             if (isNotSingle) {
                 // Get the end of the interval
-                int end;
-                try {
-                    end = bb.getInt();
-                    // And add all lost numbers to the result list
-                    // TODO what about overflow? lost = 65536, end = 0
-                    for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
-                        lostSequenceNumbers.add(i);
-                    }
-                } catch(BufferUnderflowException e) {
-                    System.out.println(lost + "  " + e);
+                int end = bb.getInt();
+                // And add all lost numbers to the result list
+                for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
+                    lostSequenceNumbers.add(i);
                 }
-            } else {
+            }
+            else {
                 lostSequenceNumbers.add(lost);
             }
         }
@@ -84,7 +81,8 @@ public class NegAck extends ControlPacket {
         byte[] enc = PacketUtil.encodeSetHighest(false, singleSequenceNumber);
         try {
             lossInfo.write(enc);
-        } catch (IOException ignore) {
+        }
+        catch (IOException ignore) {
         }
     }
 
@@ -106,7 +104,8 @@ public class NegAck extends ControlPacket {
         try {
             lossInfo.write(enc1);
             lossInfo.write(enc2);
-        } catch (IOException ignore) {
+        }
+        catch (IOException ignore) {
         }
     }
 
@@ -132,7 +131,8 @@ public class NegAck extends ControlPacket {
 
             if (end == 0) {
                 addLossInfo(start);
-            } else {
+            }
+            else {
                 end = sequenceNumbers.get(index - 1);
                 addLossInfo(start, end);
             }
@@ -156,7 +156,8 @@ public class NegAck extends ControlPacket {
                 System.out.println("BLAH");
             }
             return lossInfo.toByteArray();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // can't happen
             return null;
         }
@@ -178,12 +179,14 @@ public class NegAck extends ControlPacket {
         // Compare the loss info
         if (lostSequenceNumbers != null) {
             thisLost = lostSequenceNumbers;
-        } else {
+        }
+        else {
             thisLost = decode(lossInfo.toByteArray());
         }
         if (other.lostSequenceNumbers != null) {
             otherLost = other.lostSequenceNumbers;
-        } else {
+        }
+        else {
             otherLost = other.decode(other.lossInfo.toByteArray());
         }
         if (!thisLost.equals(otherLost)) {

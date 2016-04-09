@@ -44,7 +44,7 @@ public class Config
     private long expTimerInterval = 50 * Util.getSYNTime();
 
     /** Max ACK timer interval, in microseconds. */
-    private long maxAckTimerInterval = 50_000;
+    private long maxAckTimerInterval = 10 * Util.getSYNTime();
 
     /**
      * Create a new instance.

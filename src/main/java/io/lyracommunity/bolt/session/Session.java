@@ -188,7 +188,6 @@ public abstract class Session
      */
     public void flush() throws InterruptedException, IllegalStateException {
         if (!state.isActive()) return;
-        // TODO change to reliability seq number. Also, logic needs careful looking over.
         final int seqNo = sender.getCurrentSequenceNumber();
         final int relSeqNo = sender.getCurrentReliabilitySequenceNumber();
         if (seqNo < 0) throw new IllegalStateException();
@@ -198,11 +197,9 @@ public abstract class Session
         if (seqNo > -1) {
             // Wait until data has been sent out and acknowledged.
             while (state.isActive() && !sender.haveAcknowledgementFor(relSeqNo)) {
-                sender.waitForAck(seqNo);
+                sender.waitForAck(relSeqNo);
             }
         }
-        // TODO need to check if we can pause the sender...
-        //        sender.pause();
     }
 
     public DataPacket pollReceiveBuffer(final int timeout, final TimeUnit unit) throws InterruptedException {

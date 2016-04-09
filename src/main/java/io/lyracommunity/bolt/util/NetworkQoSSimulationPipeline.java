@@ -21,7 +21,9 @@ public class NetworkQoSSimulationPipeline {
 
     private final IntUnaryOperator intRNG;
 
-    private final BiConsumer<Destination, BoltPacket> pipeTo;
+    private final PacketConsumer pipeTo;
+
+    private final PacketConsumer onDrop;
 
     private final AtomicBoolean running = new AtomicBoolean();
 
@@ -30,14 +32,16 @@ public class NetworkQoSSimulationPipeline {
     private volatile long packetReceiveCount = 0;
 
 
-    public NetworkQoSSimulationPipeline(final Config config, final BiConsumer<Destination, BoltPacket> pipeTo) {
-        this(config, pipeTo, new Random()::nextInt);
+    public NetworkQoSSimulationPipeline(final Config config, final PacketConsumer pipeTo, final PacketConsumer onDrop) {
+        this(config, pipeTo, onDrop, new Random()::nextInt);
     }
 
-    public NetworkQoSSimulationPipeline(final Config config, final BiConsumer<Destination, BoltPacket> pipeTo, final IntUnaryOperator intRNG) {
+    NetworkQoSSimulationPipeline(final Config config, final PacketConsumer pipeTo, final PacketConsumer onDrop,
+                                 final IntUnaryOperator intRNG) {
         this.config = config;
         this.intRNG = intRNG;
         this.pipeTo = pipeTo;
+        this.onDrop = onDrop;
     }
 
     /**
@@ -45,11 +49,13 @@ public class NetworkQoSSimulationPipeline {
      *
      * @param packet packet to buffer.
      */
-    public void offer(final BoltPacket packet, final Destination peer) {
+    public void offer(final Destination peer, final BoltPacket packet) {
         ++packetReceiveCount;
 
-        // TODO consider re-linking drop with statistics
-        if (!isArtificialDrop()) {
+        if (isArtificialDrop()) {
+            onDrop.accept(peer, packet);
+        }
+        else {
             if (isPipeRequired()) {
                 ensurePipeRunning();
                 final int jitter = (config.getSimulatedMaxJitter() <= 0) ? 0 : intRNG.applyAsInt(config.getSimulatedMaxJitter());
@@ -80,7 +86,7 @@ public class NetworkQoSSimulationPipeline {
                     pipeTo.accept(delayedPacket.peer, delayedPacket.packet);
                 }
             }
-            while (required);
+            while (required && running.get());
         }
         catch (InterruptedException ex) {
             // End gracefully.
@@ -101,6 +107,13 @@ public class NetworkQoSSimulationPipeline {
         return dropRate > 0 && (packetReceiveCount % dropRate < 1f);
     }
 
+    public void close() {
+        running.set(false);
+    }
+
+    public interface PacketConsumer extends BiConsumer<Destination, BoltPacket> {
+
+    }
 
     private static class DelayedPacket implements Delayed {
 

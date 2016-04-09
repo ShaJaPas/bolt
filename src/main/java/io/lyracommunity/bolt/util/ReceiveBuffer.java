@@ -40,7 +40,7 @@ public class ReceiveBuffer
         this(size, 0);
     }
 
-    public ReceiveBuffer(final int size, final int initialOrderNumber) {
+    ReceiveBuffer(final int size, final int initialOrderNumber) {
         this.size = size;
         this.buffer = new PriorityBlockingQueue<>(size, new DataPacketPriorityComparator());
         this.lock = new ReentrantLock(false);
@@ -65,31 +65,34 @@ public class ReceiveBuffer
         }
         lock.lock();
         try {
-            if (data.isOrdered()) { // FIXME potential to receive duplicate unordered packets?
+            if (data.isOrdered()) {
                 // If already have this chunk, discard it.
-                final int cmp = SeqNum.compare16(data.getOrderSeqNumber(), highestReadOrderNumber);
-                if (cmp <= 0) {
+                final int orderSeqNo = data.getOrderSeqNumber();
+
+                if (SeqNum.compare16(orderSeqNo, highestReadOrderNumber) <= 0) {
                     return OfferResult.OK_ACCEPTED;
                 }
                 // Prevent buffering packets that are too far ahead as the buffer
-                // may become too full to except the next packet in order.
-                final int offset = SeqNum.seqOffset16(highestReadOrderNumber, data.getOrderSeqNumber());
-                if (offset >= size) {
+                // may become too full to accept the next in-order packet.
+                else if (size <= SeqNum.seqOffset16(highestReadOrderNumber, orderSeqNo)) {
                     return OfferResult.ERROR_LOOKAHEAD;
                 }
             }
-            if (duplicateDetector.receivePacket(data)) {
-                return OfferResult.ERROR_DUPLICATE;
-            }
-            // Else compute insert position.
-            buffer.offer(data);
-            numValidChunks.incrementAndGet();
-            notEmpty.signal();
-            return OfferResult.OK_ACCEPTED;
+            return insert(data);
         }
         finally {
             lock.unlock();
         }
+    }
+
+    private OfferResult insert(DataPacket data) {
+        if (duplicateDetector.receivePacket(data)) {
+            return OfferResult.ERROR_DUPLICATE;
+        }
+        buffer.offer(data);
+        numValidChunks.incrementAndGet();
+        notEmpty.signal();
+        return OfferResult.OK_ACCEPTED;
     }
 
     /**
@@ -133,53 +136,43 @@ public class ReceiveBuffer
     /**
      * Return a data chunk, guaranteed to be in-order.
      */
-    // TODO this needs to be heavily test with many combinations (reliability|ordering)
-    // TODO can be refactored for legibility
-    public DataPacket poll() {
+    DataPacket poll() {
         if (numValidChunks.get() == 0) {
             return null;
         }
         final DataPacket r = buffer.peek();
         if (r != null) {
-            // If packet is ordered, ensure that is it the next in the sequence to be read.
             if (r.isOrdered()) {
-                final int thisSeq = r.getOrderSeqNumber();
-                // TODO What about order number overflow?
-                final int comparison = SeqNum.seqOffset16(highestReadOrderNumber, thisSeq);
-                if (comparison == 1) {
-                    highestReadOrderNumber = thisSeq;
-                }
-                else {
-                    if (comparison <= 0) {
-                        buffer.remove(r);
-                        numValidChunks.decrementAndGet();
-                    }
-                    return null;
-                }
+                return removeOrdered(r);
             }
-
-            // If unordered
             else {
-                /*
-                Circular array
-                LinkedHashSet bounded
-                Queue w/sorting
-                BitSet
-                 */
-
-                // If packet sequence number has been read before:
-                //      remove from buffer and return null
-                // else:
-                //      remove from buffer and mark read and return packet
+                return remove(r);
             }
-            numValidChunks.decrementAndGet();
-            buffer.remove(r);
         }
-        return r;
+        return null;
     }
 
-    public int getNumChunks() {
-        return numValidChunks.get();
+    /** If packet is ordered, ensure that is it the next in the sequence to be read. */
+    private DataPacket removeOrdered(DataPacket r) {
+        final int thisSeq = r.getOrderSeqNumber();
+
+        final int comparison = SeqNum.seqOffset16(highestReadOrderNumber, thisSeq);
+        if (comparison == 1) {
+            highestReadOrderNumber = thisSeq;
+            return remove(r);
+        }
+        else {
+            if (comparison <= 0) {
+                remove(r);
+            }
+            return null;
+        }
+    }
+
+    private DataPacket remove(final DataPacket r) {
+        buffer.remove(r);
+        numValidChunks.decrementAndGet();
+        return r;
     }
 
     private static class DataPacketPriorityComparator implements Comparator<DataPacket> {
@@ -199,10 +192,6 @@ public class ReceiveBuffer
         public int compare(final DataPacket o1, final DataPacket o2)
         {
             if (o1.isOrdered() != o2.isOrdered()) return (o1.isOrdered() ? 1 : -1);
-
-//            else if (o1.isOrdered() && o2.isOrdered()) {
-//                return SeqNum.compare16(o1.getOrderSeqNumber(), o2.getOrderSeqNumber());
-//            }
 
             return SeqNum.comparePacketSeqNum(o1.getPacketSeqNumber(), o2.getPacketSeqNumber());
         }

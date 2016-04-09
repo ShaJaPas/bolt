@@ -77,12 +77,10 @@ public class ClientSession extends Session {
             LOG.info("Received initial handshake response from {}\n{}", peer, handshake);
             if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
                 try {
-                    // TODO validate parameters sent by peer
-                    int peerSocketID = handshake.getSocketID();
+                    final int peerSocketID = handshake.getSocketID();
                     state.setSessionCookie(handshake.getCookie());
-                    state.getDestination().setSocketID(peerSocketID);
+                    state.setDestinationSocketID(peerSocketID);
                     setStatus(HANDSHAKING2);
-//                    sendSecondHandshake();
                 }
                 catch (Exception ex) {
                     LOG.warn("Error creating socket", ex);
@@ -100,7 +98,6 @@ public class ClientSession extends Session {
         else if (getStatus() == HANDSHAKING2) {
             try {
                 LOG.info("Received confirmation handshake response from {}\n{}", peer, handshake);
-                // TODO validate parameters sent by peer
                 setStatus(READY);
                 readyToStart = true;
             }

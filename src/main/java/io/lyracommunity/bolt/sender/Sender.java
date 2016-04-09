@@ -2,14 +2,9 @@ package io.lyracommunity.bolt.sender;
 
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.packet.Ack;
-import io.lyracommunity.bolt.packet.Ack2;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.NegAck;
-import io.lyracommunity.bolt.packet.PacketType;
+import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.receiver.Receiver;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -294,8 +289,8 @@ public class Sender
      *
      * @param nak NAK packet received.
      */
-    private void onNAKPacketReceived(NegAck nak) {
-        for (Integer i : nak.getDecodedLossInfo()) {
+    private void onNAKPacketReceived(final NegAck nak) {
+        for (final Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }
         cc.onLoss(nak.getDecodedLossInfo(), getCurrentReliabilitySequenceNumber());
@@ -347,7 +342,7 @@ public class Sender
                 else {
                     // If the number of unacknowledged data packets does not exceed the congestion
                     // and the flow window sizes, pack a new packet.
-                    int unAcknowledged = unacknowledged.get();
+                    final int unAcknowledged = unacknowledged.get();
 
                     if (unAcknowledged < cc.getCongestionWindowSize()
                             && unAcknowledged < sessionState.getFlowWindowSize()) {
@@ -396,7 +391,7 @@ public class Sender
      *
      * @param relSeqNumber reliability sequence number to retransmit.
      */
-    protected void handleRetransmit(final Integer relSeqNumber) {
+    private void handleRetransmit(final Integer relSeqNumber) {
         try {
             // Retransmit the packet and remove it from the list.
             final DataPacket data = sendBuffer.get(relSeqNumber);
@@ -408,7 +403,7 @@ public class Sender
                 statistics.incNumberOfRetransmittedDataPackets();
             }
             else {
-                LOG.warn("Did not find expected data in sendBuffer [{}]", relSeqNumber);
+                LOG.info("Did not find expected data in sendBuffer [{}]", relSeqNumber);
             }
         }
         catch (Exception e) {
@@ -459,12 +454,12 @@ public class Sender
         return currentSequenceNumber;
     }
 
-    public boolean haveAcknowledgementFor(int reliabilitySequenceNumber) {
+    public boolean haveAcknowledgementFor(final int reliabilitySequenceNumber) {
         return SeqNum.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
     }
 
-    public boolean isSentOut(int sequenceNumber) {
-        return SeqNum.comparePacketSeqNum(largestSentSequenceNumber, sequenceNumber) >= 0;
+    public boolean isSentOut(final int packetSeqNum) {
+        return SeqNum.comparePacketSeqNum(largestSentSequenceNumber, packetSeqNum) >= 0;
     }
 
     public boolean haveLostPackets() {

@@ -60,9 +60,7 @@ public class NetworkLatencyIT
         doTest(2000);
     }
 
-    // TODO also test with packet loss?
-
-    protected void doTest(final int latencyInMillis) throws Throwable {
+    private void doTest(final int latencyInMillis) throws Throwable {
         final ReliableOrdered testData = TestObjects.reliableOrdered(100);
         final AtomicLong startTime = new AtomicLong();
 

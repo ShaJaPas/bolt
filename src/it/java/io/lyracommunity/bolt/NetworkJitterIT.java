@@ -27,7 +27,7 @@ public class NetworkJitterIT
         doTest(50, 100, TestObjects.reliableUnordered(100));
     }
 
-    protected void doTest(final int jitterInMillis, final int numPackets, final Object toSend) throws Throwable {
+    private void doTest(final int jitterInMillis, final int numPackets, final Object toSend) throws Throwable {
         final AtomicLong startTime = new AtomicLong();
 
         final TestServer server = TestServer.runObjectServer(toSend.getClass(), null, null);
@@ -40,17 +40,18 @@ public class NetworkJitterIT
                     for (int i = 0; i < numPackets; i++) c.send(toSend);
                 }, null);
 
-        while (server.getTotalReceived(TestObjects.ReliableOrdered.class) < numPackets) {
+        while (server.getTotalReceived(toSend.getClass()) < numPackets) {
             if (!server.getErrors().isEmpty()) throw server.getErrors().get(0);
             if (!client.getErrors().isEmpty()) throw client.getErrors().get(0);
-            Thread.sleep(10);
+            Thread.sleep(1);
         }
 
         final long millisTaken = System.currentTimeMillis() - startTime.get();
         System.out.println("Receive took " + millisTaken + " ms.");
+        final int meanExpectedJitter = jitterInMillis / 2;
 
-        assertEquals(numPackets, server.getTotalReceived(TestObjects.ReliableOrdered.class));
-        assertTrue(jitterInMillis <= millisTaken);
+        assertEquals(numPackets, server.getTotalReceived(toSend.getClass()));
+        assertTrue(meanExpectedJitter <= millisTaken);
 
         for (AutoCloseable c : Arrays.asList(server, client)) c.close();
     }

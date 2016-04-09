@@ -418,8 +418,7 @@ public class Receiver
         }
         else {
             final PacketType packetType = p.getPacketType();
-            // TODO implement first part of below comment
-            // If there is no unacknowledged data packet, or if this is an ACK or NAK control packet, reset the EXP timer.
+            // If this is an ACK or NAK control packet, reset the EXP timer.
             if (PacketType.NAK == packetType || PacketType.ACK == packetType) {
                 resetEXPTimer();
             }
@@ -435,7 +434,7 @@ public class Receiver
         ReceiveBuffer.OfferResult OK = receiveBuffer.offer(dp);
         if (!OK.success) {
             if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
-            LOG.info("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
+            LOG.debug("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
             return;
         }
 
@@ -491,7 +490,7 @@ public class Receiver
      * @throws IOException
      */
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
-        NegAck nAckPacket = new NegAck();
+        final NegAck nAckPacket = new NegAck();
         nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
@@ -564,8 +563,9 @@ public class Receiver
             else roundTripTime = rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
             ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
-            if (config.getMaxAckTimerInterval() > 0)
+            if (config.getMaxAckTimerInterval() > 0) {
                 ackTimerInterval = Math.min(config.getMaxAckTimerInterval(), ackTimerInterval);
+            }
             nakTimerInterval = ackTimerInterval;
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }
