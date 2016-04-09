@@ -67,7 +67,7 @@ public class BoltServerIT
                 c -> {
                     System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
                     c.sendBlocking(data);
-                }, errors::add);
+                });
 
         while (total < N && errors.isEmpty()) Thread.sleep(10);
         if (!errors.isEmpty()) throw errors.iterator().next();

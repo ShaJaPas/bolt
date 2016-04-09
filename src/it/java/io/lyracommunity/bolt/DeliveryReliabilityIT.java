@@ -92,11 +92,11 @@ public class DeliveryReliabilityIT
                     else if (x.getPayload() instanceof TestObjects.Finished) {
                         completed.set(true);
                     }
-                },
-                errors::add);
+                }
+        );
         srv.server.config().setPacketLoss(packetLoss);
 
-        TestClient cli = TestClient.runClient(srv.server.getPort(), onReady::accept, errors::add);
+        TestClient cli = TestClient.runClient(srv.server.getPort(), onReady::accept);
 
         while (!completed.get() && errors.isEmpty()) {
             if (!errors.isEmpty()) throw errors.iterator().next();

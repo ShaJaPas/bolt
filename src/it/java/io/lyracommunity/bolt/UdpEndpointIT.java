@@ -35,8 +35,8 @@ public class UdpEndpointIT
                 .subscribe();
 
         final TestClient cli = TestClient.runClient(serverPort,
-                c -> IntStream.range(0, numPackets).forEach(__ -> c.send(TestData.getRandomData(1024))),
-                ex -> System.out.println(ex));
+                c -> IntStream.range(0, numPackets).forEach(__ -> c.send(TestData.getRandomData(1024)))
+        );
 
         // Pause until all are delivered
         boolean done = false;

@@ -39,7 +39,6 @@ public class MultiClientIT {
 
         clients.addAll(TestClient.runClients(numClients, srv.server.getPort(),
                 c -> awaitingConnectionReady.countDown(),
-                errors::add,
                 null));
 
         if (!awaitingConnectionReady.await(5, TimeUnit.SECONDS)) throw new RuntimeException("Timed out");
@@ -70,7 +69,6 @@ public class MultiClientIT {
                     client.flush();
                     clientsComplete.countDown();
                 },
-                errors::add,
                 client -> client.config().setAllowSessionExpiry(false));
 
         final Supplier<Boolean> done = () -> received.get() < packetCount * clientCount;
@@ -100,11 +98,11 @@ public class MultiClientIT {
                         System.out.println(MessageFormat.format("Received from [{0}], total {1}.", x.getSessionID(), received.get()));
                     }
                 },
-                errors::add, server -> server.config().setAllowSessionExpiry(sessionExpirable));
+                server -> server.config().setAllowSessionExpiry(sessionExpirable));
     }
 
     private TestServer createServer(final Action1<? super Object> onNext) throws Exception {
-        return TestServer.runCustomServer(onNext, errors::add, null);
+        return TestServer.runCustomServer(onNext, null);
     }
 
 }

@@ -2,17 +2,15 @@ package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltServer;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import rx.Subscription;
-import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -21,18 +19,39 @@ import java.util.function.Consumer;
 public class TestServer implements AutoCloseable {
 
     public final  BoltServer                server;
-    private final Subscription              subscription;
-    private final PacketReceiver receivedByType;
+    private       Subscription              subscription;
+    private final PacketReceiver            receivedByType;
     private final List<Throwable>           errors;
+    private final BiConsumer<TestServer, Object> onNext;
+    private final BiConsumer<TestServer, ConnectionReady> onReady;
 
-    private TestServer(BoltServer server, Subscription subscription, PacketReceiver receivedByType, List<Throwable> errors) {
+    private TestServer(final BoltServer server, PacketReceiver receivedByType, final List<Throwable> errors,
+                       final BiConsumer<TestServer, Object> onNext, final BiConsumer<TestServer, ConnectionReady> onReady) {
         this.server = server;
-        this.subscription = subscription;
         this.receivedByType = receivedByType;
         this.errors = errors;
+        this.onNext = onNext;
+        this.onReady = onReady;
     }
 
-    public TestServer printStatistics() {
+    void start() {
+        subscription = server.bind()
+                .subscribeOn(Schedulers.io())
+                .onBackpressureBuffer()
+                .observeOn(Schedulers.computation())
+                .subscribe(
+                        (x) -> {
+                            receivedByType.receive(x);
+                            if (onNext != null) {
+                                if (ReceiveObject.class.equals(x.getClass())) onNext.accept(this, ((ReceiveObject)x).getPayload());
+                                onNext.accept(this, x);
+                            }
+                            if (onReady != null && ConnectionReady.class.equals(x.getClass())) onReady.accept(this, (ConnectionReady) x);
+                        },
+                        errors::add);
+    }
+
+    private TestServer printStatistics() {
         server.getStatistics().forEach(System.out::println);
         return this;
     }
@@ -46,29 +65,10 @@ public class TestServer implements AutoCloseable {
         return errors;
     }
 
-    public static <T> TestServer runObjectServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
-                                           final Action1<Throwable> onError) throws Exception {
-        return runObjectServer(ofType, onNext, onError, null);
-    }
-
     @SuppressWarnings("unchecked")
-    public static <T> TestServer runObjectServer(final Class<T> ofType, final Action1<? super ReceiveObject<T>> onNext,
-                                           final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
-
-        final Action1<? super Object> act = (x) -> {
-            if (onNext != null && x instanceof ReceiveObject) {
-                final ReceiveObject ro = (ReceiveObject) x;
-                if (ro.isOfSubType(ofType)) onNext.call((ReceiveObject<T>)ro);
-            }
-        };
-
-        return runCustomServer(act, onError, init);
-    }
-
-
-    @SuppressWarnings("unchecked")
-    public static TestServer runCustomServer(final Action1<? super Object> onNext,
-            final Action1<Throwable> onError, final Consumer<BoltServer> init) throws Exception {
+    public static TestServer runCustomServer(final BiConsumer<TestServer, Object> onNext,
+                                             final BiConsumer<TestServer, ConnectionReady> onReady,
+                                             final Consumer<BoltServer> init) throws Exception {
 
         final BoltServer server = new BoltServer(new Config(InetAddress.getByName("localhost"), PortUtil.nextServerPort()));
         if (init != null) init.accept(server);
@@ -77,41 +77,7 @@ public class TestServer implements AutoCloseable {
         final List<Throwable> errors = new ArrayList<>();
         final PacketReceiver packetReceiver = new PacketReceiver();
 
-        final Subscription subscription = server.bind()
-                .subscribeOn(Schedulers.io())
-                .onBackpressureBuffer()
-                .observeOn(Schedulers.computation())
-                .subscribe(
-                        (x) -> {
-                            packetReceiver.receive(x);
-                            if (onNext != null) onNext.call(x);
-                        },
-                        (ex) -> {
-                            errors.add(ex);
-                            if (onError != null) onError.call(ex);
-                        });
-
-        return new TestServer(server, subscription, packetReceiver, errors);
-    }
-
-    static class PacketReceiver {
-
-        final Map<Class, AtomicInteger> totalReceived = new HashMap<>();
-
-        void receive(final Object o) {
-            final Class clazz = o.getClass();
-            AtomicInteger maybeInt = totalReceived.get(clazz);
-            if (maybeInt == null) totalReceived.putIfAbsent(clazz, new AtomicInteger(0));
-            totalReceived.get(clazz).incrementAndGet();
-
-            if (clazz.equals(ReceiveObject.class)) receive(((ReceiveObject)o).getPayload());
-        }
-
-        public int getTotalReceived(final Class clazz) {
-            final AtomicInteger r = totalReceived.get(clazz);
-            return (r == null) ? 0 : r.get();
-        }
-
+        return new TestServer(server, packetReceiver, errors, onNext, onReady);
     }
 
     @Override

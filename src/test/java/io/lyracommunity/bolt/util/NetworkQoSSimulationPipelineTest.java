@@ -113,7 +113,8 @@ public class NetworkQoSSimulationPipelineTest {
         config.setSimulatedMaxJitter(maxJitterMillis);
         config.setPacketLoss(packetLossPercent);
         output = new ArrayBlockingQueue<>(32);
-        subject = new NetworkQoSSimulationPipeline(config, (peer, pkt) -> output.offer(pkt), intRandomSupplier);
+        subject = new NetworkQoSSimulationPipeline(config, (peer, pkt) -> output.offer(pkt),
+                (peer, pkt) -> {}, intRandomSupplier);
     }
 
 }

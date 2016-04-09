@@ -3,13 +3,16 @@ package io.lyracommunity.bolt.helper;
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
+import io.lyracommunity.bolt.event.ReceiveObject;
 import rx.Subscription;
-import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -18,18 +21,46 @@ import java.util.function.Consumer;
 public class TestClient implements AutoCloseable {
 
     public final  BoltClient                client;
-    public final  Subscription              subscription;
-    private final TestServer.PacketReceiver receivedByType;
+    private       Subscription              subscription;
+    private final PacketReceiver receivedByType;
     private final List<Throwable>           errors;
+    private final BiConsumer<TestClient, Object> onNext;
+    private final BiConsumer<TestClient, ConnectionReady> onReady;
+    private final AtomicLong readyTime = new AtomicLong();
 
-    public TestClient(BoltClient client, Subscription subscription, TestServer.PacketReceiver receivedByType, List<Throwable> errors) {
+    public TestClient(BoltClient client, PacketReceiver receivedByType, List<Throwable> errors,
+                      BiConsumer<TestClient, Object> onNext, BiConsumer<TestClient, ConnectionReady> onReady) {
         this.client = client;
-        this.subscription = subscription;
         this.receivedByType = receivedByType;
         this.errors = errors;
+        this.onNext = onNext;
+        this.onReady = onReady;
     }
 
-    public TestClient printStatistics() {
+    void start(final int serverPort) throws IOException {
+        subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .subscribe(
+                        x -> {
+                            receivedByType.receive(x);
+                            if (onNext != null) {
+                                onNext.accept(this, x);
+                                if (ReceiveObject.class.equals(x.getClass())) onNext.accept(this, ((ReceiveObject)x).getPayload());
+                                if (ConnectionReady.class.equals(x.getClass())) {
+                                    readyTime.set(System.currentTimeMillis());
+                                    if (onReady != null) onReady.accept(this, (ConnectionReady) x);
+                                }
+                            }
+                        },
+                        errors::add);
+    }
+
+    long getReadyTime() {
+        return readyTime.get();
+    }
+
+    private TestClient printStatistics() {
         System.out.println(client.getStatistics());
         return this;
     }
@@ -43,43 +74,33 @@ public class TestClient implements AutoCloseable {
         return receivedByType.getTotalReceived(clazz);
     }
 
-    public static TestClient runClient(final int serverPort, final Action1<BoltClient> onReady,
-                                       final Action1<Throwable> onError) throws Exception {
-        return runClient(serverPort, onReady, onError, null);
+    public static TestClient runClient(final int serverPort, final BiConsumer<TestClient, Object> onNext,
+                                       final BiConsumer<TestClient, ConnectionReady> onReady) throws Exception {
+        return runClient(serverPort, onNext, onReady, null);
     }
 
-    public static TestClient runClient(final int serverPort, final Action1<BoltClient> onReady,
-                                       final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
+    private static TestClient runClient(final int serverPort, final BiConsumer<TestClient, Object> onNext,
+                                        final BiConsumer<TestClient, ConnectionReady> onReady,
+                                        final Consumer<BoltClient> init) throws Exception {
         final Config clientConfig = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         final BoltClient client = new BoltClient(clientConfig);
         if (init != null) init.accept(client);
         TestObjects.registerAll(client.codecs());
 
-        final TestServer.PacketReceiver packetReceiver = new TestServer.PacketReceiver();
+        final PacketReceiver packetReceiver = new PacketReceiver();
         final List<Throwable> errors = new ArrayList<>();
 
-        final Subscription subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.computation())
-                .subscribe(
-                        x -> {
-                            packetReceiver.receive(x);
-                            if (onReady != null && x instanceof ConnectionReady) onReady.call(client);
-                        },
-                        ex -> {
-                            errors.add(ex);
-                            if (onError != null) onError.call(ex);
-                        });
-
-        return new TestClient(client, subscription, packetReceiver, errors);
+        return new TestClient(client, packetReceiver, errors, onNext, onReady);
     }
 
-    public static List<TestClient> runClients(final int clientCount, final int serverPort, final Action1<BoltClient> onReady,
-            final Action1<Throwable> onError, final Consumer<BoltClient> init) throws Exception {
+    public static List<TestClient> runClients(final int clientCount, final int serverPort,
+                                              final BiConsumer<TestClient, Object> onNext,
+                                              final BiConsumer<TestClient, ConnectionReady> onReady,
+                                              final Consumer<BoltClient> init) throws Exception {
 
         final List<TestClient> clients = new ArrayList<>(clientCount);
         for (int i = 0; i < clientCount; i++) {
-            clients.add(runClient(serverPort, onReady, onError, init));
+            clients.add(runClient(serverPort, onNext, onReady, init));
         }
         return clients;
     }

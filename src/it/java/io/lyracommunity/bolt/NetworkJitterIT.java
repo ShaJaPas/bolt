@@ -1,12 +1,8 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.helper.TestClient;
+import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
-import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
-
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -28,32 +24,23 @@ public class NetworkJitterIT
     }
 
     private void doTest(final int jitterInMillis, final int numPackets, final Object toSend) throws Throwable {
-        final AtomicLong startTime = new AtomicLong();
 
-        final TestServer server = TestServer.runObjectServer(toSend.getClass(), null, null);
-        server.server.config().setSimulatedMaxJitter(jitterInMillis);
-
-        final TestClient client = TestClient.runClient(server.server.getPort(),
-                c -> {
+        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+                .preconfigureServer(s -> s.config().setSimulatedMaxJitter(jitterInMillis))
+                .onReadyClient((tc, evt) -> {
                     System.out.println("Connected, begin send.");
-                    startTime.set(System.currentTimeMillis());
-                    for (int i = 0; i < numPackets; i++) c.send(toSend);
-                }, null);
+                    for (int i = 0; i < numPackets; i++) tc.client.send(toSend);
+                })
+                .setWaitCondition(ts -> ts.getTotalReceived(toSend.getClass()) < numPackets);
 
-        while (server.getTotalReceived(toSend.getClass()) < numPackets) {
-            if (!server.getErrors().isEmpty()) throw server.getErrors().get(0);
-            if (!client.getErrors().isEmpty()) throw client.getErrors().get(0);
-            Thread.sleep(1);
+        try (Infra i = builder.build()) {
+            final long millisTaken = i.start().awaitCompletion();
+            final int meanExpectedJitter = jitterInMillis / 2;
+            System.out.println("Receive took " + millisTaken + " ms.");
+
+            assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));
+            assertTrue(meanExpectedJitter <= millisTaken);
         }
-
-        final long millisTaken = System.currentTimeMillis() - startTime.get();
-        System.out.println("Receive took " + millisTaken + " ms.");
-        final int meanExpectedJitter = jitterInMillis / 2;
-
-        assertEquals(numPackets, server.getTotalReceived(toSend.getClass()));
-        assertTrue(meanExpectedJitter <= millisTaken);
-
-        for (AutoCloseable c : Arrays.asList(server, client)) c.close();
     }
 
 }

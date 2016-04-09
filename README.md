@@ -7,13 +7,13 @@ Bolt UDP
 - [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - 65536 values - not safe enough)
 - [X] Message assembly/disassembly
 - [X] Delivery strategy
-- [ ] Retransmit strategy (aggressive, on NACK)
+- [ ] Retransmit strategy (aggressive, on NAK)
 - [X] Trim control and data packets
 - [X] Simulated packet-loss
 - [X] Simulated latency
 - [X] Simulated jitter
 - [ ] Simulated bandwidth
-- [ ] Handle duplicate ConnectionReady events
+- [X] Handle duplicate ConnectionReady events
 - [ ] Multi-client
 - [X] Distinguish unit/integration tests and use both surefire/failsafe
 - [ ] IPv6 support
@@ -28,8 +28,8 @@ Bolt UDP
 - [ ] Improve performance of sender onAcknowledgement
 - [X] Use log4j with performant string interpolation
 - [ ] Improve performance in high-packet loss scenarios
-- [ ] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
-- [ ] Review level of each log statement
+- [X] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
+- [X] Review level of each log statement
 - [ ] Review Javadoc
 - [X] Remove BoltPacket forSender filtering functionality.
 - [ ] Test keep-alives and session expiry

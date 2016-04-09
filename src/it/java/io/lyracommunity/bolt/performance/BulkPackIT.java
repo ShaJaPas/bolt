@@ -1,17 +1,14 @@
 package io.lyracommunity.bolt.performance;
 
-import io.lyracommunity.bolt.helper.TestClient;
+import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.helper.TestObjects;
-import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 
@@ -55,36 +52,63 @@ public class BulkPackIT
         doTest(false, TestObjects.unreliableUnordered(SIZE));
     }
 
+//    private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
+//        final AtomicBoolean sendComplete = new AtomicBoolean(false);
+//
+//        final TestServer srv = TestServer.runObjectServer(toSend.getClass(),
+//                x -> {
+//                    if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
+//                }
+//        );
+//        srv.server.config().setAllowSessionExpiry(false);
+//
+//        System.out.println("Connect to server port " + srv.server.getPort());
+//        final TestClient cli = TestClient.runClient(srv.server.getPort(),
+//                c -> {
+//                    for (int i = 0; i < PACKET_COUNT; i++) {
+//                        c.send(toSend);
+//                        if (i % 10000 == 0) System.out.println(i);
+//                    }
+//                    c.flush();
+//                    sendComplete.set(true);
+//                }
+//        );
+//        cli.client.config().setAllowSessionExpiry(false);
+//
+//        final Supplier<Boolean> done = waitForDelivery
+//                ? () -> received.get() < PACKET_COUNT
+//                : () -> !sendComplete.get();
+//        while (done.get() && errors.isEmpty()) Thread.sleep(10);
+//        if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
+//
+//        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
+//    }
+
     private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
         final AtomicBoolean sendComplete = new AtomicBoolean(false);
 
-        final TestServer srv = TestServer.runObjectServer(toSend.getClass(),
-                x -> {
-                    if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
-                },
-                errors::add);
-        srv.server.config().setAllowSessionExpiry(false);
-
-        System.out.println("Connect to server port " + srv.server.getPort());
-        final TestClient cli = TestClient.runClient(srv.server.getPort(),
-                c -> {
+        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+                .preconfigureServer(s -> s.config().setAllowSessionExpiry(false))
+                .preconfigureClients(c -> c.config().setAllowSessionExpiry(false))
+                .onEventServer((ts, evt) -> {
+                    if (evt.getClass().equals(toSend.getClass()) && received.incrementAndGet() % 10_000 == 0)
+                        System.out.println("Received " + received.get());
+                })
+                .onReadyClient((tc, evt) -> {
                     for (int i = 0; i < PACKET_COUNT; i++) {
-                        c.send(toSend);
+                        tc.client.send(toSend);
                         if (i % 10000 == 0) System.out.println(i);
                     }
-                    c.flush();
+                    tc.client.flush();
                     sendComplete.set(true);
-                },
-                errors::add);
-        cli.client.config().setAllowSessionExpiry(false);
+                })
+                .setWaitCondition(ts -> waitForDelivery
+                        ? ts.getTotalReceived(toSend.getClass()) < PACKET_COUNT
+                        : !sendComplete.get());
 
-        final Supplier<Boolean> done = waitForDelivery
-                ? () -> received.get() < PACKET_COUNT
-                : () -> !sendComplete.get();
-        while (done.get() && errors.isEmpty()) Thread.sleep(10);
-        if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
-
-        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
+        try (Infra i = builder.build()) {
+            i.start().awaitCompletion();
+        }
     }
 
 }

@@ -1,11 +1,9 @@
 package io.lyracommunity.bolt.performance;
 
-import io.lyracommunity.bolt.helper.TestClient;
+import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
-import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
@@ -56,32 +54,25 @@ public class QualityOfServiceIT {
 
     private void doTest(final int latencyInMillis, final float packetLoss, final int numPackets, final Object toSend,
                         final int minimumExpectedTotalTime) throws Throwable {
-        final AtomicLong startTime = new AtomicLong();
 
-        final TestServer server = TestServer.runObjectServer(toSend.getClass(), null, null);
-        server.server.config().setSimulatedLatency(latencyInMillis);
-        server.server.config().setPacketLoss(packetLoss);
-
-        final TestClient client = TestClient.runClient(server.server.getPort(),
-                c -> {
+        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+                .preconfigureServer(s -> {
+                    s.config().setSimulatedLatency(latencyInMillis);
+                    s.config().setPacketLoss(packetLoss);
+                })
+                .onReadyClient((tc, evt) -> {
                     System.out.println("Connected, begin send.");
-                    startTime.set(System.currentTimeMillis());
-                    for (int i = 0; i < numPackets; i++) c.send(toSend);
-                }, null);
+                    for (int i = 0; i < numPackets; i++) tc.client.send(toSend);
+                })
+                .setWaitCondition(ts -> ts.getTotalReceived(toSend.getClass()) < numPackets);
 
-        while (server.getTotalReceived(toSend.getClass()) < numPackets) {
-            if (!server.getErrors().isEmpty()) throw server.getErrors().get(0);
-            if (!client.getErrors().isEmpty()) throw client.getErrors().get(0);
-            Thread.sleep(2);
+        try (Infra i = builder.build()) {
+            final long millisTaken = i.start().awaitCompletion();
+            System.out.println("Receive took " + millisTaken + " ms.");
+
+            assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));
+            assertTrue(minimumExpectedTotalTime <= millisTaken);
         }
-        final long millisTaken = System.currentTimeMillis() - startTime.get();
-        for (AutoCloseable c : Arrays.asList(server, client)) c.close();
-
-        System.out.println("Receive took " + millisTaken + " ms.");
-
-        assertEquals(numPackets, server.getTotalReceived(toSend.getClass()));
-
-        assertTrue(minimumExpectedTotalTime <= millisTaken);
     }
 
 }

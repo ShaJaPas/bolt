@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.performance;
 
+import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.helper.TestServer;
@@ -13,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestBoltLargeDataIT
@@ -54,8 +56,8 @@ public class TestBoltLargeDataIT
                 x -> {
                     serverMD5.update(x.getPayload(), 0, x.getPayload().length);
                     totalBytesReceived += x.getPayload().length;
-                },
-                errors::add);
+                }
+        );
         srv.server.config().setPacketLoss(packetLossPercentage);
 
         System.out.println("Sending <" + numPackets + "> packets of <" + format.format(size / 1024.0 / 1024.0) + "> Mbytes each");
@@ -80,8 +82,8 @@ public class TestBoltLargeDataIT
                     catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                },
-                errors::add);
+                }
+        );
 
         final MessageDigest clientMD5 = MessageDigest.getInstance("MD5");
         for (int i = 0; i < numPackets; i++) clientMD5.update(data);
