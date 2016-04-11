@@ -1,13 +1,9 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.helper.TestClient;
+import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
-import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -23,7 +19,6 @@ public class DeliveryReliabilityIT
 
 
     private final AtomicInteger deliveryCount = new AtomicInteger(0);
-    private final Set<Throwable> errors = new HashSet<>();
     private final AtomicBoolean completed = new AtomicBoolean(false);
 
     @Test
@@ -45,7 +40,7 @@ public class DeliveryReliabilityIT
             c.sendBlocking(TestObjects.finished());
         };
 
-        startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
+        doTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
     }
 
 
@@ -69,7 +64,7 @@ public class DeliveryReliabilityIT
             c.sendBlocking(TestObjects.finished());
         };
 
-        startTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
+        doTest(packetLoss, 0, maxExpectedDeliveryCount, onReady);
     }
 
     @Test
@@ -82,32 +77,31 @@ public class DeliveryReliabilityIT
         // TODO implement test
     }
 
-    private void startTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
-        final TestServer srv = TestServer.runObjectServer(Object.class,
-                x -> {
-                    if (x.getPayload() instanceof TestObjects.BaseDataClass) {
+
+    private void doTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
+        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+                .onEventServer((ts, evt) -> {
+                    if (evt instanceof TestObjects.BaseDataClass) {
                         deliveryCount.incrementAndGet();
-                        System.out.println(format("Recv {0} {1}", x.getClass().getSimpleName(), deliveryCount.get()));
+                        System.out.println(format("Recv {0} {1}", evt.getClass().getSimpleName(), deliveryCount.get()));
                     }
-                    else if (x.getPayload() instanceof TestObjects.Finished) {
+                    else if (evt instanceof TestObjects.Finished) {
                         completed.set(true);
                     }
-                }
-        );
-        srv.server.config().setPacketLoss(packetLoss);
+                })
+                .preconfigureServer(s -> s.config().setPacketLoss(packetLoss))
+                .onReadyClient((tc, rdy) -> onReady.accept(tc.client))
+                .setWaitCondition(tc -> !completed.get());
 
-        TestClient cli = TestClient.runClient(srv.server.getPort(), onReady::accept);
+        try (Infra i = builder.build()) {
+            i.start();
+            final long millisTaken = i.awaitCompletion();
+            System.out.println("Receive took " + millisTaken + " ms.");
 
-        while (!completed.get() && errors.isEmpty()) {
-            if (!errors.isEmpty()) throw errors.iterator().next();
-            Thread.sleep(10);
+            System.out.println(format("Received a total of [{0}] packets of min/max [{1}/{2}].",
+                    deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));
+            assertTrue(deliveryCount.get() <= maxExpectedDeliveryCount && deliveryCount.get() >= minExpectedDeliveryCount);
         }
-
-        System.out.println(format("Received a total of [{0}] packets of min/max [{1}/{2}].",
-                deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));
-        assertTrue(deliveryCount.get() <= maxExpectedDeliveryCount && deliveryCount.get() >= minExpectedDeliveryCount);
-
-        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
     }
 
 }

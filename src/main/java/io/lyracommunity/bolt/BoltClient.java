@@ -149,12 +149,6 @@ public class BoltClient implements Client
         }
     }
 
-//    private void shutdown() {
-//        if (clientSession.isReady() && clientSession.isActive()) {
-//            clientEndpoint.stop();
-//        }
-//    }
-
     public BoltStatistics getStatistics() {
         return clientSession.getStatistics();
     }

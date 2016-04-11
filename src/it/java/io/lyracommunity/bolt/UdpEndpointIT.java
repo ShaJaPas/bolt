@@ -34,8 +34,8 @@ public class UdpEndpointIT
                 .observeOn(Schedulers.computation())
                 .subscribe();
 
-        final TestClient cli = TestClient.runClient(serverPort,
-                c -> IntStream.range(0, numPackets).forEach(__ -> c.send(TestData.getRandomData(1024)))
+        final TestClient cli = TestClient.runClient(serverPort, null,
+                (tc, evt) -> IntStream.range(0, numPackets).forEach(__ -> tc.client.send(TestData.getRandomData(1024)))
         );
 
         // Pause until all are delivered
