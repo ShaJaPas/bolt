@@ -36,6 +36,7 @@ Bolt UDP
 - [X] Change Test classes names from (Test.*.java) to (.*Test.java)
 - [X] Add group to base of package (before bolt.*)
 - [ ] Separate to core and api packages
+- [X] Statistical breakdown of received data by class id.
 - [ ] Reduce 1+ second startup of local client/server
 - [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic
 - [ ] Open-source the library

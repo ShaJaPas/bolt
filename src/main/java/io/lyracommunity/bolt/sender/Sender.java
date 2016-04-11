@@ -107,10 +107,11 @@ public class Sender
     private final SessionState sessionState;
 
 
-    public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc) {
+    public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
+                  final BoltStatistics statistics) {
         this.endpoint = endpoint;
         this.cc = cc;
-        this.statistics = state.getStatistics();
+        this.statistics = statistics;
         this.sessionState = state;
         this.senderLossList = new SenderLossList();
         this.sendBuffer = new ConcurrentHashMap<>(sessionState.getFlowWindowSize(), 0.75f, 2);

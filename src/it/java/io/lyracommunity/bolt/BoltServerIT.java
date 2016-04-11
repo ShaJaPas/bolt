@@ -1,18 +1,12 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.helper.Infra;
-import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestData;
-import io.lyracommunity.bolt.helper.TestServer;
 import org.junit.Test;
 
 import java.security.MessageDigest;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class BoltServerIT
 {
@@ -24,43 +18,44 @@ public class BoltServerIT
 
     @Test(expected = Exception.class)
     public void testErrorTooManyChunks() throws Throwable {
-        num_packets = 10_000;
+        num_packets = 300_000;
         doTest(0);
     }
 
     @Test
     public void testWithoutLoss() throws Throwable {
-        num_packets = 1000;
+        num_packets = 30_000;
         doTest(0);
     }
 
     // Set an artificial loss rate.
     @Test
     public void testWithHighLoss() throws Throwable {
-        num_packets = 100;
-        doTest(0.5f);
+        num_packets = 3000;
+        doTest(0.4f);
     }
 
     // Set an artificial loss rate.
     @Test
     public void testWithLowLoss() throws Throwable {
-        num_packets = 100;
+        num_packets = 3000;
         doTest(0.1f);
     }
 
     // Send even more data.
     @Test
     public void testLargeDataSet() throws Throwable {
-        num_packets = 100;
+        num_packets = 3000;
         doTest(0);
     }
 
 
     private void doTest(final float packetLossPercentage) throws Throwable {
 
-        final int N = num_packets * 32768;
+        final int N = num_packets * 1000;
         final byte[] data = TestData.getRandomData(N);
         final String md5_sent = TestData.computeMD5(data);
+        serverMd5 = MessageDigest.getInstance("MD5");
 
         Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setPacketLoss(packetLossPercentage))
@@ -78,7 +73,7 @@ public class BoltServerIT
                     System.out.println("Sending data block of <" + N / 1024 + "> Kbytes.");
                     tc.client.sendBlocking(data);
                 })
-                .setWaitCondition(ts -> ts.getTotalReceived(byte[].class) < 1);
+                .setWaitCondition(ts -> total < N);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion();

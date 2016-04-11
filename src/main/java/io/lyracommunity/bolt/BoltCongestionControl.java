@@ -91,9 +91,9 @@ public class BoltCongestionControl implements CongestionControl {
     private boolean loss = false;
 
 
-    public BoltCongestionControl(final SessionState sessionState) {
+    public BoltCongestionControl(final SessionState sessionState, final BoltStatistics statistics) {
         this.sessionState = sessionState;
-        this.statistics = sessionState.getStatistics();
+        this.statistics = statistics;
         this.lastDecreaseSeqNo = sessionState.getInitialSequenceNumber() - 1;
     }
 

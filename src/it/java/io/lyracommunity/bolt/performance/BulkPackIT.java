@@ -52,38 +52,6 @@ public class BulkPackIT
         doTest(false, TestObjects.unreliableUnordered(SIZE));
     }
 
-//    private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
-//        final AtomicBoolean sendComplete = new AtomicBoolean(false);
-//
-//        final TestServer srv = TestServer.runObjectServer(toSend.getClass(),
-//                x -> {
-//                    if (received.incrementAndGet() % 10_000 == 0) System.out.println("Received " + received.get());
-//                }
-//        );
-//        srv.server.config().setAllowSessionExpiry(false);
-//
-//        System.out.println("Connect to server port " + srv.server.getPort());
-//        final TestClient cli = TestClient.runClient(srv.server.getPort(),
-//                c -> {
-//                    for (int i = 0; i < PACKET_COUNT; i++) {
-//                        c.send(toSend);
-//                        if (i % 10000 == 0) System.out.println(i);
-//                    }
-//                    c.flush();
-//                    sendComplete.set(true);
-//                }
-//        );
-//        cli.client.config().setAllowSessionExpiry(false);
-//
-//        final Supplier<Boolean> done = waitForDelivery
-//                ? () -> received.get() < PACKET_COUNT
-//                : () -> !sendComplete.get();
-//        while (done.get() && errors.isEmpty()) Thread.sleep(10);
-//        if (!errors.isEmpty()) throw new RuntimeException(errors.iterator().next());
-//
-//        for (AutoCloseable c : Arrays.asList(srv, cli)) c.close();
-//    }
-
     private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
         final AtomicBoolean sendComplete = new AtomicBoolean(false);
 

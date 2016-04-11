@@ -127,11 +127,11 @@ public class ServerSession extends Session {
     private void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
         // Compare the packet size and choose minimum.
         final long clientBufferSize = handshake.getPacketSize();
-        final long myBufferSize = state.getDatagramSize();
+        final long myBufferSize = getDatagramSize();
         final long bufferSize = Math.min(clientBufferSize, myBufferSize);
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         state.setInitialSequenceNumber(initialSequenceNumber);
-        state.setDatagramSize((int) bufferSize);
+        setDatagramSize((int) bufferSize);
         state.setSessionCookie(SeqNum.randomInt());
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
@@ -145,11 +145,11 @@ public class ServerSession extends Session {
         if (finalConnectionHandshake == null) {
             // Compare the packet size and choose minimum
             final long clientBufferSize = handshake.getPacketSize();
-            final long myBufferSize = state.getDatagramSize();
+            final long myBufferSize = getDatagramSize();
             final long bufferSize = Math.min(clientBufferSize, myBufferSize);
             final int initialSequenceNumber = handshake.getInitialSeqNo();
             state.setInitialSequenceNumber(initialSequenceNumber);
-            state.setDatagramSize((int) bufferSize);
+            setDatagramSize((int) bufferSize);
 
             finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                     handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());

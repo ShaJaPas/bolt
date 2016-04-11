@@ -46,6 +46,9 @@ public class Config
     /** Max ACK timer interval, in microseconds. */
     private long maxAckTimerInterval = 10 * Util.getSYNTime();
 
+    /** Whether to collect more detailed statistics or not. */
+    private boolean deepStatistics = true;
+
     /**
      * Create a new instance.
      *
@@ -157,4 +160,11 @@ public class Config
         this.simulatedMaxJitter = simulatedMaxJitter;
     }
 
+    public boolean isDeepStatistics() {
+        return deepStatistics;
+    }
+
+    public void setDeepStatistics(boolean deepStatistics) {
+        this.deepStatistics = deepStatistics;
+    }
 }

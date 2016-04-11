@@ -35,8 +35,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @see Sender
  */
-public class Receiver
-{
+public class Receiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
 
@@ -88,69 +87,55 @@ public class Receiver
      * Stores received packets to be sent.
      */
     private final BlockingQueue<BoltPacket> handOffQueue;
-    private final Config config;
-
+    private final Config                    config;
+    private final ReceiveBuffer             receiveBuffer;
     /**
      * Round trip time, calculated from ACK/ACK2 pairs.
      */
-    private long roundTripTime = 0;
-
+    private          long roundTripTime                = 0;
     /**
      * Round trip time variance.
      */
-    private long roundTripTimeVar = roundTripTime / 2;
-
+    private          long roundTripTimeVar             = roundTripTime / 2;
     /**
      * For storing the arrival time of the last received data packet.
      */
-    private volatile long lastDataPacketArrivalTime = 0;
-
+    private volatile long lastDataPacketArrivalTime    = 0;
     /**
      * LRSN: The largest received reliability sequence number.
      */
-    private volatile int largestReceivedRelSeqNumber = 0;
-
+    private volatile int  largestReceivedRelSeqNumber  = 0;
     /**
      * Last Ack number.
      */
-    private long lastAckNumber = 0;
-
+    private          long lastAckNumber                = 0;
     /**
      * largest Ack number ever acknowledged by ACK2
      */
     private volatile long largestAcknowledgedAckNumber = -1;
-
     /**
      * Record number of consecutive EXP time-out events.
      */
-    private volatile long expCount = 0;
-
+    private volatile long expCount                     = 0;
     /**
      * to check the ACK, NAK, or EXP timer
      */
     private long nextACK;
-
     /**
      * Microseconds to next ACK event.
      */
     private long ackTimerInterval = Util.getSYNTime();
-
     /**
      * Microseconds to next NAK event.
      */
     private long nakTimerInterval = Util.getSYNTime();
-
     private long nextNAK;
     private long nextEXP;
-
     /**
      * Number of reliable received data packets.
      */
-    private int reliableN = 0;
-
+    private          int reliableN         = 0;
     private volatile int ackSequenceNumber = 0;
-
-    final ReceiveBuffer receiveBuffer;
 
     /**
      * Create a receiver with a valid {@link Session}.
@@ -159,14 +144,16 @@ public class Receiver
      * @param sessionState the owning session state.
      * @param endpoint     the network endpoint.
      * @param sender       the matching sender.
+     * @param statistics
      */
-    public Receiver(final Config config, final SessionState sessionState, final ChannelOut endpoint, final Sender sender) {
+    public Receiver(final Config config, final SessionState sessionState, final ChannelOut endpoint,
+                    final Sender sender, final BoltStatistics statistics) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
         this.sender = sender;
         this.config = config;
         this.sessionUpSince = System.currentTimeMillis();
-        this.statistics = sessionState.getStatistics();
+        this.statistics = statistics;
         this.ackHistoryWindow = new AckHistoryWindow(16);
         this.packetHistoryWindow = new PacketHistoryWindow(16);
         this.receiverLossList = new ReceiverLossList();
@@ -263,7 +250,7 @@ public class Receiver
             resetEXPCount();
 
             statistics.beginProcess();
-            processPacket(packet, sub);
+            processPacket(packet);
             statistics.endProcess();
         }
     }
@@ -409,7 +396,7 @@ public class Receiver
                 && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
     }
 
-    private void processPacket(final BoltPacket p, final Subscriber<? super Object> sub) throws IOException {
+    private void processPacket(final BoltPacket p) throws IOException {
         // 3) Check the packet type and process it according to this.
         if (!p.isControlPacket()) {
             statistics.beginDataProcess();
@@ -440,7 +427,7 @@ public class Receiver
 
         final long currentDataPacketArrivalTime = Util.getCurrentTime();
         final int currentSeqNumber = dp.getPacketSeqNumber();
-        statistics.incNumberOfReceivedDataPackets();
+        statistics.addReceived(dp.getClassID(), dp.getDataLength());
 
         // 4) If the seqNo of the current data packet is 16n+1, record the time interval
         // between this packet and the last data packet in the packet pair window.

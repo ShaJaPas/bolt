@@ -126,6 +126,12 @@ public abstract class Session
     final CongestionControl cc;
     final ChannelOut        endPoint;
 
+    /** Statistics for the session. */
+    private final BoltStatistics statistics;
+
+    /** Buffer size (i.e. datagram size). This is negotiated during connection setup. */
+    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
+
     // Processing received data
     final Receiver receiver;
     final Sender   sender;
@@ -133,11 +139,12 @@ public abstract class Session
 
     Session(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
         this.endPoint = endpoint;
-        this.state = new SessionState(destination, description);
-        this.cc = new BoltCongestionControl(state);
+        this.statistics = new BoltStatistics(description, datagramSize);
+        this.state = new SessionState(destination);
+        this.cc = new BoltCongestionControl(state, statistics);
 
-        this.sender = new Sender(config, state, endpoint, cc);
-        this.receiver = new Receiver(config, state, endpoint, sender);
+        this.sender = new Sender(config, state, endpoint, cc, statistics);
+        this.receiver = new Receiver(config, state, endpoint, sender, statistics);
     }
 
     public abstract void received(BoltPacket packet, Subscriber subscriber);
@@ -238,8 +245,16 @@ public abstract class Session
         return state.getSocketID();
     }
 
+    int getDatagramSize() {
+        return datagramSize;
+    }
+
+    void setDatagramSize(int datagramSize) {
+        this.datagramSize = datagramSize;
+    }
+
     public BoltStatistics getStatistics() {
-        return state.getStatistics();
+        return statistics;
     }
 
     @Override

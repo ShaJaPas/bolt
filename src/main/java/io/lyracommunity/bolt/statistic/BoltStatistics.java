@@ -3,47 +3,48 @@ package io.lyracommunity.bolt.statistic;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to keep some statistics about a Bolt connection.
  */
 public class BoltStatistics {
 
-    private final AtomicInteger numberOfSentDataPackets = new AtomicInteger(0);
-    private final AtomicInteger numberOfReceivedDataPackets = new AtomicInteger(0);
-    private final AtomicInteger numberOfDuplicateDataPackets = new AtomicInteger(0);
-    private final AtomicInteger numberOfMissingDataEvents = new AtomicInteger(0);
-    private final AtomicInteger numberOfNAKSent = new AtomicInteger(0);
-    private final AtomicInteger numberOfNAKReceived = new AtomicInteger(0);
+    private final AtomicInteger numberOfSentDataPackets          = new AtomicInteger(0);
+    private final AtomicInteger numberOfReceivedDataPackets      = new AtomicInteger(0);
+    private final AtomicInteger numberOfDuplicateDataPackets     = new AtomicInteger(0);
+    private final AtomicInteger numberOfMissingDataEvents        = new AtomicInteger(0);
+    private final AtomicInteger numberOfNAKSent                  = new AtomicInteger(0);
+    private final AtomicInteger numberOfNAKReceived              = new AtomicInteger(0);
     private final AtomicInteger numberOfRetransmittedDataPackets = new AtomicInteger(0);
-    private final AtomicInteger numberOfACKSent = new AtomicInteger(0);
-    private final AtomicInteger numberOfACKReceived = new AtomicInteger(0);
-    private final AtomicInteger numberOfCCSlowDownEvents = new AtomicInteger(0);
-    private final AtomicInteger numberOfCCWindowExceededEvents = new AtomicInteger(0);
-    private final AtomicInteger numberOfArtificialDrops = new AtomicInteger(0);
+    private final AtomicInteger numberOfACKSent                  = new AtomicInteger(0);
+    private final AtomicInteger numberOfACKReceived              = new AtomicInteger(0);
+    private final AtomicInteger numberOfCCSlowDownEvents         = new AtomicInteger(0);
+    private final AtomicInteger numberOfCCWindowExceededEvents   = new AtomicInteger(0);
+    private final AtomicInteger numberOfArtificialDrops          = new AtomicInteger(0);
     private final String componentDescription;
     private final List<StatisticsHistoryEntry> statsHistory = new ArrayList<>();
+    private final Map<Integer, AtomicLong> receivedByClass = new HashMap<>();
+
     // Sender metrics
-    private final MeanValue dgSendTime = new MeanValue("SENDER: Datagram send time");
+    private final MeanValue dgSendTime     = new MeanValue("SENDER: Datagram send time");
     private final MeanValue dgSendInterval = new MeanValue("SENDER: Datagram send interval");
     private final MeanThroughput throughput;
+
     // Receiver metrics
-    private final MeanValue dgReceiveInterval = new MeanValue("RECEIVER: Bolt receive interval");
+    private final MeanValue dgReceiveInterval  = new MeanValue("RECEIVER: Bolt receive interval");
     private final MeanValue dataPacketInterval = new MeanValue("RECEIVER: Data packet interval");
-    private final MeanValue processTime = new MeanValue("RECEIVER: Bolt packet process time");
-    private final MeanValue dataProcessTime = new MeanValue("RECEIVER: Data packet process time");
-    private volatile long roundTripTime;
-    private volatile long roundTripTimeVariance;
-    private volatile long packetArrivalRate;
-    private volatile long estimatedLinkCapacity;
+    private final MeanValue processTime        = new MeanValue("RECEIVER: Bolt packet process time");
+    private final MeanValue dataProcessTime    = new MeanValue("RECEIVER: Data packet process time");
+    private volatile long   roundTripTime;
+    private volatile long   roundTripTimeVariance;
+    private volatile long   packetArrivalRate;
+    private volatile long   estimatedLinkCapacity;
     private volatile double sendPeriod;
-    private volatile long congestionWindowSize;
-    private long initialTime;
+    private volatile long   congestionWindowSize;
+    private          long   initialTime;
 
 
     public BoltStatistics(final String componentDescription, final int datagramSize) {
@@ -55,7 +56,7 @@ public class BoltStatistics {
         return numberOfSentDataPackets.get();
     }
 
-    public int getNumberOfArtificialDrops() {
+    private int getNumberOfArtificialDrops() {
         return numberOfArtificialDrops.get();
     }
 
@@ -63,27 +64,27 @@ public class BoltStatistics {
         return numberOfReceivedDataPackets.get();
     }
 
-    public int getNumberOfDuplicateDataPackets() {
+    private int getNumberOfDuplicateDataPackets() {
         return numberOfDuplicateDataPackets.get();
     }
 
-    public int getNumberOfNAKSent() {
+    private int getNumberOfNAKSent() {
         return numberOfNAKSent.get();
     }
 
-    public int getNumberOfNAKReceived() {
+    private int getNumberOfNAKReceived() {
         return numberOfNAKReceived.get();
     }
 
-    public int getNumberOfRetransmittedDataPackets() {
+    private int getNumberOfRetransmittedDataPackets() {
         return numberOfRetransmittedDataPackets.get();
     }
 
-    public int getNumberOfACKSent() {
+    private int getNumberOfACKSent() {
         return numberOfACKSent.get();
     }
 
-    public int getNumberOfACKReceived() {
+    private int getNumberOfACKReceived() {
         return numberOfACKReceived.get();
     }
 
@@ -135,12 +136,22 @@ public class BoltStatistics {
         numberOfCCSlowDownEvents.incrementAndGet();
     }
 
-    public void setRTT(long rtt, long rttVar) {
+    public void addReceived(final Integer classID, final long bytesReceived) {
+        incNumberOfReceivedDataPackets();
+        AtomicLong totalByClass = receivedByClass.get(classID);
+        if (totalByClass == null) {
+            receivedByClass.putIfAbsent(classID, new AtomicLong(0));
+            totalByClass = receivedByClass.get(classID);
+        }
+        totalByClass.addAndGet(bytesReceived);
+    }
+
+    public void setRTT(final long rtt, final long rttVar) {
         this.roundTripTime = rtt;
         this.roundTripTimeVariance = rttVar;
     }
 
-    public void setPacketArrivalRate(long rate, long linkCapacity) {
+    public void setPacketArrivalRate(final long rate, final long linkCapacity) {
         this.packetArrivalRate = rate;
         this.estimatedLinkCapacity = linkCapacity;
     }
@@ -149,15 +160,11 @@ public class BoltStatistics {
         return sendPeriod;
     }
 
-    public void setSendPeriod(double sendPeriod) {
+    public void setSendPeriod(final double sendPeriod) {
         this.sendPeriod = sendPeriod;
     }
 
-    public long getCongestionWindowSize() {
-        return congestionWindowSize;
-    }
-
-    public void setCongestionWindowSize(long congestionWindowSize) {
+    public void setCongestionWindowSize(final long congestionWindowSize) {
         this.congestionWindowSize = congestionWindowSize;
     }
 
@@ -166,11 +173,9 @@ public class BoltStatistics {
     }
 
     /**
-     * get a read-only list containing all metrics
-     *
-     * @return
+     * @return a read-only list containing all metrics.
      */
-    public List<MeanValue> getMetrics() {
+    private List<MeanValue> getMetrics() {
         return Collections.unmodifiableList(Arrays.asList(dgSendInterval, dgSendTime, throughput, dgReceiveInterval,
                 dataPacketInterval, processTime, dataProcessTime));
     }
@@ -209,6 +214,12 @@ public class BoltStatistics {
         for (final MeanValue v : getMetrics()) {
             sb.append(v.getName()).append(": ").append(v.getFormattedMean()).append("\n");
         }
+        sb.append("Breakdown by class:").append("\n");
+        for (Map.Entry<Integer, AtomicLong> bytesReceived : receivedByClass.entrySet()) {
+            sb.append("  Class ").append(bytesReceived.getKey()).append(" receive total of ")
+                    .append(bytesReceived.getValue()).append(" bytes.").append("\n");
+        }
+        sb.append("-------------------").append("\n");
         return sb.toString();
     }
 
@@ -231,7 +242,7 @@ public class BoltStatistics {
      *
      * @param toFile
      */
-    public void writeParameterHistory(File toFile) throws IOException {
+    private void writeParameterHistory(File toFile) throws IOException {
         try (final FileWriter fos = new FileWriter(toFile)) {
             for (StatisticsHistoryEntry s : new ArrayList<>(statsHistory)) {
                 fos.write(s.toString());

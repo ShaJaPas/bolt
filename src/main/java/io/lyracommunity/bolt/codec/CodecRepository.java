@@ -43,7 +43,7 @@ public class CodecRepository {
         return register(clazz, CodecChain.of(messageAssembleBuffer, xCoder));
     }
 
-    public <T> int register(final Class<T> clazz, final CodecChain<T> xCoder) throws IllegalArgumentException {
+    private <T> int register(final Class<T> clazz, final CodecChain<T> xCoder) throws IllegalArgumentException {
         if (classXCoders.containsKey(clazz)) throw new IllegalArgumentException("Class is already registered " + clazz);
 
         final Integer classId = idSeq.getAndIncrement();

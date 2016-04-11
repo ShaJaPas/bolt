@@ -39,7 +39,7 @@ public class BoltServer implements Server
         this(CodecRepository.basic(new MessageAssembleBuffer()), config);
     }
 
-    public BoltServer(final CodecRepository codecs, final Config config) {
+    private BoltServer(final CodecRepository codecs, final Config config) {
         this.codecs = codecs;
         this.config = config;
     }
@@ -73,7 +73,8 @@ public class BoltServer implements Server
 
     private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
         for (Session session : serverEndpoint.getSessions()) {
-            final DataPacket packet = session.pollReceiveBuffer(10, TimeUnit.MILLISECONDS);
+            // TODO never breaks.
+            final DataPacket packet = session.pollReceiveBuffer(1, TimeUnit.MILLISECONDS);
 
             if (packet != null) {
                 final Object decoded = codecs.decode(packet);

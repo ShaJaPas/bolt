@@ -37,7 +37,7 @@ public class TestClient implements AutoCloseable {
         this.onReady = onReady;
     }
 
-    void start(final int serverPort) throws IOException {
+    public void start(final int serverPort) throws IOException {
         subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.computation())
@@ -47,10 +47,10 @@ public class TestClient implements AutoCloseable {
                             if (onNext != null) {
                                 onNext.accept(this, x);
                                 if (ReceiveObject.class.equals(x.getClass())) onNext.accept(this, ((ReceiveObject)x).getPayload());
-                                if (ConnectionReady.class.equals(x.getClass())) {
-                                    readyTime.set(System.currentTimeMillis());
-                                    if (onReady != null) onReady.accept(this, (ConnectionReady) x);
-                                }
+                            }
+                            if (ConnectionReady.class.equals(x.getClass())) {
+                                readyTime.set(System.currentTimeMillis());
+                                if (onReady != null) onReady.accept(this, (ConnectionReady) x);
                             }
                         },
                         errors::add);

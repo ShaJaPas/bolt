@@ -1,6 +1,5 @@
 package io.lyracommunity.bolt.session;
 
-import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -25,10 +24,6 @@ public class SessionState {
      * The size of the receive buffer.
      */
     private final int receiveBufferSize = 64 * 32768;
-    /**
-     * Statistics for the session.
-     */
-    private final BoltStatistics statistics;
     /**
      * The socket ID of this session.
      */
@@ -58,17 +53,12 @@ public class SessionState {
 
     private volatile SessionStatus status = SessionStatus.START;
 
-    /**
-     * Buffer size (i.e. datagram size). This is negotiated during connection setup.
-     */
-    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
 
 
-    public SessionState(final Destination destination, final String description) {
+    public SessionState(final Destination destination) {
         this.destination = destination;
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
-        this.statistics = new BoltStatistics(description, datagramSize);
     }
 
     int getSocketID() {
@@ -140,18 +130,6 @@ public class SessionState {
 
     void setActive(boolean active) {
         this.active = active;
-    }
-
-    int getDatagramSize() {
-        return datagramSize;
-    }
-
-    void setDatagramSize(int datagramSize) {
-        this.datagramSize = datagramSize;
-    }
-
-    public BoltStatistics getStatistics() {
-        return statistics;
     }
 
     @Override

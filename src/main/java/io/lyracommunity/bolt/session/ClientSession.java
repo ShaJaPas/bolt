@@ -131,8 +131,8 @@ public class ClientSession extends Session {
     /**
      * Initial handshake for connect.
      */
-    protected void sendInitialHandShake() throws IOException {
-        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(state.getDatagramSize(), state.getInitialSequenceNumber(),
+    private void sendInitialHandShake() throws IOException {
+        final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), state.getInitialSequenceNumber(),
                 state.getFlowWindowSize(), state.getSocketID(), endPoint.getLocalAddress());
         LOG.info("Sending {}", handshake);
         endPoint.doSend(handshake, state);
@@ -141,8 +141,8 @@ public class ClientSession extends Session {
     /**
      * Second handshake for connect.
      */
-    protected void sendSecondHandshake() throws IOException {
-        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(state.getDatagramSize(), state.getInitialSequenceNumber(),
+    private void sendSecondHandshake() throws IOException {
+        final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), state.getInitialSequenceNumber(),
                 state.getFlowWindowSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending confirmation {}", ch);
         endPoint.doSend(ch, state);
