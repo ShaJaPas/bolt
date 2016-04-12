@@ -236,7 +236,7 @@ public abstract class Session
         return state.getStatus();
     }
 
-    public void setStatus(final SessionStatus status) {
+    void setStatus(final SessionStatus status) {
         LOG.info("{} connection status CHANGED to [{}]", this, status);
         state.setStatus(status);
     }

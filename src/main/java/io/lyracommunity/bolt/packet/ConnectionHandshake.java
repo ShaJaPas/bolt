@@ -49,11 +49,11 @@ public class ConnectionHandshake extends ControlPacket {
     private InetAddress address;
 
     private ConnectionHandshake() {
-        this.controlPacketType = PacketType.HANDSHAKE.getTypeId();
+        super(PacketType.HANDSHAKE);
     }
 
     ConnectionHandshake(byte[] controlInformation) throws IOException {
-        this();
+        super(PacketType.HANDSHAKE, controlInformation);
         decode(controlInformation);
     }
 
@@ -101,7 +101,7 @@ public class ConnectionHandshake extends ControlPacket {
                 destinationID, cookie, address);
     }
 
-    void decode(byte[] data) throws IOException {
+    protected void decode(final byte[] data) throws IOException {
         boltVersion = PacketUtil.decode(data, 0);
         initialSeqNo = PacketUtil.decodeInt(data, 4);
         packetSize = PacketUtil.decode(data, 8);

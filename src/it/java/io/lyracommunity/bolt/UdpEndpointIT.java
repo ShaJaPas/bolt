@@ -29,7 +29,7 @@ public class UdpEndpointIT
         final int numPackets = 50 + new Random().nextInt(50);
         final int serverPort = PortUtil.nextServerPort();
 
-        final BoltEndPoint server = new BoltEndPoint(InetAddress.getByName("localhost"), serverPort);
+        final Endpoint server = new Endpoint(InetAddress.getByName("localhost"), serverPort);
         server.start()
                 .observeOn(Schedulers.computation())
                 .subscribe();
@@ -70,7 +70,7 @@ public class UdpEndpointIT
         final int serverPort = PortUtil.nextServerPort();
         final int clientPort = PortUtil.nextClientPort();
         InetAddress localhost = InetAddress.getByName("localhost");
-        BoltEndPoint endpoint = new BoltEndPoint(localhost, serverPort);
+        Endpoint endpoint = new Endpoint(localhost, serverPort);
         Subscription sub = endpoint.start().subscribe();
         Destination d1 = new Destination(localhost, clientPort);
         final int dataSize = Config.DEFAULT_DATAGRAM_SIZE;
@@ -100,7 +100,7 @@ public class UdpEndpointIT
 
     @Test
     public void testBindToAnyPort() throws Exception {
-        BoltEndPoint ep = new BoltEndPoint(InetAddress.getByName("localhost"), 0);
+        Endpoint ep = new Endpoint(InetAddress.getByName("localhost"), 0);
         int port = ep.getLocalPort();
         assertTrue(port > 0);
     }

@@ -96,7 +96,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         decode(encodedData, length);
     }
 
-    void decode(final byte[] encodedData, final int length) {
+    private void decode(final byte[] encodedData, final int length) {
         byte deliveryType = (byte) PacketUtil.decodeInt(encodedData, 0, 28, 31);
         delivery = DeliveryType.fromId(deliveryType);
 
@@ -124,11 +124,16 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         System.arraycopy(encodedData, headerLength, data, 0, dataLength);
     }
 
-    public static int computeHeaderLength(final DeliveryType deliveryType) {
+    static int computeHeaderLength(final DeliveryType deliveryType) {
         return 8
                 + (deliveryType.isMessage()  ? 4 : 0)
                 + (deliveryType.isOrdered()  ? 2 : 0)
                 + (deliveryType.isReliable() ? 2 : 0);
+    }
+
+    @Override
+    public int getLength() {
+        return getDataLength() + DataPacket.computeHeaderLength(delivery);
     }
 
     public byte[] getData() {
@@ -264,7 +269,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.delivery = delivery;
     }
 
-    public DeliveryType getDelivery()
+    DeliveryType getDelivery()
     {
         return delivery;
     }

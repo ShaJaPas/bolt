@@ -54,7 +54,6 @@ public class SessionState {
     private volatile SessionStatus status = SessionStatus.START;
 
 
-
     public SessionState(final Destination destination) {
         this.destination = destination;
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
@@ -93,7 +92,7 @@ public class SessionState {
         return status;
     }
 
-    void setStatus(final SessionStatus status) {
+    public void setStatus(final SessionStatus status) {
         this.status = status;
     }
 
@@ -128,7 +127,7 @@ public class SessionState {
         return active;
     }
 
-    void setActive(boolean active) {
+    public void setActive(final boolean active) {
         this.active = active;
     }
 

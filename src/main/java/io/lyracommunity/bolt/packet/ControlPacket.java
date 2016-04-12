@@ -95,14 +95,22 @@ import java.util.Objects;
  */
 public abstract class ControlPacket implements BoltPacket {
 
-    protected int controlPacketType;
+    private static final int CONTROL_HEADER_LENGTH = 12;
 
-    protected int destinationID;
+    int controlPacketType;
 
-    protected byte[] controlInformation;
+    int destinationID;
 
-    public ControlPacket() {
+    private int dataLength;
 
+    ControlPacket(final PacketType controlPacketType) {
+        this.controlPacketType = controlPacketType.getTypeId();
+        this.dataLength = 0;
+    }
+
+    ControlPacket(final PacketType controlPacketType, final byte[] controlData) {
+        this.controlPacketType = controlPacketType.getTypeId();
+        this.dataLength = controlData.length;
     }
 
     @Override
@@ -125,7 +133,7 @@ public abstract class ControlPacket implements BoltPacket {
      * @return the encoded header byte array.
      */
     public byte[] getHeader() {
-        byte[] res = new byte[12];
+        byte[] res = new byte[CONTROL_HEADER_LENGTH];
         System.arraycopy(PacketUtil.encodeControlPacketType(controlPacketType), 0, res, 0, 4);
         System.arraycopy(PacketUtil.encode(getAdditionalInfo()), 0, res, 4, 4);
         System.arraycopy(PacketUtil.encode(destinationID), 0, res, 8, 4);
@@ -139,6 +147,10 @@ public abstract class ControlPacket implements BoltPacket {
         return 0L;
     }
 
+    @Override
+    public int getLength() {
+        return CONTROL_HEADER_LENGTH + dataLength;
+    }
 
     /**
      * This method builds the control information from the control parameters.

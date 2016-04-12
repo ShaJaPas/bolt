@@ -20,12 +20,12 @@ public class Ack2 extends ControlPacket {
         return new Ack2(ackSequenceNumber, destinationID);
     }
 
-    public Ack2() {
-        this.controlPacketType = PacketType.ACK2.getTypeId();
+    private Ack2() {
+        super(PacketType.ACK2);
     }
 
     Ack2(long ackSeqNo, byte[] controlInformation) {
-        this();
+        super(PacketType.ACK2, controlInformation);
         this.ackSequenceNumber = ackSeqNo;
         decode(controlInformation);
     }
@@ -41,7 +41,7 @@ public class Ack2 extends ControlPacket {
         return ackSequenceNumber;
     }
 
-    void decode(final byte[] data) {
+    protected void decode(final byte[] data) {
         ackSequenceNumber = PacketUtil.decode(data, 0);
     }
 

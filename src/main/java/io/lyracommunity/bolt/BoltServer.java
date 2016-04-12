@@ -32,7 +32,7 @@ public class BoltServer implements Server
 
     private final Config config;
 
-    private volatile BoltEndPoint serverEndpoint;
+    private volatile Endpoint serverEndpoint;
 
 
     public BoltServer(final Config config) {
@@ -50,7 +50,7 @@ public class BoltServer implements Server
             Subscription endpointSub = null;
             try {
                 Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
-                this.serverEndpoint = new BoltEndPoint(config);
+                this.serverEndpoint = new Endpoint(config);
                 endpointSub = this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {

@@ -28,7 +28,7 @@ public class BoltClient implements Client
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
-    private final BoltEndPoint    clientEndpoint;
+    private final Endpoint        clientEndpoint;
     private final CodecRepository codecs;
     private final Config          config;
     private       ClientSession   clientSession;
@@ -40,7 +40,7 @@ public class BoltClient implements Client
     public BoltClient(final Config config) throws IOException {
         this.config = config;
         this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
-        this.clientEndpoint = new BoltEndPoint(config);
+        this.clientEndpoint = new Endpoint(config);
         LOG.info("Created client endpoint on port {}", clientEndpoint.getLocalPort());
     }
 

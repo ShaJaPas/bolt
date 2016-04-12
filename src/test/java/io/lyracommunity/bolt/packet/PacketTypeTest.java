@@ -10,7 +10,7 @@ public class PacketTypeTest {
 
     @Test
     public void testSequenceNumber1() {
-        ControlPacket p = new DummyControlPacket();
+        ControlPacket p = new Shutdown();
         final byte[] x = p.getHeader();
         final byte highest = x[0];
         assertEquals(128, highest & 0x80);
@@ -38,18 +38,5 @@ public class PacketTypeTest {
         final long distinctTypeCount = Stream.of(PacketType.values()).map(PacketType::getTypeId).distinct().count();
         assertEquals(typeCount, distinctTypeCount);
     }
-
-    private static class DummyControlPacket extends ControlPacket {
-
-        public DummyControlPacket() {
-
-        }
-
-        @Override
-        public byte[] encodeControlInformation() {
-            return null;
-        }
-    }
-
 
 }

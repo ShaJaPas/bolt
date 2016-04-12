@@ -30,7 +30,7 @@ public class NegAck extends ControlPacket {
     private List<Integer> lostSequenceNumbers;
 
     public NegAck() {
-        this.controlPacketType = PacketType.NAK.getTypeId();
+        super(PacketType.NAK);
     }
 
     NegAck(final byte[] controlInformation) {
@@ -43,7 +43,7 @@ public class NegAck extends ControlPacket {
      *
      * @param lossInfo list of lost sequence numbers.
      */
-    private List<Integer> decode(final byte[] lossInfo) {
+    protected List<Integer> decode(final byte[] lossInfo) {
         final List<Integer> lostSequenceNumbers = new ArrayList<>();
         final ByteBuffer bb = ByteBuffer.wrap(lossInfo);
         byte[] buffer = new byte[4];

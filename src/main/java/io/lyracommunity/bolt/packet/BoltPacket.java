@@ -16,6 +16,11 @@ public interface BoltPacket extends Comparable<BoltPacket> {
     boolean isControlPacket();
 
     /**
+     * Get the size of the packet in bytes.
+     */
+    int getLength();
+
+    /**
      * Get the {@link PacketType packet type}.
      */
     PacketType getPacketType();

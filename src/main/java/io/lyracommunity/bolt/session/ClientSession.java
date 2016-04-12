@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.session;
 
-import io.lyracommunity.bolt.BoltEndPoint;
+import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
@@ -24,7 +24,7 @@ public class ClientSession extends Session {
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
 
-    public ClientSession(Config config, BoltEndPoint endPoint, Destination dest) throws SocketException {
+    public ClientSession(Config config, Endpoint endPoint, Destination dest) throws SocketException {
         super(config, endPoint, dest, "ClientSession localPort=" + endPoint.getLocalPort());
         LOG.info("Created " + toString());
     }

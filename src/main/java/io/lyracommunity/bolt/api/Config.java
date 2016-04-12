@@ -18,6 +18,9 @@ public class Config
     /** Simulated network jitter, in milliseconds. */
     private int simulatedMaxJitter;
 
+    /** Simulated network bandwidth, in KB/sec. */
+    private int simulatedBandwidth;
+
     private InetAddress localAddress;
 
     private int localPort;
@@ -158,6 +161,18 @@ public class Config
 
     public void setSimulatedMaxJitter(final int simulatedMaxJitter) {
         this.simulatedMaxJitter = simulatedMaxJitter;
+    }
+
+    public int getSimulatedBandwidthInBytesPerSecond() {
+        return simulatedBandwidth * 1024;
+    }
+
+    public int getSimulatedBandwidth() {
+        return simulatedBandwidth;
+    }
+
+    public void setSimulatedBandwidth(final int simulatedBandwidth) {
+        this.simulatedBandwidth = simulatedBandwidth;
     }
 
     public boolean isDeepStatistics() {

@@ -1,8 +1,8 @@
 package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
-import io.lyracommunity.bolt.BoltEndPoint;
 import io.lyracommunity.bolt.CongestionControl;
+import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.sender.Sender;
@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by omahoc9 on 4/5/16.
@@ -29,7 +30,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReceiverTest
 {
 
-    private Config          config;
+    private static final AtomicInteger CLIENT_PORT = new AtomicInteger(12045);
+    private static final AtomicInteger SERVER_PORT = new AtomicInteger(60321);
+    private Config config;
     private Receiver        receiver;
     private List<Object>    events;
     private List<Throwable> errors;
@@ -43,16 +46,18 @@ public class ReceiverTest
     }
 
     private void setUp(Long maybeExpTimerInterval) throws IOException {
-        config = new Config(InetAddress.getByName("localhost"), 12345);
+        config = new Config(InetAddress.getByName("localhost"), CLIENT_PORT.getAndIncrement());
         if (maybeExpTimerInterval != null) config.setExpTimerInterval(maybeExpTimerInterval);
 
-        final BoltEndPoint endpoint = new BoltEndPoint(config);
-        final Destination peer = new Destination(InetAddress.getByName("localhost"), 65321);
+        final Endpoint endpoint = new Endpoint(config);
+        final Destination peer = new Destination(InetAddress.getByName("localhost"), SERVER_PORT.getAndIncrement());
         final Session session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer);
+        sessionState.setStatus(SessionStatus.READY);
+        sessionState.setActive(true);
+
         final CongestionControl cc = new BoltCongestionControl(sessionState, session.getStatistics());
         final Sender sender = new Sender(config, sessionState, endpoint, cc, session.getStatistics());
-        session.setStatus(SessionStatus.READY);
         receiver = new Receiver(config, sessionState, endpoint, sender, session.getStatistics());
         events = new ArrayList<>();
         errors = new ArrayList<>();
@@ -129,9 +134,10 @@ public class ReceiverTest
     public void testCheckEXPTimer() throws Exception
     {
         config.setExpTimerInterval(1);
+        config.setExpLimit(2);
 
-        for (int i = 0; i < 10 && !subscription.isUnsubscribed() && errors.isEmpty(); i++) {
-            Thread.sleep(500);
+        for (int i = 0; i < 100 && !subscription.isUnsubscribed() && errors.isEmpty(); i++) {
+            Thread.sleep(50);
         }
 
         Assert.assertFalse(errors.isEmpty());

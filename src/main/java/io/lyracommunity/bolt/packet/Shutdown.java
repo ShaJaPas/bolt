@@ -9,8 +9,8 @@ package io.lyracommunity.bolt.packet;
  */
 public class Shutdown extends ControlPacket {
 
-    public Shutdown() {
-        this.controlPacketType = PacketType.SHUTDOWN.getTypeId();
+    Shutdown() {
+        super(PacketType.SHUTDOWN);
     }
 
     public Shutdown(final int destinationID) {

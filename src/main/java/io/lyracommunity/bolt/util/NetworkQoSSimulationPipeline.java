@@ -21,27 +21,30 @@ public class NetworkQoSSimulationPipeline {
 
     private final IntUnaryOperator intRNG;
 
-    private final PacketConsumer pipeTo;
+    private final PacketConsumer out;
 
     private final PacketConsumer onDrop;
 
     private final AtomicBoolean running = new AtomicBoolean();
 
-    private DelayQueue<DelayedPacket> latencyQueue = new DelayQueue<>();
+    private DelayQueue<QosPacket> latencyQueue = new DelayQueue<>();
+
+    private TokenBuffer<QosPacket> bandwidthFilter;
 
     private volatile long packetReceiveCount = 0;
 
 
-    public NetworkQoSSimulationPipeline(final Config config, final PacketConsumer pipeTo, final PacketConsumer onDrop) {
-        this(config, pipeTo, onDrop, new Random()::nextInt);
+    public NetworkQoSSimulationPipeline(final Config config, final PacketConsumer out, final PacketConsumer onDrop) {
+        this(config, out, onDrop, new Random()::nextInt);
     }
 
-    NetworkQoSSimulationPipeline(final Config config, final PacketConsumer pipeTo, final PacketConsumer onDrop,
+    NetworkQoSSimulationPipeline(final Config config, final PacketConsumer out, final PacketConsumer onDrop,
                                  final IntUnaryOperator intRNG) {
         this.config = config;
         this.intRNG = intRNG;
-        this.pipeTo = pipeTo;
+        this.out = out;
         this.onDrop = onDrop;
+        this.bandwidthFilter = TokenBuffer.perSecond(config::getSimulatedBandwidthInBytesPerSecond, 1024 * 8);
     }
 
     /**
@@ -56,16 +59,41 @@ public class NetworkQoSSimulationPipeline {
             onDrop.accept(peer, packet);
         }
         else {
-            if (isPipeRequired()) {
-                ensurePipeRunning();
-                final int jitter = (config.getSimulatedMaxJitter() <= 0) ? 0 : intRNG.applyAsInt(config.getSimulatedMaxJitter());
-                final int latency = Math.max(0, config.getSimulatedLatency());
-                final long queueUntil = System.currentTimeMillis() + latency + jitter;
-                latencyQueue.offer(new DelayedPacket(queueUntil, packet, peer));
+            if (isLatencyPipeRequired()) {
+                pipeInToLatency(peer, packet);
+            }
+            else if (isBandwidthPipeRequired()) {
+                pipeLatencyToBandwidth(peer, packet);
             }
             else {
-                pipeTo.accept(peer, packet);
+                out.accept(peer, packet);
             }
+        }
+    }
+
+    private void pipeInToLatency(final Destination peer, final BoltPacket packet) {
+        ensurePipeRunning();
+        // Compute jitter, latency and delay time in microseconds.
+        final long jitter = (config.getSimulatedMaxJitter() <= 0)
+                ? 0
+                : intRNG.applyAsInt(config.getSimulatedMaxJitter()) * 1000L;
+        final long latency = Math.max(0, config.getSimulatedLatency()) * 1000L;
+        final long queueUntil = Util.getCurrentTime() + latency + jitter;
+        latencyQueue.offer(new QosPacket(queueUntil, packet, peer));
+    }
+
+    private void pipeLatencyToBandwidth(final Destination peer, final BoltPacket packet) {
+        ensurePipeRunning();
+
+        if (!bandwidthFilter.offer(new QosPacket(packet, peer))) {
+            onDrop.accept(peer, packet);
+        }
+    }
+
+    private void pipeBandwidthToOut() {
+        final QosPacket maybePacket = bandwidthFilter.poll();
+        if (maybePacket != null) {
+            out.accept(maybePacket.peer, maybePacket.packet);
         }
     }
 
@@ -81,10 +109,12 @@ public class NetworkQoSSimulationPipeline {
             boolean required;
             do {
                 required = isPipeRequired();
-                final DelayedPacket delayedPacket = latencyQueue.poll(10, TimeUnit.MILLISECONDS);
+                final QosPacket delayedPacket = latencyQueue.poll(5, TimeUnit.MILLISECONDS);
                 if (delayedPacket != null) {
-                    pipeTo.accept(delayedPacket.peer, delayedPacket.packet);
+                    pipeLatencyToBandwidth(delayedPacket.peer, delayedPacket.packet);
                 }
+
+                pipeBandwidthToOut();
             }
             while (required && running.get());
         }
@@ -93,12 +123,21 @@ public class NetworkQoSSimulationPipeline {
         }
         finally {
             running.set(false);
-            latencyQueue.stream().forEach(delayed -> pipeTo.accept(delayed.peer, delayed.packet));
+
+            latencyQueue.stream().forEach(delayed -> out.accept(delayed.peer, delayed.packet));
             latencyQueue.clear();
         }
     }
 
     private boolean isPipeRequired() {
+        return (isLatencyPipeRequired() || isBandwidthPipeRequired());
+    }
+
+    private boolean isBandwidthPipeRequired() {
+        return (config.getSimulatedBandwidth() > 0);
+    }
+
+    private boolean isLatencyPipeRequired() {
         return (config.getSimulatedLatency() > 0) || (config.getSimulatedMaxJitter() > 0);
     }
 
@@ -115,13 +154,16 @@ public class NetworkQoSSimulationPipeline {
 
     }
 
-    private static class DelayedPacket implements Delayed {
+    private static class QosPacket implements Delayed, TokenBuffer.Token {
 
-        private final long timestamp;
-        private final BoltPacket packet;
+        private final long        timestamp;
+        private final BoltPacket  packet;
         private final Destination peer;
 
-        private DelayedPacket(final long timestamp, final BoltPacket packet, final Destination peer) {
+        private QosPacket(final BoltPacket packet, final Destination peer) {
+            this(Util.getCurrentTime(), packet, peer);
+        }
+        private QosPacket(final long timestamp, final BoltPacket packet, final Destination peer) {
             this.timestamp = timestamp;
             this.packet = packet;
             this.peer = peer;
@@ -129,12 +171,17 @@ public class NetworkQoSSimulationPipeline {
 
         @Override
         public long getDelay(TimeUnit unit) {
-            return unit.convert(timestamp - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+            return unit.convert(timestamp - Util.getCurrentTime(), TimeUnit.MICROSECONDS);
         }
 
         @Override
         public int compareTo(Delayed o) {
-            return Long.compare(timestamp, ((DelayedPacket) o).timestamp);
+            return Long.compare(timestamp, ((QosPacket) o).timestamp);
+        }
+
+        @Override
+        public int getLength() {
+            return packet.getLength();
         }
     }
 

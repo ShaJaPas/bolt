@@ -48,11 +48,11 @@ public class Ack extends ControlPacket {
     private long estimatedLinkCapacity;
 
     Ack() {
-        this.controlPacketType = PacketType.ACK.getTypeId();
+        super(PacketType.ACK);
     }
 
     Ack(int ackSeqNo, byte[] controlInformation) {
-        this();
+        super(PacketType.ACK, controlInformation);
         this.ackSequenceNumber = ackSeqNo;
         decodeControlInformation(controlInformation);
     }

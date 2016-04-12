@@ -31,9 +31,9 @@ import java.util.stream.Stream;
  * The UDPEndpoint takes care of sending and receiving UDP network packets,
  * dispatching them to the correct {@link Session}
  */
-public class BoltEndPoint implements ChannelOut {
+public class Endpoint implements ChannelOut {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BoltEndPoint.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Endpoint.class);
 
     private final DatagramPacket dp = new DatagramPacket(new byte[Config.DEFAULT_DATAGRAM_SIZE], Config.DEFAULT_DATAGRAM_SIZE);
     private final int port;
@@ -57,7 +57,7 @@ public class BoltEndPoint implements ChannelOut {
      * @throws SocketException      if for example if the port is already bound to.
      * @throws UnknownHostException if the host could not be resolved.
      */
-    public BoltEndPoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
+    public Endpoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
         this(new Config(localAddress, localPort));
     }
 
@@ -68,7 +68,7 @@ public class BoltEndPoint implements ChannelOut {
      * @throws SocketException
      * @throws UnknownHostException
      */
-    public BoltEndPoint(final Config config) throws UnknownHostException, SocketException {
+    public Endpoint(final Config config) throws UnknownHostException, SocketException {
         this.config = config;
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
