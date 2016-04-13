@@ -2,6 +2,7 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
+import io.lyracommunity.bolt.util.SeqNum;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -9,6 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import static io.lyracommunity.bolt.helper.TestSupport.sleepUnchecked;
 import static java.text.MessageFormat.format;
 import static org.junit.Assert.assertTrue;
 
@@ -24,20 +26,14 @@ public class DeliveryReliabilityIT
 
     @Test
     public void testUnreliableWithPacketLoss() throws Throwable {
-
         final float packetLoss = 0.1f;
         final int sendCount = 50;
         final int maxExpectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss));
-        final Consumer<BoltClient> onReady = c -> {
 
-            // Send unreliable
+        final Consumer<BoltClient> onReady = c -> {
+            // Send unreliable.
             for (int i = 0; i < sendCount; i++) c.send(TestObjects.unreliableUnordered(100));
-            try {
-                Thread.sleep(20L);
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepUnchecked(20);
             c.sendBlocking(TestObjects.finished());
         };
 
@@ -50,18 +46,13 @@ public class DeliveryReliabilityIT
         final float packetLoss = 0.1f;
         final int sendCount = 50;
         final int maxExpectedDeliveryCount = (int) Math.ceil(sendCount * (1f - packetLoss)) + (sendCount); // (unreliable) + (reliable)
-        final Consumer<BoltClient> onReady = c -> {
 
+        final Consumer<BoltClient> onReady = c -> {
             // Send unreliable
             for (int i = 0; i < sendCount; i++) c.send(TestObjects.unreliableUnordered(100));
             for (int i = 0; i < sendCount; i++)
                 c.send(TestObjects.reliableUnordered(100));
-            try {
-                Thread.sleep(20L);
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepUnchecked(20);
             c.sendBlocking(TestObjects.finished());
         };
 
@@ -70,12 +61,30 @@ public class DeliveryReliabilityIT
 
     @Test
     public void testReliableWithPacketLoss() throws Throwable {
-        // TODO implement test
+        final int sendCount = 50;
+
+        final Consumer<BoltClient> onReady = c -> {
+            // Send reliable.
+            for (int i = 0; i < sendCount; i++) c.send(TestObjects.reliableUnordered(100));
+            sleepUnchecked(20);
+            c.sendBlocking(TestObjects.finished());
+        };
+
+        doTest(0.1f, sendCount, sendCount, onReady);
     }
 
     @Test
-    public void testSendingReliablePacketsWithSequenceNumberOverflow() {
-        // TODO implement test
+    public void testSendingReliablePacketsWithSequenceNumberOverflow() throws Throwable {
+        final int sendCount = SeqNum.MAX_SEQ_NUM_16_BIT + 1000;
+
+        final Consumer<BoltClient> onReady = c -> {
+            // Send reliable.
+            for (int i = 0; i < sendCount; i++) c.send(TestObjects.reliableUnordered(1));
+            c.flush();
+            c.sendBlocking(TestObjects.finished());
+        };
+
+        doTest(0f, sendCount, sendCount, onReady);
     }
 
 
@@ -84,8 +93,9 @@ public class DeliveryReliabilityIT
         Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .onEventServer((ts, evt) -> {
                     if (evt instanceof TestObjects.BaseDataClass) {
-                        deliveryCount.incrementAndGet();
-                        System.out.println(format("Recv {0} {1}", evt.getClass().getSimpleName(), deliveryCount.get()));
+                        if (deliveryCount.incrementAndGet() % 20 == 0) {
+                            System.out.println(format("Recv {0} {1}", evt.getClass().getSimpleName(), deliveryCount.get()));
+                        }
                     }
                     else if (evt instanceof TestObjects.Finished) {
                         completed.set(true);

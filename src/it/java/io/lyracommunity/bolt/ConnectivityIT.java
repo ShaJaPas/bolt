@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import static io.lyracommunity.bolt.helper.TestSupport.sleepUnchecked;
 import static org.junit.Assert.*;
 
 /**
@@ -150,15 +151,6 @@ public class ConnectivityIT {
     private void initExpConfig(final Config config, final int expLimit, final int expTimerInterval) {
         config.setExpLimit(expLimit);
         config.setExpTimerInterval(expTimerInterval);
-    }
-
-    private void sleepUnchecked(final long millis) {
-        try {
-            Thread.sleep(millis);
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
 }
