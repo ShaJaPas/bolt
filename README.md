@@ -5,6 +5,7 @@ Bolt UDP
 - [X] Reliable/Unreliable packets
 - [X] In-order and out-of-order delivery
 - [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - 65536 values - not safe enough)
+- [ ] Optimize bandwidth limit pipe polling
 - [X] Message assembly/disassembly
 - [X] Delivery strategy
 - [ ] Retransmit strategy (aggressive, on NAK)
