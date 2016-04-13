@@ -3,8 +3,11 @@ package io.lyracommunity.bolt.helper;
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.BoltServer;
 import io.lyracommunity.bolt.event.ConnectionReady;
+import io.lyracommunity.bolt.util.Util;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -33,11 +36,14 @@ public class Infra implements AutoCloseable {
         return this;
     }
 
-    public long awaitCompletion() throws Exception {
+    public long awaitCompletion(final long time, final TimeUnit unit) throws Exception {
+        final long maxWaitMicros = unit.toMicros(time);
+        final long startTime = Util.getCurrentTime();
         while (server.getErrors().isEmpty()
                 && clients.stream().allMatch(c -> c.getErrors().isEmpty())
                 && waitCondition.test(server)) {
             Thread.sleep(3);
+            if (Util.getCurrentTime() - startTime > maxWaitMicros) throw new TimeoutException("Timed out");
         }
         final long readyTime = clients.stream().mapToLong(TestClient::getReadyTime).min().orElse(0);
         totalTime.set(System.currentTimeMillis() - readyTime);

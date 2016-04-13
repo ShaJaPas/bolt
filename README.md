@@ -12,7 +12,7 @@ Bolt UDP
 - [X] Simulated packet-loss
 - [X] Simulated latency
 - [X] Simulated jitter
-- [ ] Simulated bandwidth
+- [X] Simulated bandwidth
 - [X] Handle duplicate ConnectionReady events
 - [ ] Multi-client
 - [X] Distinguish unit/integration tests and use both surefire/failsafe

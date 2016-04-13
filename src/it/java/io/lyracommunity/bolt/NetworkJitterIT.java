@@ -4,6 +4,8 @@ import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -34,7 +36,7 @@ public class NetworkJitterIT
                 .setWaitCondition(ts -> ts.getTotalReceived(toSend.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(1, TimeUnit.MINUTES);
             final int meanExpectedJitter = jitterInMillis / 2;
             System.out.println("Receive took " + millisTaken + " ms.");
 

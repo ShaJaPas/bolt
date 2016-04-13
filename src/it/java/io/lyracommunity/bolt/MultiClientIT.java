@@ -52,7 +52,7 @@ public class MultiClientIT {
                 .setWaitCondition(tc -> serverDisconnectedEvents.get() < numClients);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(1, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(numClients, serverDisconnectedEvents.get());
@@ -88,7 +88,7 @@ public class MultiClientIT {
                 .setWaitCondition(tc -> received.get() < packetCount * clientCount);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(1, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(packetCount * clientCount, received.get());

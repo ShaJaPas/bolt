@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
@@ -67,7 +68,7 @@ public class QualityOfServiceIT {
                 .setWaitCondition(ts -> ts.getTotalReceived(toSend.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));

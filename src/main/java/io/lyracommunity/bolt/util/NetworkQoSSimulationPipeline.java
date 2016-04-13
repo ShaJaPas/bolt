@@ -25,7 +25,9 @@ public class NetworkQoSSimulationPipeline {
 
     private final PacketConsumer onDrop;
 
-    private final AtomicBoolean running = new AtomicBoolean();
+    private final AtomicBoolean latencyRunning = new AtomicBoolean();
+
+    private final AtomicBoolean bandwidthRunning = new AtomicBoolean();
 
     private DelayQueue<QosPacket> latencyQueue = new DelayQueue<>();
 
@@ -44,7 +46,7 @@ public class NetworkQoSSimulationPipeline {
         this.intRNG = intRNG;
         this.out = out;
         this.onDrop = onDrop;
-        this.bandwidthFilter = TokenBuffer.perSecond(config::getSimulatedBandwidthInBytesPerSecond, 1024 * 8);
+        this.bandwidthFilter = TokenBuffer.perSecond(config::getSimulatedBandwidthInBytesPerSecond, 1 << 16);
     }
 
     /**
@@ -72,7 +74,7 @@ public class NetworkQoSSimulationPipeline {
     }
 
     private void pipeInToLatency(final Destination peer, final BoltPacket packet) {
-        ensurePipeRunning();
+        ensureLatencyPipeRunning();
         // Compute jitter, latency and delay time in microseconds.
         final long jitter = (config.getSimulatedMaxJitter() <= 0)
                 ? 0
@@ -83,54 +85,75 @@ public class NetworkQoSSimulationPipeline {
     }
 
     private void pipeLatencyToBandwidth(final Destination peer, final BoltPacket packet) {
-        ensurePipeRunning();
+        ensureBandwidthPipeRunning();
 
         if (!bandwidthFilter.offer(new QosPacket(packet, peer))) {
             onDrop.accept(peer, packet);
         }
     }
 
-    private void pipeBandwidthToOut() {
+    private boolean pipeBandwidthToOut() throws InterruptedException {
+        // TODO inefficient constant loop. Find some way to optimize.
         final QosPacket maybePacket = bandwidthFilter.poll();
-        if (maybePacket != null) {
+        final boolean packetReady = (maybePacket != null);
+        if (packetReady) {
             out.accept(maybePacket.peer, maybePacket.packet);
         }
+        return packetReady;
     }
 
-    private void ensurePipeRunning() {
-        // If network conditions are active and thread not active, start it now.
-        if (running.compareAndSet(false, true)) {
-            new Thread(this::runPipe).start();
+    private void ensureLatencyPipeRunning() {
+        if (latencyRunning.compareAndSet(false, true)) {
+            new Thread(this::runLatencyPipe).start();
         }
     }
 
-    private void runPipe() {
+    private void ensureBandwidthPipeRunning() {
+        if (bandwidthRunning.compareAndSet(false, true)) {
+            new Thread(this::runBandwidthPipe).start();
+        }
+    }
+
+    private void runBandwidthPipe() {
         try {
             boolean required;
             do {
-                required = isPipeRequired();
-                final QosPacket delayedPacket = latencyQueue.poll(5, TimeUnit.MILLISECONDS);
-                if (delayedPacket != null) {
-                    pipeLatencyToBandwidth(delayedPacket.peer, delayedPacket.packet);
-                }
+                required = isBandwidthPipeRequired();
 
                 pipeBandwidthToOut();
             }
-            while (required && running.get());
+            while (required && bandwidthRunning.get());
         }
         catch (InterruptedException ex) {
             // End gracefully.
         }
         finally {
-            running.set(false);
-
-            latencyQueue.stream().forEach(delayed -> out.accept(delayed.peer, delayed.packet));
-            latencyQueue.clear();
+            bandwidthRunning.set(false);
+            bandwidthFilter.consumeAll(limited -> out.accept(limited.peer, limited.packet));
         }
     }
 
-    private boolean isPipeRequired() {
-        return (isLatencyPipeRequired() || isBandwidthPipeRequired());
+    private void runLatencyPipe() {
+        try {
+            boolean required;
+            do {
+                required = isLatencyPipeRequired();
+
+                final QosPacket delayedPacket = latencyQueue.poll(20, TimeUnit.MILLISECONDS);
+                if (delayedPacket != null) {
+                    pipeLatencyToBandwidth(delayedPacket.peer, delayedPacket.packet);
+                }
+            }
+            while (required && latencyRunning.get());
+        }
+        catch (InterruptedException ex) {
+            // End gracefully.
+        }
+        finally {
+            latencyRunning.set(false);
+            latencyQueue.stream().forEach(delayed -> out.accept(delayed.peer, delayed.packet));
+            latencyQueue.clear();
+        }
     }
 
     private boolean isBandwidthPipeRequired() {
@@ -147,7 +170,7 @@ public class NetworkQoSSimulationPipeline {
     }
 
     public void close() {
-        running.set(false);
+        latencyRunning.set(false);
     }
 
     public interface PacketConsumer extends BiConsumer<Destination, BoltPacket> {
@@ -170,7 +193,7 @@ public class NetworkQoSSimulationPipeline {
         }
 
         @Override
-        public long getDelay(TimeUnit unit) {
+        public long getDelay(final TimeUnit unit) {
             return unit.convert(timestamp - Util.getCurrentTime(), TimeUnit.MICROSECONDS);
         }
 

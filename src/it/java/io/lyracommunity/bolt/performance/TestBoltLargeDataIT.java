@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.text.NumberFormat;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
@@ -85,7 +86,7 @@ public class TestBoltLargeDataIT
         System.out.println("Sending <" + numPackets + "> packets of <" + format.format(size / 1024.0 / 1024.0) + "> Mbytes each");
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(4, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             final String md5Sent = TestData.hexString(clientMD5);

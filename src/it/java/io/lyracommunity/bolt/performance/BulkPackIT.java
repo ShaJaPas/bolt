@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -75,7 +76,7 @@ public class BulkPackIT
                         : !sendComplete.get());
 
         try (Infra i = builder.build()) {
-            i.start().awaitCompletion();
+            i.start().awaitCompletion(5, TimeUnit.MINUTES);
         }
     }
 

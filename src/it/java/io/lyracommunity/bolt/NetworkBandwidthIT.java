@@ -5,6 +5,8 @@ import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.packet.DataPacket;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -14,35 +16,51 @@ import static org.junit.Assert.assertTrue;
 public class NetworkBandwidthIT
 {
 
-    private static final int NUM_PACKETS = 10;
-
     /**
-     * Set an artificial latency and ensure all sent packets take longer than the latency to deliver.
+     * Set an artificial bandwidth and ensure all sent packets take longer than minimum to deliver.
      */
     @Test
-    public void test_LowLatency_ResponsiveAfterDelay() throws Throwable {
-        doTest(1000);
+    public void test_VeryLowBandwidth_SlowYetResponsive() throws Throwable {
+        doTest(2, 10);
     }
 
-    private void doTest(final int bandwidthKilobytesPerSec) throws Throwable {
-        final Object testData = TestData.getRandomData(1024 - DataPacket.MAX_HEADER_SIZE);
+    /**
+     * Set an artificial bandwidth and ensure all sent packets take longer than minimum to deliver.
+     */
+    @Test
+    public void test_MediumBandwidth_SlowYetResponsive() throws Throwable {
+        doTest(80, 400);
+    }
+
+    /**
+     * Set an artificial bandwidth and ensure all sent packets take longer than minimum to deliver.
+     */
+    @Test
+    public void test_HighBandwidthAndHighThroughput_SlowYetResponsive() throws Throwable {
+        doTest(1000, 4000);
+    }
+
+    private void doTest(final int bandwidthKilobytesPerSec, int numPackets) throws Throwable {
+        final Object testData = TestData.getRandomData(1000 - DataPacket.MAX_HEADER_SIZE);
+        final long expectedMinimumTime = Math.round(0.95f * 1000f * ((numPackets - bandwidthKilobytesPerSec) / (float) bandwidthKilobytesPerSec));
 
         Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setSimulatedBandwidth(bandwidthKilobytesPerSec))
                 .onReadyClient((tc, rdy) -> {
                     System.out.println("Connected, begin send.");
-                    for (int i = 0; i < NUM_PACKETS; i++) tc.client.send(testData);
+                    for (int i = 0; i < numPackets; i++) tc.client.send(testData);
                 })
-                .setWaitCondition(tc -> tc.getTotalReceived(testData.getClass()) < NUM_PACKETS);
+                .setWaitCondition(tc -> tc.getTotalReceived(testData.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(expectedMinimumTime * 2, TimeUnit.MILLISECONDS);
+
+            System.out.println("Expected minimum time: " + expectedMinimumTime + " ms.");
             System.out.println("Receive took " + millisTaken + " ms.");
 
-            assertEquals(NUM_PACKETS, i.getServer().getTotalReceived(testData.getClass()));
-            assertTrue(bandwidthKilobytesPerSec <= millisTaken);
+            assertEquals(numPackets, i.getServer().getTotalReceived(testData.getClass()));
+            assertTrue(expectedMinimumTime <= millisTaken);
         }
     }
-
 
 }

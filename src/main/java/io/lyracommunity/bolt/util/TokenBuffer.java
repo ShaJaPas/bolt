@@ -1,8 +1,14 @@
 package io.lyracommunity.bolt.util;
 
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.Destination;
+
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Delayed;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 /**
@@ -55,7 +61,7 @@ class TokenBuffer<T extends TokenBuffer.Token> {
         return tryAddToBuffer(dp);
     }
 
-    synchronized T poll() {
+    T poll() {
         replenish();
 
         final T acquired = tryAcquireTokens(buffer.peek());
@@ -64,6 +70,11 @@ class TokenBuffer<T extends TokenBuffer.Token> {
             buffered.addAndGet(-acquired.getLength());
         }
         return acquired;
+    }
+
+    void consumeAll(final Consumer<T> beforeRemove) {
+        buffer.stream().forEach(beforeRemove);
+        buffer.clear();
     }
 
     private T tryAcquireTokens(final T dp) {
@@ -104,5 +115,29 @@ class TokenBuffer<T extends TokenBuffer.Token> {
     interface Token {
         int getLength();
     }
+//
+//
+//    private class DelayItem<T> implements Delayed {
+//
+//        private final long        timestamp;
+//        private final T  item;
+//
+//
+//
+//        @Override
+//        public long getDelay(final TimeUnit unit) {
+//            return unit.convert(timestamp - Util.getCurrentTime(), TimeUnit.MICROSECONDS);
+//        }
+//
+//        @Override
+//        public int compareTo(Delayed o) {
+//            return Long.compare(timestamp, ((NetworkQoSSimulationPipeline.QosPacket) o).timestamp);
+//        }
+//
+//        @Override
+//        public int getLength() {
+//            return packet.getLength();
+//        }
+//    }
 
 }

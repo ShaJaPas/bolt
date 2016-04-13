@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -54,7 +55,7 @@ public class DeliveryReliabilityIT
             // Send unreliable
             for (int i = 0; i < sendCount; i++) c.send(TestObjects.unreliableUnordered(100));
             for (int i = 0; i < sendCount; i++)
-                c.send(TestObjects.reliableUnordered(100)); // TODO unordered is sending more packets than expected
+                c.send(TestObjects.reliableUnordered(100));
             try {
                 Thread.sleep(20L);
             }
@@ -78,7 +79,8 @@ public class DeliveryReliabilityIT
     }
 
 
-    private void doTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount, Consumer<BoltClient> onReady) throws Throwable {
+    private void doTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount,
+                        Consumer<BoltClient> onReady) throws Throwable {
         Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
                 .onEventServer((ts, evt) -> {
                     if (evt instanceof TestObjects.BaseDataClass) {
@@ -95,7 +97,7 @@ public class DeliveryReliabilityIT
 
         try (Infra i = builder.build()) {
             i.start();
-            final long millisTaken = i.awaitCompletion();
+            final long millisTaken = i.awaitCompletion(1, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             System.out.println(format("Received a total of [{0}] packets of min/max [{1}/{2}].",

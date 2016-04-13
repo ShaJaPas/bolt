@@ -5,6 +5,7 @@ import io.lyracommunity.bolt.helper.TestData;
 import org.junit.Test;
 
 import java.security.MessageDigest;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -76,7 +77,7 @@ public class BoltServerIT
                 .setWaitCondition(ts -> total < N);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion();
+            final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             final String md5_received = TestData.hexString(serverMd5);

@@ -5,6 +5,8 @@ import io.lyracommunity.bolt.helper.TestObjects;
 import io.lyracommunity.bolt.helper.TestObjects.ReliableOrdered;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -69,7 +71,7 @@ public class NetworkLatencyIT
 
         try (Infra i = builder.build()) {
             i.start();
-            final long millisTaken = i.awaitCompletion();
+            final long millisTaken = i.awaitCompletion(1, TimeUnit.MINUTES);
             System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(NUM_PACKETS, i.getServer().getTotalReceived(ReliableOrdered.class));
