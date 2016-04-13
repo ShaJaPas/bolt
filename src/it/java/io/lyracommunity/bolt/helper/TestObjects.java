@@ -87,7 +87,7 @@ public class TestObjects {
         private final List<Integer> data;
 
         BaseDataClass(final int length) {
-            this.data = IntStream.of(0, length).boxed().collect(Collectors.toList());
+            this.data = IntStream.range(0, length).boxed().collect(Collectors.toList());
         }
 
         BaseDataClass(final List<Integer> data) {

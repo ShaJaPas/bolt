@@ -1,12 +1,9 @@
 package io.lyracommunity.bolt.performance;
 
 import io.lyracommunity.bolt.helper.Infra;
-import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,17 +17,10 @@ public class BulkPackIT
 {
 
     private static final long PACKET_COUNT = 1_000_000;
-    private static final int SIZE = 1384;
+    private static final int SIZE = 300;
 
     private final AtomicInteger received = new AtomicInteger(0);
 
-
-    @Test
-    public void testBulkPackets_randomData() throws Throwable {
-        doTest(true, TestData.getRandomData(SIZE));
-
-        assertEquals(PACKET_COUNT, received.get());
-    }
 
     @Test
     public void testBulkPackets_reliableOrdered() throws Throwable {
