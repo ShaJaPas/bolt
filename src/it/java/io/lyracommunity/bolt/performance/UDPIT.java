@@ -29,7 +29,6 @@ public class UDPIT {
 
     @Test
     public void test1() throws Exception {
-        // TODO clean up server once complete.
         runServer();
         runThirdThread();
 
