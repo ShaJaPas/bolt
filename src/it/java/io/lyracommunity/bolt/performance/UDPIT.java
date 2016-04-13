@@ -71,6 +71,8 @@ public class UDPIT {
         System.out.println("Mean send time " + dgSendTime.get());
         System.out.println("Mean send interval " + dgSendInterval.get());
         System.out.println("Server received: " + total);
+
+        serverRunning = false;
     }
 
     private void runServer() throws Exception {
