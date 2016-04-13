@@ -67,12 +67,11 @@ public class NetworkLatencyIT
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < NUM_PACKETS; i++) tc.client.send(testData);
                 })
-                .setWaitCondition(tc -> tc.getTotalReceived(testData.getClass()) < NUM_PACKETS);
+                .setWaitCondition(inf -> inf.getServer().getTotalReceived(testData.getClass()) < NUM_PACKETS);
 
         try (Infra i = builder.build()) {
             i.start();
             final long millisTaken = i.awaitCompletion(1, TimeUnit.MINUTES);
-            System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(NUM_PACKETS, i.getServer().getTotalReceived(ReliableOrdered.class));
             assertTrue(latencyInMillis <= millisTaken);

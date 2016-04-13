@@ -65,11 +65,10 @@ public class QualityOfServiceIT {
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < numPackets; i++) tc.client.send(toSend);
                 })
-                .setWaitCondition(ts -> ts.getTotalReceived(toSend.getClass()) < numPackets);
+                .setWaitCondition(inf -> inf.getServer().getTotalReceived(toSend.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
-            System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));
             assertTrue(minimumExpectedTotalTime <= millisTaken);

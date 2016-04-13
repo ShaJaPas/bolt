@@ -87,7 +87,6 @@ public class TestBoltLargeDataIT
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(4, TimeUnit.MINUTES);
-            System.out.println("Receive took " + millisTaken + " ms.");
 
             final String md5Sent = TestData.hexString(clientMD5);
             final String md5Received = TestData.hexString(serverMD5);

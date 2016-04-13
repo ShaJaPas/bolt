@@ -20,13 +20,13 @@ import java.util.function.Consumer;
  */
 public class TestClient implements AutoCloseable {
 
-    public final  BoltClient                client;
-    private       Subscription              subscription;
-    private final PacketReceiver receivedByType;
-    private final List<Throwable>           errors;
-    private final BiConsumer<TestClient, Object> onNext;
+    public final  BoltClient                              client;
+    private final PacketReceiver                          receivedByType;
+    private final List<Throwable>                         errors;
+    private final BiConsumer<TestClient, Object>          onNext;
     private final BiConsumer<TestClient, ConnectionReady> onReady;
     private final AtomicLong readyTime = new AtomicLong();
+    private       Subscription                            subscription;
 
     public TestClient(BoltClient client, PacketReceiver receivedByType, List<Throwable> errors,
                       BiConsumer<TestClient, Object> onNext, BiConsumer<TestClient, ConnectionReady> onReady) {
@@ -35,43 +35,6 @@ public class TestClient implements AutoCloseable {
         this.errors = errors;
         this.onNext = onNext;
         this.onReady = onReady;
-    }
-
-    public void start(final int serverPort) throws IOException {
-        subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.computation())
-                .subscribe(
-                        x -> {
-                            receivedByType.receive(x);
-                            if (onNext != null) {
-                                onNext.accept(this, x);
-                                if (ReceiveObject.class.equals(x.getClass())) onNext.accept(this, ((ReceiveObject)x).getPayload());
-                            }
-                            if (ConnectionReady.class.equals(x.getClass())) {
-                                readyTime.set(System.currentTimeMillis());
-                                if (onReady != null) onReady.accept(this, (ConnectionReady) x);
-                            }
-                        },
-                        errors::add);
-    }
-
-    long getReadyTime() {
-        return readyTime.get();
-    }
-
-    private TestClient printStatistics() {
-        System.out.println(client.getStatistics());
-        return this;
-    }
-
-    public List<Throwable> getErrors()
-    {
-        return errors;
-    }
-
-    public int getTotalReceived(final Class clazz) {
-        return receivedByType.getTotalReceived(clazz);
     }
 
     public static TestClient runClient(final int serverPort, final BiConsumer<TestClient, Object> onNext,
@@ -105,9 +68,45 @@ public class TestClient implements AutoCloseable {
         return clients;
     }
 
+    public void start(final int serverPort) throws IOException {
+        subscription = client.connect(InetAddress.getByName("localhost"), serverPort)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.computation())
+                .subscribe(
+                        x -> {
+                            receivedByType.receive(x);
+                            if (onNext != null) {
+                                onNext.accept(this, x);
+                                if (ReceiveObject.class.equals(x.getClass()))
+                                    onNext.accept(this, ((ReceiveObject) x).getPayload());
+                            }
+                            if (ConnectionReady.class.equals(x.getClass())) {
+                                readyTime.set(System.currentTimeMillis());
+                                if (onReady != null) onReady.accept(this, (ConnectionReady) x);
+                            }
+                        },
+                        errors::add);
+    }
+
+    long getReadyTime() {
+        return readyTime.get();
+    }
+
+    private TestClient printStatistics() {
+        System.out.println(client.getStatistics());
+        return this;
+    }
+
+    public List<Throwable> getErrors() {
+        return errors;
+    }
+
+    public int getTotalReceived(final Class clazz) {
+        return receivedByType.getTotalReceived(clazz);
+    }
+
     @Override
-    public void close() throws Exception
-    {
+    public void close() throws Exception {
         printStatistics();
         subscription.unsubscribe();
     }

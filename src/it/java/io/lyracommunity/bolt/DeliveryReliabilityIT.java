@@ -97,8 +97,7 @@ public class DeliveryReliabilityIT
 
         try (Infra i = builder.build()) {
             i.start();
-            final long millisTaken = i.awaitCompletion(1, TimeUnit.MINUTES);
-            System.out.println("Receive took " + millisTaken + " ms.");
+            i.awaitCompletion(1, TimeUnit.MINUTES);
 
             System.out.println(format("Received a total of [{0}] packets of min/max [{1}/{2}].",
                     deliveryCount.get(), minExpectedDeliveryCount, maxExpectedDeliveryCount));

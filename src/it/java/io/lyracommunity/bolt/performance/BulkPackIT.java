@@ -71,8 +71,8 @@ public class BulkPackIT
                     tc.client.flush();
                     sendComplete.set(true);
                 })
-                .setWaitCondition(ts -> waitForDelivery
-                        ? ts.getTotalReceived(toSend.getClass()) < PACKET_COUNT
+                .setWaitCondition(inf -> waitForDelivery
+                        ? inf.getServer().getTotalReceived(toSend.getClass()) < PACKET_COUNT
                         : !sendComplete.get());
 
         try (Infra i = builder.build()) {

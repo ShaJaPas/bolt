@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import rx.Subscriber;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.text.MessageFormat;
 
 import static io.lyracommunity.bolt.session.SessionStatus.*;
@@ -124,7 +125,7 @@ public class ServerSession extends Session {
      * Response after the initial connection handshake received:
      * compute cookie
      */
-    private void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException {
+    private void ackInitialHandshake(final ConnectionHandshake handshake) throws IOException, IllegalStateException {
         // Compare the packet size and choose minimum.
         final long clientBufferSize = handshake.getPacketSize();
         final long myBufferSize = getDatagramSize();
@@ -134,8 +135,11 @@ public class ServerSession extends Session {
         setDatagramSize((int) bufferSize);
         state.setSessionCookie(SeqNum.randomInt());
 
+        final InetAddress localAddress = endPoint.getLocalAddress();
+        if (localAddress == null) throw new IllegalStateException("Could not get local endpoint address for handshake response");
+
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+                handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), localAddress);
         LOG.info("Sending reply {}", responseHandshake);
         endPoint.doSend(responseHandshake, state);
     }

@@ -78,7 +78,6 @@ public class BoltServerIT
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
-            System.out.println("Receive took " + millisTaken + " ms.");
 
             final String md5_received = TestData.hexString(serverMd5);
             System.out.println("Shutdown client.");

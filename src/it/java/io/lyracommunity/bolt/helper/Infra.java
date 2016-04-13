@@ -20,10 +20,10 @@ public class Infra implements AutoCloseable {
 
     private final TestServer server;
     private final List<TestClient> clients;
-    private final Predicate<TestServer> waitCondition;
+    private final Predicate<Infra> waitCondition;
     private final AtomicLong totalTime = new AtomicLong();
 
-    private Infra(TestServer server, List<TestClient> clients, Predicate<TestServer> waitCondition) {
+    private Infra(TestServer server, List<TestClient> clients, Predicate<Infra> waitCondition) {
         this.server = server;
         this.clients = clients;
         this.waitCondition = waitCondition;
@@ -41,7 +41,7 @@ public class Infra implements AutoCloseable {
         final long startTime = Util.getCurrentTime();
         while (server.getErrors().isEmpty()
                 && clients.stream().allMatch(c -> c.getErrors().isEmpty())
-                && waitCondition.test(server)) {
+                && waitCondition.test(this)) {
             Thread.sleep(3);
             if (Util.getCurrentTime() - startTime > maxWaitMicros) throw new TimeoutException("Timed out");
         }
@@ -53,6 +53,7 @@ public class Infra implements AutoCloseable {
         final Throwable clientEx = clients.stream().flatMap(c -> c.getErrors().stream()).findFirst().orElse(null);
         if (clientEx != null) throw new RuntimeException(clientEx);
 
+        System.out.println("Receive took " + totalTime.get() + " ms.");
         return totalTime.get();
     }
 
@@ -66,6 +67,10 @@ public class Infra implements AutoCloseable {
         return server;
     }
 
+    public List<TestClient> getClients() {
+        return clients;
+    }
+
     public static class InfraBuilder {
 
         private final int numClients;
@@ -75,7 +80,7 @@ public class Infra implements AutoCloseable {
         private BiConsumer<TestClient, ConnectionReady> onReadyClient;
         private BiConsumer<TestServer, Object> onEventServer;
         private BiConsumer<TestServer, ConnectionReady> onReadyServer;
-        private Predicate<TestServer> waitCondition;
+        private Predicate<Infra> waitCondition;
 
         public static InfraBuilder withServerAndClients(final int numClients) {
             return new InfraBuilder(numClients);
@@ -110,12 +115,12 @@ public class Infra implements AutoCloseable {
             return this;
         }
 
-        public InfraBuilder onReadyServer(BiConsumer<TestClient, ConnectionReady> action) {
-            this.onReadyClient = action;
+        public InfraBuilder onReadyServer(BiConsumer<TestServer, ConnectionReady> action) {
+            this.onReadyServer = action;
             return this;
         }
 
-        public InfraBuilder setWaitCondition(Predicate<TestServer> waitCondition) {
+        public InfraBuilder setWaitCondition(Predicate<Infra> waitCondition) {
             this.waitCondition = waitCondition;
             return this;
         }

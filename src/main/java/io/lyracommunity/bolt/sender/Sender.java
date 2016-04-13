@@ -33,8 +33,7 @@ import java.util.function.Supplier;
  *
  * @see Receiver
  */
-public class Sender
-{
+public class Sender {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
@@ -68,43 +67,35 @@ public class Sender
     /**
      * Used by the sender to wait for an ACK.
      */
-    private final ReentrantLock ackLock = new ReentrantLock();
-    private final Condition ackCondition = ackLock.newCondition();
-
+    private final ReentrantLock ackLock      = new ReentrantLock();
+    private final Condition     ackCondition = ackLock.newCondition();
+    private final CongestionControl cc;
+    private final SessionState sessionState;
     /**
      * For generating data packet sequence numbers.
      */
     private volatile int currentSequenceNumber = 0;
-
     /**
      * For generating reliability sequence numbers.
      */
     private volatile int currentReliabilitySequenceNumber = 0;
-
     /**
      * For generating order sequence numbers.
      */
     private volatile int currentOrderSequenceNumber = 0;
-
     /**
      * The largest data packet sequence number that has actually been sent out.
      */
     private volatile int largestSentSequenceNumber = -1;
-
     /**
      * Last acknowledge number, initialised to the initial sequence number.
      */
     private volatile int lastAckReliabilitySequenceNumber;
     private volatile boolean started = false;
-
     /**
      * Used to signal that the sender should start to send
      */
     private volatile CountDownLatch startLatch = new CountDownLatch(1);
-
-    private final CongestionControl cc;
-
-    private final SessionState sessionState;
 
 
     public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
@@ -149,7 +140,7 @@ public class Sender
 //                }
             }
             catch (InterruptedException ex) {
-                LOG.info("Finished with an interrupt {}", (Object)ex);
+                LOG.info("Finished with an interrupt {}", (Object) ex);
             }
             catch (IOException ex) {
                 LOG.error("Sender error", ex);
@@ -190,10 +181,9 @@ public class Sender
      * @param timeout
      * @param units
      * @return
-     * @throws IOException
      * @throws InterruptedException
      */
-    public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws IOException, InterruptedException {
+    public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws InterruptedException {
         if (!started) start();
         src.setDestinationID(sessionState.getDestinationSocketID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
@@ -329,7 +319,7 @@ public class Sender
      * congestion control and t is the total time used by step 1 to step 5. Go to 1).
      * </ol>
      *
-     * @throws IOException          on failure to send the DataPacket.
+     * @throws IOException on failure to send the DataPacket.
      */
     private void senderAlgorithm(final Supplier<Boolean> stopped) throws IOException {
         while (!stopped.get()) {

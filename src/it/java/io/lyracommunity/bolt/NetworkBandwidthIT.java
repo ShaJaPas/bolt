@@ -50,13 +50,11 @@ public class NetworkBandwidthIT
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < numPackets; i++) tc.client.send(testData);
                 })
-                .setWaitCondition(tc -> tc.getTotalReceived(testData.getClass()) < numPackets);
+                .setWaitCondition(inf -> inf.getServer().getTotalReceived(testData.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(expectedMinimumTime * 2, TimeUnit.MILLISECONDS);
-
             System.out.println("Expected minimum time: " + expectedMinimumTime + " ms.");
-            System.out.println("Receive took " + millisTaken + " ms.");
 
             assertEquals(numPackets, i.getServer().getTotalReceived(testData.getClass()));
             assertTrue(expectedMinimumTime <= millisTaken);
