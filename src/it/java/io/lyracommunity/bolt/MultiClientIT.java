@@ -22,8 +22,6 @@ import static org.junit.Assert.assertEquals;
  */
 public class MultiClientIT {
 
-//    private final AtomicInteger received = new AtomicInteger(0);
-
     private int numClients;
 
     @Before
@@ -36,7 +34,7 @@ public class MultiClientIT {
     public void testMultiClientDisconnect() throws Throwable {
         final CountDownLatch awaitingConnectionReady = new CountDownLatch(numClients);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(numClients)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
                 .onEventServer((ts, evt) -> System.out.println(evt))
                 .onReadyClient((tc, rdy) -> {
                     awaitingConnectionReady.countDown();
@@ -48,12 +46,12 @@ public class MultiClientIT {
                     }
                 })
                 .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
-                .setWaitCondition(tc -> tc.getServer().getTotalReceived(PeerDisconnected.class) < numClients);
+                .setWaitCondition(tc -> tc.server().receivedOf(PeerDisconnected.class) < numClients);
 
         try (Infra i = builder.build()) {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);
 
-            assertEquals(numClients, i.getServer().getTotalReceived(PeerDisconnected.class));
+            assertEquals(numClients, i.server().receivedOf(PeerDisconnected.class));
         }
     }
 
@@ -64,7 +62,7 @@ public class MultiClientIT {
         final boolean sessionExpirable = false;
         final CountDownLatch clientsComplete = new CountDownLatch(numClients);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(numClients)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
                 .preconfigureServer(s -> s.config().setAllowSessionExpiry(sessionExpirable))
                 .onReadyClient((tc, rdy) -> {
                     for (int i = 0; i < packetCount; i++) tc.client.send(toSend);
@@ -72,12 +70,12 @@ public class MultiClientIT {
                     clientsComplete.countDown();
                 })
                 .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
-                .setWaitCondition(tc -> tc.getServer().getTotalReceived(toSend.getClass()) < packetCount * numClients);
+                .setWaitCondition(tc -> tc.server().receivedOf(toSend.getClass()) < packetCount * numClients);
 
         try (Infra i = builder.build()) {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);
 
-            assertEquals(packetCount * numClients, i.getServer().getTotalReceived(toSend.getClass()));
+            assertEquals(packetCount * numClients, i.server().receivedOf(toSend.getClass()));
         }
     }
 
@@ -85,9 +83,9 @@ public class MultiClientIT {
     public void testBroadcastToEachClient() throws Throwable {
         final Object toSend = TestObjects.reliableOrdered(100);
         final AtomicInteger awaitingConnection = new AtomicInteger(numClients);
-        final Predicate<TestClient> clientPredicate = tc -> (tc.getTotalReceived(toSend.getClass()) < 1);
+        final Predicate<TestClient> clientPredicate = tc -> (tc.receivedOf(toSend.getClass()) < 1);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(numClients)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
                 .onReadyServer((ts, evt) -> {
                     System.out.println(evt);
                     if (awaitingConnection.decrementAndGet() == 0) {
@@ -100,12 +98,12 @@ public class MultiClientIT {
                     }
                 })
                 .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
-                .setWaitCondition(inf -> inf.getClients().stream().anyMatch(clientPredicate));
+                .setWaitCondition(inf -> inf.clients().stream().anyMatch(clientPredicate));
 
         try (Infra i = builder.build()) {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);
 
-            final long receiveEvents = i.getClients().stream().filter(clientPredicate.negate()).count();
+            final long receiveEvents = i.clients().stream().filter(clientPredicate.negate()).count();
             assertEquals(numClients, receiveEvents);
         }
     }
@@ -113,9 +111,9 @@ public class MultiClientIT {
     @Test
     public void testClientsReactToServerShutdown() throws Throwable {
         final AtomicInteger awaitingConnection = new AtomicInteger(numClients);
-        final Predicate<TestClient> clientPredicate = tc -> tc.getTotalReceived(PeerDisconnected.class) < 1;
+        final Predicate<TestClient> clientPredicate = tc -> tc.receivedOf(PeerDisconnected.class) < 1;
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(numClients)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
                 .onEventServer((ts, evt) -> {
                     System.out.println(evt);
                     if (ConnectionReady.class.equals(evt.getClass())) {
@@ -125,13 +123,43 @@ public class MultiClientIT {
                     }
                 })
                 .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
-                .setWaitCondition(inf -> inf.getClients().stream().anyMatch(clientPredicate));
+                .setWaitCondition(inf -> inf.clients().stream().anyMatch(clientPredicate));
 
         try (Infra i = builder.build()) {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);
 
-            assertEquals(numClients, i.getClients().stream().filter(clientPredicate.negate()).count());
+            assertEquals(numClients, i.clients().stream().filter(clientPredicate.negate()).count());
         }
     }
+
+    @Test
+    public void testSendOnlyToLastConnectedClient() throws Throwable {
+        final Object toSend = TestObjects.reliableOrdered(100);
+        final AtomicInteger awaitingConnection = new AtomicInteger(numClients);
+        final Predicate<TestClient> clientPredicate = tc -> (tc.receivedOf(toSend.getClass()) < 1);
+
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
+                .onReadyServer((ts, evt) -> {
+                    System.out.println(evt);
+                    if (awaitingConnection.decrementAndGet() == 0) {
+                        try {
+                            ts.server.send(toSend, evt.getSession().getSocketID());
+                        }
+                        catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                })
+                .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
+                .setWaitCondition(inf -> inf.clients().stream().allMatch(clientPredicate));
+
+        try (Infra i = builder.build()) {
+            i.start().awaitCompletion(1, TimeUnit.MINUTES);
+
+            final long receiveEvents = i.clients().stream().filter(clientPredicate.negate()).count();
+            assertEquals(1, receiveEvents);
+        }
+    }
+
 
 }

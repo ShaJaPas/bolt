@@ -81,7 +81,7 @@ public class DeliveryReliabilityIT
 
     private void doTest(float packetLoss, int minExpectedDeliveryCount, int maxExpectedDeliveryCount,
                         Consumer<BoltClient> onReady) throws Throwable {
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .onEventServer((ts, evt) -> {
                     if (evt instanceof TestObjects.BaseDataClass) {
                         deliveryCount.incrementAndGet();

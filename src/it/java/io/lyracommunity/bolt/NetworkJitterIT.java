@@ -27,19 +27,19 @@ public class NetworkJitterIT
 
     private void doTest(final int jitterInMillis, final int numPackets, final Object toSend) throws Throwable {
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setSimulatedMaxJitter(jitterInMillis))
                 .onReadyClient((tc, evt) -> {
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < numPackets; i++) tc.client.send(toSend);
                 })
-                .setWaitCondition(inf -> inf.getServer().getTotalReceived(toSend.getClass()) < numPackets);
+                .setWaitCondition(inf -> inf.server().receivedOf(toSend.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(1, TimeUnit.MINUTES);
             final int meanExpectedJitter = jitterInMillis / 2;
 
-            assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));
+            assertEquals(numPackets, i.server().receivedOf(toSend.getClass()));
             assertTrue(meanExpectedJitter <= millisTaken);
         }
     }

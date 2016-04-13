@@ -5,7 +5,6 @@ import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -56,7 +55,7 @@ public class QualityOfServiceIT {
     private void doTest(final int latencyInMillis, final float packetLoss, final int numPackets, final Object toSend,
                         final int minimumExpectedTotalTime) throws Throwable {
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> {
                     s.config().setSimulatedLatency(latencyInMillis);
                     s.config().setPacketLoss(packetLoss);
@@ -65,12 +64,12 @@ public class QualityOfServiceIT {
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < numPackets; i++) tc.client.send(toSend);
                 })
-                .setWaitCondition(inf -> inf.getServer().getTotalReceived(toSend.getClass()) < numPackets);
+                .setWaitCondition(inf -> inf.server().receivedOf(toSend.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
 
-            assertEquals(numPackets, i.getServer().getTotalReceived(toSend.getClass()));
+            assertEquals(numPackets, i.server().receivedOf(toSend.getClass()));
             assertTrue(minimumExpectedTotalTime <= millisTaken);
         }
     }

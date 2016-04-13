@@ -2,13 +2,10 @@ package io.lyracommunity.bolt.performance;
 
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestData;
-import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
 import java.security.MessageDigest;
 import java.text.NumberFormat;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -48,7 +45,7 @@ public class TestBoltLargeDataIT
 
         final byte[] data = TestData.getRandomData(12345, size);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setPacketLoss(packetLossPercentage))
                 .onEventServer((ts, evt) -> {
                     if (byte[].class.equals(evt.getClass())) {

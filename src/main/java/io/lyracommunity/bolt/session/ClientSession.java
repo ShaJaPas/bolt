@@ -13,6 +13,7 @@ import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.SocketException;
+import java.util.concurrent.TimeoutException;
 
 import static io.lyracommunity.bolt.session.SessionStatus.*;
 
@@ -51,15 +52,19 @@ public class ClientSession extends Session {
                         sendSecondHandshake();
                     }
 
-                    if (getStatus() == INVALID) throw new IOException("Can't connect!");
-                    if (n++ > 40) throw new IOException("Could not connect to server within the timeout.");
+                    if (getStatus() == INVALID) {
+                        throw new IllegalStateException("Can't connect!");
+                    }
+                    if (n++ > 10) {
+                        throw new TimeoutException("Could not connect to server within the timeout.");
+                    }
 
                     Thread.sleep(500);
                 }
                 catch (InterruptedException ex) {
                     // Do nothing.
                 }
-                catch (IOException ex) {
+                catch (IllegalStateException | TimeoutException | IOException ex) {
                     subscriber.onError(ex);
                 }
             }

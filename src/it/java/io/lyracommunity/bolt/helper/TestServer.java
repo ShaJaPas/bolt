@@ -56,7 +56,7 @@ public class TestServer implements AutoCloseable {
         return this;
     }
 
-    public int getTotalReceived(final Class clazz) {
+    public int receivedOf(final Class clazz) {
         return receivedByType.getTotalReceived(clazz);
     }
 

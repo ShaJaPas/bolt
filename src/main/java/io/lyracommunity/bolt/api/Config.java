@@ -182,4 +182,9 @@ public class Config
     public void setDeepStatistics(boolean deepStatistics) {
         this.deepStatistics = deepStatistics;
     }
+
+    public void setLocalPort(final int localPort) {
+        this.localPort = localPort;
+    }
+
 }

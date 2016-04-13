@@ -101,14 +101,16 @@ public class TestClient implements AutoCloseable {
         return errors;
     }
 
-    public int getTotalReceived(final Class clazz) {
+    public int receivedOf(final Class clazz) {
         return receivedByType.getTotalReceived(clazz);
     }
 
     @Override
-    public void close() throws Exception {
-        printStatistics();
-        subscription.unsubscribe();
+    public void close() {
+        if (!subscription.isUnsubscribed()) {
+            printStatistics();
+            subscription.unsubscribe();
+        }
     }
 
 }

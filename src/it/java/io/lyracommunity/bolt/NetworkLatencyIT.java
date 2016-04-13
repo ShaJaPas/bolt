@@ -61,19 +61,19 @@ public class NetworkLatencyIT
     private void doTest(final int latencyInMillis) throws Throwable {
         final ReliableOrdered testData = TestObjects.reliableOrdered(100);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setSimulatedLatency(latencyInMillis))
                 .onReadyClient((tc, rdy) -> {
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < NUM_PACKETS; i++) tc.client.send(testData);
                 })
-                .setWaitCondition(inf -> inf.getServer().getTotalReceived(testData.getClass()) < NUM_PACKETS);
+                .setWaitCondition(inf -> inf.server().receivedOf(testData.getClass()) < NUM_PACKETS);
 
         try (Infra i = builder.build()) {
             i.start();
             final long millisTaken = i.awaitCompletion(1, TimeUnit.MINUTES);
 
-            assertEquals(NUM_PACKETS, i.getServer().getTotalReceived(ReliableOrdered.class));
+            assertEquals(NUM_PACKETS, i.server().receivedOf(ReliableOrdered.class));
             assertTrue(latencyInMillis <= millisTaken);
         }
     }

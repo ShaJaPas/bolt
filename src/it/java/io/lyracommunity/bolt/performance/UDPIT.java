@@ -18,16 +18,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * send some data over a UDP connection and measure performance
  */
-public class UDPIT
-{
+public class UDPIT {
 
-    public static final int SERVER_PORT = PortUtil.nextServerPort();
-    final int num_packets = 1_000;
-    final int packetSize = Config.DEFAULT_DATAGRAM_SIZE;
-    private final Queue<DatagramPacket> handoff = new ConcurrentLinkedQueue<>();
-    int N = 0;
-    long total = 0;
-    volatile boolean serverRunning = true;
+    private static final int                   SERVER_PORT   = PortUtil.nextServerPort();
+    private final        int                   packetSize    = Config.DEFAULT_DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
+    private final        int                   num_packets   = 10_000;
+    private final        Queue<DatagramPacket> handoff       = new ConcurrentLinkedQueue<>();
+    private volatile     boolean               serverRunning = true;
+    private              long                  total         = 0;
 
     @Test
     public void test1() throws Exception {
@@ -39,7 +37,7 @@ public class UDPIT
         DatagramSocket s = new DatagramSocket(PortUtil.nextClientPort());
 
         // Generate a test array with random content.
-        N = num_packets * packetSize;
+        int n = num_packets * packetSize;
         byte[] data = new byte[packetSize];
         new Random().nextBytes(data);
         long start = System.currentTimeMillis();
@@ -58,16 +56,16 @@ public class UDPIT
             dgSendInterval.end();
             dgSendTime.begin();
             s.send(dp);
-            Thread.sleep(0, 100);
+//            Thread.sleep(0, 100);
             dgSendTime.end();
             dgSendInterval.begin();
         }
         System.out.println("Finished sending.");
-        while (serverRunning) Thread.sleep(10);
+//        while (serverRunning) Thread.sleep(10);
         System.out.println("Server stopped.");
         long end = System.currentTimeMillis();
-        System.out.println("Done. Sending " + N / 1024 / 1024 + " Mbytes took " + (end - start) + " ms");
-        float rate = N / 1000 / (end - start);
+        System.out.println("Done. Sending " + n / 1024 / 1024 + " Mbytes took " + (end - start) + " ms");
+        float rate = n / 1000 / (end - start);
         System.out.println("Rate " + rate + " Mbytes/sec " + (rate * 8) + " Mbit/sec");
         System.out.println("Rate " + num_packets + " packets/sec");
         System.out.println("Mean send time " + dgSendTime.get());
@@ -80,17 +78,20 @@ public class UDPIT
 
         CompletableFuture.runAsync(() -> {
             try {
-                byte[] buf = new byte[packetSize];
-                while (true) {
+                final byte[] buf = new byte[packetSize];
+                serverRunning = true;
+                while (serverRunning) {
                     DatagramPacket dp = new DatagramPacket(buf, buf.length);
                     serverSocket.receive(dp);
                     handoff.offer(dp);
                 }
             }
             catch (Exception e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
-            serverRunning = false;
+            finally {
+                serverRunning = false;
+            }
         });
         System.out.println("Server started.");
     }

@@ -44,19 +44,19 @@ public class NetworkBandwidthIT
         final Object testData = TestData.getRandomData(1000 - DataPacket.MAX_HEADER_SIZE);
         final long expectedMinimumTime = Math.round(0.95f * 1000f * ((numPackets - bandwidthKilobytesPerSec) / (float) bandwidthKilobytesPerSec));
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setSimulatedBandwidth(bandwidthKilobytesPerSec))
                 .onReadyClient((tc, rdy) -> {
                     System.out.println("Connected, begin send.");
                     for (int i = 0; i < numPackets; i++) tc.client.send(testData);
                 })
-                .setWaitCondition(inf -> inf.getServer().getTotalReceived(testData.getClass()) < numPackets);
+                .setWaitCondition(inf -> inf.server().receivedOf(testData.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
             final long millisTaken = i.start().awaitCompletion(expectedMinimumTime * 2, TimeUnit.MILLISECONDS);
             System.out.println("Expected minimum time: " + expectedMinimumTime + " ms.");
 
-            assertEquals(numPackets, i.getServer().getTotalReceived(testData.getClass()));
+            assertEquals(numPackets, i.server().receivedOf(testData.getClass()));
             assertTrue(expectedMinimumTime <= millisTaken);
         }
     }

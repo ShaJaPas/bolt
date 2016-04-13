@@ -22,41 +22,39 @@ public class BulkPackIT
     private static final long PACKET_COUNT = 1_000_000;
     private static final int SIZE = 1384;
 
-    private final Set<Throwable> errors = new HashSet<>();
     private final AtomicInteger received = new AtomicInteger(0);
 
 
     @Test
-    public void testBulkPackets_randomData() throws Exception {
+    public void testBulkPackets_randomData() throws Throwable {
         doTest(true, TestData.getRandomData(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
     }
 
     @Test
-    public void testBulkPackets_reliableOrdered() throws Exception {
+    public void testBulkPackets_reliableOrdered() throws Throwable {
         doTest(true, TestObjects.reliableOrdered(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
     }
 
     @Test
-    public void testBulkPackets_reliableUnordered() throws Exception {
+    public void testBulkPackets_reliableUnordered() throws Throwable {
         doTest(true, TestObjects.reliableUnordered(SIZE));
-//        doTest(true, TestData.getRandomData(SIZE));
 
         assertEquals(PACKET_COUNT, received.get());
     }
 
     @Test
-    public void testBulkPackets_unreliable() throws Exception {
+    public void testBulkPackets_unreliable() throws Throwable {
         doTest(false, TestObjects.unreliableUnordered(SIZE));
     }
 
-    private void doTest(final boolean waitForDelivery, final Object toSend) throws Exception {
+    private void doTest(final boolean waitForDelivery, final Object toSend) throws Throwable {
         final AtomicBoolean sendComplete = new AtomicBoolean(false);
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setAllowSessionExpiry(false))
                 .preconfigureClients(c -> c.config().setAllowSessionExpiry(false))
                 .onEventServer((ts, evt) -> {
@@ -72,7 +70,7 @@ public class BulkPackIT
                     sendComplete.set(true);
                 })
                 .setWaitCondition(inf -> waitForDelivery
-                        ? inf.getServer().getTotalReceived(toSend.getClass()) < PACKET_COUNT
+                        ? inf.server().receivedOf(toSend.getClass()) < PACKET_COUNT
                         : !sendComplete.get());
 
         try (Infra i = builder.build()) {

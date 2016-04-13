@@ -58,7 +58,7 @@ public class BoltServerIT
         final String md5_sent = TestData.computeMD5(data);
         serverMd5 = MessageDigest.getInstance("MD5");
 
-        Infra.InfraBuilder builder = Infra.InfraBuilder.withServerAndClients(1)
+        Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .preconfigureServer(s -> s.config().setPacketLoss(packetLossPercentage))
                 .onEventServer((ts, evt) -> {
                     if (byte[].class.equals(evt.getClass())) {

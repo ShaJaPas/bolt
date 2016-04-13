@@ -36,7 +36,7 @@ public class Infra implements AutoCloseable {
         return this;
     }
 
-    public long awaitCompletion(final long time, final TimeUnit unit) throws Exception {
+    public long awaitCompletion(final long time, final TimeUnit unit) throws Throwable {
         final long maxWaitMicros = unit.toMicros(time);
         final long startTime = Util.getCurrentTime();
         while (server.getErrors().isEmpty()
@@ -48,12 +48,12 @@ public class Infra implements AutoCloseable {
         final long readyTime = clients.stream().mapToLong(TestClient::getReadyTime).min().orElse(0);
         totalTime.set(System.currentTimeMillis() - readyTime);
 
-        if (!server.getErrors().isEmpty()) throw new RuntimeException(server.getErrors().get(0));
+        if (!server.getErrors().isEmpty()) throw server.getErrors().get(0);
 
         final Throwable clientEx = clients.stream().flatMap(c -> c.getErrors().stream()).findFirst().orElse(null);
-        if (clientEx != null) throw new RuntimeException(clientEx);
+        if (clientEx != null) throw clientEx;
 
-        System.out.println("Receive took " + totalTime.get() + " ms.");
+        System.out.println("Connected to completion took " + totalTime.get() + " ms.");
         return totalTime.get();
     }
 
@@ -63,15 +63,15 @@ public class Infra implements AutoCloseable {
         for (AutoCloseable c : clients) c.close();
     }
 
-    public TestServer getServer() {
+    public TestServer server() {
         return server;
     }
 
-    public List<TestClient> getClients() {
+    public List<TestClient> clients() {
         return clients;
     }
 
-    public static class InfraBuilder {
+    public static class Builder {
 
         private final int numClients;
         private Consumer<BoltServer> serverConfigurer;
@@ -82,45 +82,45 @@ public class Infra implements AutoCloseable {
         private BiConsumer<TestServer, ConnectionReady> onReadyServer;
         private Predicate<Infra> waitCondition;
 
-        public static InfraBuilder withServerAndClients(final int numClients) {
-            return new InfraBuilder(numClients);
+        public static Builder withServerAndClients(final int numClients) {
+            return new Builder(numClients);
         }
 
-        private InfraBuilder(int numClients) {
+        private Builder(int numClients) {
             this.numClients = numClients;
         }
 
-        public InfraBuilder preconfigureServer(Consumer<BoltServer> serverConfigurer) {
+        public Builder preconfigureServer(Consumer<BoltServer> serverConfigurer) {
             this.serverConfigurer = serverConfigurer;
             return this;
         }
 
-        public InfraBuilder preconfigureClients(Consumer<BoltClient> clientConfigurer) {
+        public Builder preconfigureClients(Consumer<BoltClient> clientConfigurer) {
             this.clientConfigurer = clientConfigurer;
             return this;
         }
 
-        public InfraBuilder onEventClient(BiConsumer<TestClient, Object> action) {
+        public Builder onEventClient(BiConsumer<TestClient, Object> action) {
             this.onEventClient = action;
             return this;
         }
 
-        public InfraBuilder onReadyClient(BiConsumer<TestClient, ConnectionReady> action) {
+        public Builder onReadyClient(BiConsumer<TestClient, ConnectionReady> action) {
             this.onReadyClient = action;
             return this;
         }
 
-        public InfraBuilder onEventServer(BiConsumer<TestServer, Object> action) {
+        public Builder onEventServer(BiConsumer<TestServer, Object> action) {
             this.onEventServer = action;
             return this;
         }
 
-        public InfraBuilder onReadyServer(BiConsumer<TestServer, ConnectionReady> action) {
+        public Builder onReadyServer(BiConsumer<TestServer, ConnectionReady> action) {
             this.onReadyServer = action;
             return this;
         }
 
-        public InfraBuilder setWaitCondition(Predicate<Infra> waitCondition) {
+        public Builder setWaitCondition(Predicate<Infra> waitCondition) {
             this.waitCondition = waitCondition;
             return this;
         }
