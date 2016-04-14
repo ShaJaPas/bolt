@@ -3,7 +3,6 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.Server;
 import io.lyracommunity.bolt.codec.CodecRepository;
-import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
@@ -36,7 +35,7 @@ public class BoltServer implements Server
 
 
     public BoltServer(final Config config) {
-        this(CodecRepository.basic(new MessageAssembleBuffer()), config);
+        this(CodecRepository.basic(), config);
     }
 
     private BoltServer(final CodecRepository codecs, final Config config) {
@@ -77,7 +76,7 @@ public class BoltServer implements Server
             final DataPacket packet = session.pollReceiveBuffer(1, TimeUnit.MILLISECONDS);
 
             if (packet != null) {
-                final Object decoded = codecs.decode(packet);
+                final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
                 if (decoded != null) {
                     subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
                 }
@@ -106,7 +105,7 @@ public class BoltServer implements Server
         for (final Integer destID : destIDs) {
             final Session session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
             if (session != null) {
-                if (data == null) data = codecs.encode(obj);
+                if (data == null) data = codecs.encode(obj, session.getAssembleBuffer());
                 for (final DataPacket dp : data) {
                     session.doWrite(dp);
                 }

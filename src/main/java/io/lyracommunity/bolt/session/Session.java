@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
+import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.DataPacket;
@@ -129,6 +130,8 @@ public abstract class Session
     /** Statistics for the session. */
     private final BoltStatistics statistics;
 
+    private final MessageAssembleBuffer assembleBuffer;
+
     /** Buffer size (i.e. datagram size). This is negotiated during connection setup. */
     private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
 
@@ -142,6 +145,7 @@ public abstract class Session
         this.statistics = new BoltStatistics(description, datagramSize);
         this.state = new SessionState(destination);
         this.cc = new BoltCongestionControl(state, statistics);
+        this.assembleBuffer = new MessageAssembleBuffer();
 
         this.sender = new Sender(config, state, endpoint, cc, statistics);
         this.receiver = new Receiver(config, state, endpoint, sender, statistics);
@@ -166,6 +170,7 @@ public abstract class Session
     public void cleanup() {
         try {
             close();
+            assembleBuffer.clear();
             if (endPoint.isOpen()) {
                 endPoint.doSend(new Shutdown(state.getDestinationSocketID()), state);
             }
@@ -255,6 +260,10 @@ public abstract class Session
 
     public BoltStatistics getStatistics() {
         return statistics;
+    }
+
+    public MessageAssembleBuffer getAssembleBuffer() {
+        return assembleBuffer;
     }
 
     @Override

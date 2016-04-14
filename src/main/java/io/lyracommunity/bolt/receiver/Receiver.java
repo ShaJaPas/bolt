@@ -381,8 +381,8 @@ public class Receiver {
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
         if (isSessionExpired() && !subscriber.isUnsubscribed()) {
+            LOG.error("Session {} expired.", sessionState);
             subscriber.onError(new IllegalStateException("Session expired."));
-            LOG.info("Session {} expired.", sessionState);
         }
         else if (!sender.haveLostPackets()) {
             sendKeepAlive();

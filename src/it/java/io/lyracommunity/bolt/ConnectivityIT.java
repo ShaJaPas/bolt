@@ -71,7 +71,7 @@ public class ConnectivityIT {
                 .onReadyServer((ts, evt) -> ts.server.config().setPacketLoss(1f))
                 .setWaitCondition(inf ->
                         inf.server().receivedOf(PeerDisconnected.class) < 1
-                                && inf.clients().get(0).receivedOf(PeerDisconnected.class) < 1);
+                                || inf.clients().get(0).receivedOf(PeerDisconnected.class) < 1);
 
         try (Infra i = builder.build()) {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);

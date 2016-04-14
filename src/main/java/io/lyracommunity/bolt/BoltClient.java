@@ -4,7 +4,6 @@ import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.api.Client;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.codec.CodecRepository;
-import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
@@ -39,7 +38,7 @@ public class BoltClient implements Client
 
     public BoltClient(final Config config) throws IOException {
         this.config = config;
-        this.codecs = CodecRepository.basic(new MessageAssembleBuffer());
+        this.codecs = CodecRepository.basic();
         this.clientEndpoint = new Endpoint(config);
         LOG.info("Created client endpoint on port {}", clientEndpoint.getLocalPort());
     }
@@ -58,7 +57,7 @@ public class BoltClient implements Client
                         final DataPacket packet = clientSession.pollReceiveBuffer(10, TimeUnit.MILLISECONDS);
 
                         if (packet != null) {
-                            final Object decoded = codecs.decode(packet);
+                            final Object decoded = codecs.decode(packet, clientSession.getAssembleBuffer());
                             if (decoded != null) {
                                 subscriber.onNext(new ReceiveObject<>(clientSession.getSocketID(), decoded));
                             }
@@ -67,9 +66,10 @@ public class BoltClient implements Client
                 }
             }
             catch (final InterruptedException ex) {
-                LOG.info("Client interrupted. {}", ex.getMessage());
+                LOG.info("Client interrupted. {}");
             }
             catch (final Exception ex) {
+                LOG.error("Unexpected client error", ex);
                 subscriber.onError(ex);
             }
             if (endpointAndSession != null) {
@@ -87,7 +87,7 @@ public class BoltClient implements Client
 
     public void send(final Object obj) throws BoltException
     {
-        final Collection<DataPacket> data = codecs.encode(obj);
+        final Collection<DataPacket> data = codecs.encode(obj, clientSession.getAssembleBuffer());
         for (final DataPacket dp : data) {
             try {
                 send(dp);

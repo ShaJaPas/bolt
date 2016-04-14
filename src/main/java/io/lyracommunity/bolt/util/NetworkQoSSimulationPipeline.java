@@ -141,7 +141,12 @@ public class NetworkQoSSimulationPipeline {
 
                 final QosPacket delayedPacket = latencyQueue.poll(20, TimeUnit.MILLISECONDS);
                 if (delayedPacket != null) {
-                    pipeLatencyToBandwidth(delayedPacket.peer, delayedPacket.packet);
+                    if (isBandwidthPipeRequired()) {
+                        pipeLatencyToBandwidth(delayedPacket.peer, delayedPacket.packet);
+                    }
+                    else {
+                        out.accept(delayedPacket.peer, delayedPacket.packet);
+                    }
                 }
             }
             while (required && latencyRunning.get());

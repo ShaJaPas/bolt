@@ -83,8 +83,10 @@ public class TestServer implements AutoCloseable {
     @Override
     public void close()
     {
-        printStatistics();
-        subscription.unsubscribe();
+        if (subscription != null && !subscription.isUnsubscribed()) {
+            printStatistics();
+            subscription.unsubscribe();
+        }
     }
 
 }

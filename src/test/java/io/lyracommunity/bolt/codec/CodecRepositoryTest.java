@@ -19,10 +19,12 @@ public class CodecRepositoryTest
 {
 
     private CodecRepository codecRepository;
+    private MessageAssembleBuffer assembleBuffer;
 
     public void setUp(final DeliveryType deliveryType) throws Exception {
         codecRepository = CodecRepository.create();
         codecRepository.register(XCodable.class, new PacketCodec<>(new XCodableObjectCodec(), deliveryType));
+        assembleBuffer = new MessageAssembleBuffer();
     }
 
     @Test
@@ -32,9 +34,9 @@ public class CodecRepositoryTest
 
         // When
         final XCodable original = new XCodable(1, 2);
-        final Collection<DataPacket> encoded = codecRepository.encode(original);
+        final Collection<DataPacket> encoded = codecRepository.encode(original, assembleBuffer);
         final DataPacket single = encoded.stream().findFirst().orElse(null);
-        final XCodable decoded = codecRepository.decode(single);
+        final XCodable decoded = codecRepository.decode(single, assembleBuffer);
 
         // Then
         assertEquals(1, encoded.size());
@@ -48,7 +50,7 @@ public class CodecRepositoryTest
         codecRepository = CodecRepository.create();
 
         // When
-        codecRepository.encode(new XCodable(1, 2));
+        codecRepository.encode(new XCodable(1, 2), assembleBuffer);
     }
 
     @Test(expected = NoSuchElementException.class)
@@ -61,7 +63,7 @@ public class CodecRepositoryTest
         dp.setDelivery(DeliveryType.RELIABLE_ORDERED);
 
         // When
-        codecRepository.decode(dp);
+        codecRepository.decode(dp, assembleBuffer);
     }
 
     @Test(expected = BoltException.class)
@@ -70,7 +72,7 @@ public class CodecRepositoryTest
         setUp(DeliveryType.RELIABLE_ORDERED);
 
         // When
-        codecRepository.encode(new XCodable(IntStream.range(0, 1000).boxed().collect(Collectors.toList())));
+        codecRepository.encode(new XCodable(IntStream.range(0, 1000).boxed().collect(Collectors.toList())), assembleBuffer);
     }
 
     private static class XCodableObjectCodec extends ObjectCodec<XCodable> {

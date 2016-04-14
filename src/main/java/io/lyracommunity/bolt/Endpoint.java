@@ -36,9 +36,9 @@ public class Endpoint implements ChannelOut {
     private static final Logger LOG = LoggerFactory.getLogger(Endpoint.class);
 
     private final DatagramPacket dp = new DatagramPacket(new byte[Config.DEFAULT_DATAGRAM_SIZE], Config.DEFAULT_DATAGRAM_SIZE);
-    private final int port;
+    private final int            port;
     private final DatagramSocket dgSocket;
-    private final Config config;
+    private final Config         config;
 
     /**
      * Active sessions keyed by socket ID.

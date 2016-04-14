@@ -36,6 +36,9 @@ public class MessageAssembleBuffer
         return messageId = SeqNum.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
     }
 
+    public void clear() {
+        messageMap.clear();
+    }
 
     private static class Message {
         private final Map<Integer, DataPacket> received = new HashMap<>();
@@ -50,7 +53,6 @@ public class MessageAssembleBuffer
                     ? new ArrayList<>(received.values())
                     : Collections.emptyList();
         }
-
     }
 
 }

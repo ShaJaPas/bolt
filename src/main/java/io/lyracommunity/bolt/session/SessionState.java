@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.SeqNum;
 
 import java.net.DatagramPacket;

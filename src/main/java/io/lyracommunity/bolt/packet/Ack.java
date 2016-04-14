@@ -212,4 +212,17 @@ public class Ack extends ControlPacket {
                 bufferSize, pktArrivalSpeed, estimatedLinkCapacity);
     }
 
+    @Override
+    public String toString() {
+        return "Ack{" +
+                "ackSequenceNumber=" + ackSequenceNumber +
+                ", ackNumber=" + ackNumber +
+                ", roundTripTime=" + roundTripTime +
+                ", roundTripTimeVariance=" + roundTripTimeVariance +
+                ", bufferSize=" + bufferSize +
+                ", pktArrivalSpeed=" + pktArrivalSpeed +
+                ", estimatedLinkCapacity=" + estimatedLinkCapacity +
+                '}';
+    }
+
 }

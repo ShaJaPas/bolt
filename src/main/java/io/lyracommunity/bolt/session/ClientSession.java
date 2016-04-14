@@ -12,7 +12,6 @@ import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.net.SocketException;
 import java.util.concurrent.TimeoutException;
 
 import static io.lyracommunity.bolt.session.SessionStatus.*;
@@ -25,7 +24,7 @@ public class ClientSession extends Session {
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
 
-    public ClientSession(Config config, Endpoint endPoint, Destination dest) throws SocketException {
+    public ClientSession(Config config, Endpoint endPoint, Destination dest) {
         super(config, endPoint, dest, "ClientSession localPort=" + endPoint.getLocalPort());
         LOG.info("Created " + toString());
     }

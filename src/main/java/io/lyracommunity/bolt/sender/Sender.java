@@ -1,6 +1,5 @@
 package io.lyracommunity.bolt.sender;
 
-import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.api.Config;
@@ -35,7 +34,7 @@ import java.util.function.Supplier;
  */
 public class Sender {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Sender.class);
 
     private final ChannelOut endpoint;
 

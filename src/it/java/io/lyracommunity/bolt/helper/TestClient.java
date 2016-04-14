@@ -107,7 +107,7 @@ public class TestClient implements AutoCloseable {
 
     @Override
     public void close() {
-        if (!subscription.isUnsubscribed()) {
+        if (subscription != null && !subscription.isUnsubscribed()) {
             printStatistics();
             subscription.unsubscribe();
         }
