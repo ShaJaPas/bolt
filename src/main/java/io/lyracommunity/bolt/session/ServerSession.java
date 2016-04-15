@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
@@ -26,7 +27,7 @@ public class ServerSession extends Session {
 
     private ConnectionHandshake finalConnectionHandshake;
 
-    public ServerSession(final Config config, final Endpoint endPoint, final Destination peer) {
+    public ServerSession(final Config config, final ChannelOut endPoint, final Destination peer) {
         super(config,
                 endPoint, peer, MessageFormat.format(DESCRIPTION_TEMPLATE, endPoint.getLocalPort(), peer.getAddress(), peer.getPort()));
         LOG.info("Created {} talking to {}:{}", toString(), peer.getAddress(), peer.getPort());
@@ -42,7 +43,7 @@ public class ServerSession extends Session {
     @Override
     public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
-        LOG.info("Received {} in state [{}]", handshake, getStatus());
+        LOG.info("Handshake received in state [{}]:  {}", getStatus(), handshake);
         boolean readyToStart = false;
         if (getStatus() == READY) {
             // Just send confirmation packet again.
@@ -64,7 +65,7 @@ public class ServerSession extends Session {
             try {
                 boolean handShakeComplete = handleSecondHandShake(handshake);
                 if (handShakeComplete) {
-                    LOG.info("Client/Server handshake complete!");
+                    LOG.info("Handshake complete for Server!  [{}]", getSocketID());
                     setStatus(READY);
                     readyToStart = true;
                     cc.init();

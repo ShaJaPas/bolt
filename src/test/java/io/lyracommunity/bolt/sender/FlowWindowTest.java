@@ -12,10 +12,10 @@ import static org.junit.Assert.*;
 public class FlowWindowTest
 {
 
-    volatile boolean read = true;
-    volatile boolean write = true;
-    int N = 100_000;
-    private volatile boolean fail = false;
+    private volatile boolean read  = true;
+    private volatile boolean write = true;
+    private          int     N     = 100_000;
+    private volatile boolean fail  = false;
 
     @Test
     public void testFillWindow() throws InterruptedException, TimeoutException {

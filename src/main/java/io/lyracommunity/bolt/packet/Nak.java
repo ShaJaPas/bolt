@@ -18,7 +18,7 @@ import java.util.List;
  * <li> 32 bits integer array of compressed loss information (see section 3.9).
  * </ol>
  */
-public class NegAck extends ControlPacket {
+public class Nak extends ControlPacket {
 
     /**
      * This contains the loss information intervals.
@@ -29,11 +29,11 @@ public class NegAck extends ControlPacket {
      */
     private List<Integer> lostSequenceNumbers;
 
-    public NegAck() {
+    public Nak() {
         super(PacketType.NAK);
     }
 
-    NegAck(final byte[] controlInformation) {
+    Nak(final byte[] controlInformation) {
         this();
         lostSequenceNumbers = decode(controlInformation);
     }
@@ -77,7 +77,7 @@ public class NegAck extends ControlPacket {
      *
      * @param singleSequenceNumber packet sequence number that was lost.
      */
-    public void addLossInfo(long singleSequenceNumber) {
+    void addLossInfo(long singleSequenceNumber) {
         byte[] enc = PacketUtil.encodeSetHighest(false, singleSequenceNumber);
         try {
             lossInfo.write(enc);
@@ -141,9 +141,7 @@ public class NegAck extends ControlPacket {
     }
 
     /**
-     * Return the lost packet numbers
-     *
-     * @return
+     * @return the lost packet numbers
      */
     public List<Integer> getDecodedLossInfo() {
         return lostSequenceNumbers;
@@ -152,9 +150,6 @@ public class NegAck extends ControlPacket {
     @Override
     public byte[] encodeControlInformation() {
         try {
-            if (lossInfo.size() == 0) {
-                System.out.println("BLAH");
-            }
             return lossInfo.toByteArray();
         }
         catch (Exception e) {
@@ -171,7 +166,7 @@ public class NegAck extends ControlPacket {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        NegAck other = (NegAck) obj;
+        Nak other = (Nak) obj;
 
         final List<Integer> thisLost;
         final List<Integer> otherLost;

@@ -61,6 +61,7 @@ public class Infra implements AutoCloseable {
     public void close() throws Exception {
         server.close();
         for (AutoCloseable c : clients) c.close();
+        Thread.sleep(50);
     }
 
     public TestServer server() {

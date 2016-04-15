@@ -266,6 +266,10 @@ public abstract class Session
         return assembleBuffer;
     }
 
+    SessionState getState() {
+        return state;
+    }
+
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" + state + '}';

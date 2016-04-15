@@ -39,6 +39,7 @@ public class Endpoint implements ChannelOut {
     private final int            port;
     private final DatagramSocket dgSocket;
     private final Config         config;
+    private final String         name;
 
     /**
      * Active sessions keyed by socket ID.
@@ -50,26 +51,15 @@ public class Endpoint implements ChannelOut {
     private final Map<Integer, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
 
     /**
-     * Bind to the given address and port
-     *
-     * @param localAddress the local address to bind.
-     * @param localPort    the port to bind to. If the port is zero, the system will pick an ephemeral port.
-     * @throws SocketException      if for example if the port is already bound to.
-     * @throws UnknownHostException if the host could not be resolved.
-     */
-    public Endpoint(final InetAddress localAddress, final int localPort) throws SocketException, UnknownHostException {
-        this(new Config(localAddress, localPort));
-    }
-
-    /**
      * Bind to the given address and port.
      *
+     * @param name   name of the endpoint, eg "ClientEndpoint" or "ServerEndpoint".
      * @param config config containing the address information to bind.
-     * @throws SocketException
-     * @throws UnknownHostException
+     * @throws SocketException if for example if the port is already bound to.
      */
-    public Endpoint(final Config config) throws UnknownHostException, SocketException {
+    public Endpoint(final String name, final Config config) throws SocketException {
         this.config = config;
+        this.name = name;
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
         this.port = (config.getLocalPort() > 0) ? config.getLocalPort() : dgSocket.getLocalPort();
@@ -91,11 +81,12 @@ public class Endpoint implements ChannelOut {
         return Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io());
     }
 
-    void stop(final Subscriber<? super Object> subscriber) {
+    public void stop(final Subscriber<? super Object> subscriber) {
+        LOG.info("Stopping {}", name);
         sessionsBeingConnected.clear();
         final Set<Integer> destIDs = Stream.concat(sessions.keySet().stream(), sessionSubscriptions.keySet().stream())
                 .collect(Collectors.toSet());
-        destIDs.forEach(destID -> endSession(subscriber, destID, "Endpoint is closing."));
+        destIDs.forEach(destID -> endSession(subscriber, destID, name + " is closing."));
         sessions.clear();
         sessionSubscriptions.clear();
         dgSocket.close();
@@ -109,9 +100,7 @@ public class Endpoint implements ChannelOut {
         if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
     }
 
-    /**
-     * @return the port which this client is bound to
-     */
+    @Override
     public int getLocalPort() {
         return this.dgSocket.getLocalPort();
     }
@@ -121,7 +110,7 @@ public class Endpoint implements ChannelOut {
     }
 
     void addSession(final Integer destinationID, final Session session) {
-        LOG.info("Storing session [{}]", destinationID);
+        LOG.info("{} is adding session [{}]", name, destinationID);
         sessions.put(destinationID, session);
     }
 
@@ -142,8 +131,8 @@ public class Endpoint implements ChannelOut {
      * </ul>
      */
     private void doReceive(final Subscriber<? super Object> subscriber) {
-        Thread.currentThread().setName("Bolt-Endpoint" + Util.THREAD_INDEX.incrementAndGet());
-        LOG.info("BoltEndpoint started.");
+        Thread.currentThread().setName("Bolt-" + name + "-" + Util.THREAD_INDEX.incrementAndGet());
+        LOG.info("{} started.", name);
 
         final NetworkQoSSimulationPipeline qosSimulationPipeline = new NetworkQoSSimulationPipeline(config,
                 (peer, pkt) -> processPacket(subscriber, peer, pkt), (peer, pkt) -> markPacketAsDropped(pkt));
@@ -156,28 +145,29 @@ public class Endpoint implements ChannelOut {
                 final int l = dp.getLength();
                 final BoltPacket packet = PacketFactory.createPacket(dp.getData(), l);
 
-                if (LOG.isDebugEnabled()) LOG.debug("Received packet {}", packet.getPacketSeqNumber());
+                if (LOG.isDebugEnabled()) LOG.debug("{} received packet {}", name, packet.getPacketSeqNumber());
 
                 qosSimulationPipeline.offer(peer, packet);
 
             }
             catch (AsynchronousCloseException ex) {
-                LOG.info("Endpoint interrupted.");
+                LOG.info("{} interrupted.", name);
             }
             catch (SocketTimeoutException ex) {
-                LOG.debug("Endpoint socket timeout");
+                LOG.debug("{} socket timeout", name);
             }
             catch (SocketException ex) {
-                LOG.warn("SocketException: {}", ex.getMessage());
+                LOG.warn("{} SocketException: {}", name, ex.getMessage());
                 if (dgSocket.isClosed()) subscriber.onError(ex);
             }
             catch (ClosedChannelException ex) {
-                LOG.warn("Channel was closed but receive was attempted");
+                LOG.warn("{} Channel was closed but receive was attempted", name);
             }
             catch (Exception ex) {
-                LOG.error("Unexpected endpoint error", ex);
+                LOG.error("{} Unexpected endpoint error", name, ex);
             }
         }
+        LOG.info("{} completed naturally.", name);
         qosSimulationPipeline.close();
         stop(subscriber);
     }
@@ -272,7 +262,7 @@ public class Endpoint implements ChannelOut {
     }
 
     public String toString() {
-        return "BoltEndpoint port=" + port;
+        return name + " port=" + port;
     }
 
     void sendRaw(DatagramPacket p) throws IOException {

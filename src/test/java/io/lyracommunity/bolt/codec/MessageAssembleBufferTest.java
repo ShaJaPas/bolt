@@ -17,13 +17,12 @@ import static org.junit.Assert.*;
 public class MessageAssembleBufferTest {
 
     private MessageAssembleBuffer sut = new MessageAssembleBuffer();
-    // TODO consider memory leak cases
 
     @Test
     public void testAssembly_valid() throws Throwable {
         // Given
         final int chunks = 10;
-        final List<DataPacket> messagePackets = createMessagePackets(chunks);
+        final List<DataPacket> messagePackets = createMessagePackets(chunks, true);
 
         // When
         for (int i = 0; i < chunks - 1; i++) {
@@ -37,24 +36,37 @@ public class MessageAssembleBufferTest {
     }
 
     @Test
-    public void testAssembly_withinSizeThreshold() throws Throwable {
-        // TODO implement test
+    public void testAssembly_invalidNoFinalChunk() throws Throwable {
+        // Given
+        final int chunks = 10;
+        final List<DataPacket> messagePackets = createMessagePackets(chunks, false);
+
+        // When
+        for (int i = 0; i < chunks; i++) {
+            assertTrue(sut.addChunk(messagePackets.get(i)).isEmpty());
+        }
     }
 
-    //    @Test(expected = Exception.class)
-    public void testAssembly_aboveSizeThreshold() throws Throwable {
-        // TODO implement test
+    @Test
+    public void testNextMessageId_InSequence() throws Throwable {
+        // Given
+        final int first = sut.nextMessageId();
+
+        final int second = sut.nextMessageId();
+
+        assertEquals(first, second - 1);
     }
 
-    private List<DataPacket> createMessagePackets(final int count) {
+    private List<DataPacket> createMessagePackets(final int count, final boolean markFinal) {
+        final byte[] data = TestData.getRandomData(1000);
         return IntStream.range(0, count).boxed().map(i -> {
             DataPacket p = new DataPacket();
             p.setClassID(1);
-            p.setData(TestData.getRandomData(1000));
+            p.setData(data);
             p.setMessageId(1);
             p.setMessageChunkNumber(i);
             p.setDelivery(DeliveryType.RELIABLE_ORDERED_MESSAGE);
-            p.setFinalMessageChunk(i == count - 1);
+            if (markFinal) p.setFinalMessageChunk(i == count - 1);
             return p;
         })
                 .collect(Collectors.toList());

@@ -8,6 +8,8 @@ import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.Subscription;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
  */
 public class BoltServer implements Server
 {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BoltServer.class);
 
     private final CodecRepository codecs;
 
@@ -49,7 +53,7 @@ public class BoltServer implements Server
             Subscription endpointSub = null;
             try {
                 Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
-                this.serverEndpoint = new Endpoint(config);
+                this.serverEndpoint = new Endpoint("ServerEndpoint", config);
                 endpointSub = this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {
@@ -63,6 +67,7 @@ public class BoltServer implements Server
                 subscriber.onError(ex);
             }
             if (endpointSub != null) {
+                LOG.info("Enforcing endpoint stop by server");
                 serverEndpoint.stop(subscriber);
                 endpointSub.unsubscribe();
             }

@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
@@ -24,7 +25,7 @@ public class ClientSession extends Session {
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
 
-    public ClientSession(Config config, Endpoint endPoint, Destination dest) {
+    public ClientSession(Config config, ChannelOut endPoint, Destination dest) {
         super(config, endPoint, dest, "ClientSession localPort=" + endPoint.getLocalPort());
         LOG.info("Created " + toString());
     }
@@ -64,6 +65,7 @@ public class ClientSession extends Session {
                     // Do nothing.
                 }
                 catch (IllegalStateException | TimeoutException | IOException ex) {
+                    LOG.error("Client connection error", ex);
                     subscriber.onError(ex);
                 }
             }

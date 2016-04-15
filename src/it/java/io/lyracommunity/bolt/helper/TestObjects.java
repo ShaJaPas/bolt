@@ -1,13 +1,14 @@
 package io.lyracommunity.bolt.helper;
 
+import io.lyracommunity.bolt.codec.CodecRepository;
+import io.lyracommunity.bolt.codec.ObjectCodec;
 import io.lyracommunity.bolt.codec.PacketCodec;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.PacketUtil;
-import io.lyracommunity.bolt.codec.ObjectCodec;
-import io.lyracommunity.bolt.codec.CodecRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,11 +31,11 @@ public class TestObjects {
             }
         }, DeliveryType.RELIABLE_ORDERED);
 
-        xcoding.register(UnreliableUnordered.class, createDataChain(DeliveryType.UNRELIABLE_UNORDERED, UnreliableUnordered::new));
-        xcoding.register(ReliableUnordered.class, createDataChain(DeliveryType.RELIABLE_UNORDERED, ReliableUnordered::new));
-        xcoding.register(ReliableUnorderedMessage.class, createDataChain(DeliveryType.RELIABLE_UNORDERED_MESSAGE, ReliableUnorderedMessage::new));
-        xcoding.register(ReliableOrdered.class, createDataChain(DeliveryType.RELIABLE_ORDERED, ReliableOrdered::new));
-        xcoding.register(ReliableOrderedMessage.class, createDataChain(DeliveryType.RELIABLE_ORDERED_MESSAGE, ReliableOrderedMessage::new));
+        xcoding.register(UnreliableUnordered.class, createPacketCodec(DeliveryType.UNRELIABLE_UNORDERED, UnreliableUnordered::new));
+        xcoding.register(ReliableUnordered.class, createPacketCodec(DeliveryType.RELIABLE_UNORDERED, ReliableUnordered::new));
+        xcoding.register(ReliableUnorderedMessage.class, createPacketCodec(DeliveryType.RELIABLE_UNORDERED_MESSAGE, ReliableUnorderedMessage::new));
+        xcoding.register(ReliableOrdered.class, createPacketCodec(DeliveryType.RELIABLE_ORDERED, ReliableOrdered::new));
+        xcoding.register(ReliableOrderedMessage.class, createPacketCodec(DeliveryType.RELIABLE_ORDERED_MESSAGE, ReliableOrderedMessage::new));
         xcoding.register(Finished.class, finishedXCoderChain);
     }
 
@@ -62,7 +63,7 @@ public class TestObjects {
         return new Finished();
     }
 
-    private static <T extends BaseDataClass> PacketCodec<T> createDataChain(final DeliveryType deliveryType, final Function<List<Integer>, T> constructor) {
+    public static <T extends BaseDataClass> PacketCodec<T> createPacketCodec(final DeliveryType deliveryType, final Function<List<Integer>, T> constructor) {
         final ObjectCodec<T> o = new ObjectCodec<T>() {
             @Override
             public T decode(byte[] data) {
@@ -86,16 +87,29 @@ public class TestObjects {
     public static class BaseDataClass {
         private final List<Integer> data;
 
-        BaseDataClass(final int length) {
+        public BaseDataClass(final int length) {
             this.data = IntStream.range(0, length).boxed().collect(Collectors.toList());
         }
 
-        BaseDataClass(final List<Integer> data) {
+        public BaseDataClass(final List<Integer> data) {
             this.data = new ArrayList<>(data);
         }
 
         public List<Integer> getData() {
             return data;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            BaseDataClass that = (BaseDataClass) o;
+            return Objects.equals(data, that.data);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(data);
         }
     }
 

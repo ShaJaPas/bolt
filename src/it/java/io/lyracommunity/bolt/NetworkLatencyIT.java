@@ -13,8 +13,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by omahoc9 on 3/24/16.
  */
-public class NetworkLatencyIT
-{
+public class NetworkLatencyIT {
 
     private static final int NUM_PACKETS = 10;
 

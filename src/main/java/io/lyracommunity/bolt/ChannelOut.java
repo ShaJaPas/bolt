@@ -31,4 +31,9 @@ public interface ChannelOut
      */
     InetAddress getLocalAddress();
 
+    /**
+     * @return the local port to which the socket is bound.
+     */
+    int getLocalPort();
+
 }

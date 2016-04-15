@@ -99,11 +99,16 @@ public class Sender {
 
     public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
                   final BoltStatistics statistics) {
+        this(config, state, endpoint, cc, statistics, new SenderLossList());
+    }
+
+    Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
+                  final BoltStatistics statistics, final SenderLossList senderLossList) {
         this.endpoint = endpoint;
         this.cc = cc;
         this.statistics = statistics;
         this.sessionState = state;
-        this.senderLossList = new SenderLossList();
+        this.senderLossList = senderLossList;
         this.sendBuffer = new ConcurrentHashMap<>(sessionState.getFlowWindowSize(), 0.75f, 2);
 
         this.lastAckReliabilitySequenceNumber = 0;
@@ -124,8 +129,10 @@ public class Sender {
 
     /**
      * Starts the sender algorithm.
+     *
+     * @throws IllegalStateException if the session is not in a ready state.
      */
-    public Observable<?> doStart(final String threadSuffix) {
+    public Observable<?> doStart(final String threadSuffix) throws IllegalStateException {
         if (!sessionState.isReady()) throw new IllegalStateException("Session is not ready.");
         return Observable.create(subscriber -> {
             try {
@@ -202,10 +209,10 @@ public class Sender {
     public void receive(final BoltPacket p) throws IOException {
         if (p.isControlPacket()) {
             if (PacketType.ACK == p.getPacketType()) {
-                onAcknowledge((Ack) p);
+                onAckReceived((Ack) p);
             }
             else if (PacketType.NAK == p.getPacketType()) {
-                onNAKPacketReceived((NegAck) p);
+                onNakReceived((Nak) p);
             }
         }
     }
@@ -228,7 +235,7 @@ public class Sender {
      * @param ack the received ACK packet.
      * @throws IOException if sending of ACK2 fails.
      */
-    private void onAcknowledge(final Ack ack) throws IOException {
+    private void onAckReceived(final Ack ack) throws IOException {
         ackLock.lock();
         ackCondition.signal();
         ackLock.unlock();
@@ -279,7 +286,7 @@ public class Sender {
      *
      * @param nak NAK packet received.
      */
-    private void onNAKPacketReceived(final NegAck nak) {
+    private void onNakReceived(final Nak nak) {
         for (final Integer i : nak.getDecodedLossInfo()) {
             senderLossList.insert(i);
         }

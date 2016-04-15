@@ -49,7 +49,7 @@ public class ReceiverTest
         config = new Config(InetAddress.getByName("localhost"), CLIENT_PORT.getAndIncrement());
         if (maybeExpTimerInterval != null) config.setExpTimerInterval(maybeExpTimerInterval);
 
-        final Endpoint endpoint = new Endpoint(config);
+        final Endpoint endpoint = new Endpoint("ReceiverEndpoint", config);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), SERVER_PORT.getAndIncrement());
         final Session session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer);

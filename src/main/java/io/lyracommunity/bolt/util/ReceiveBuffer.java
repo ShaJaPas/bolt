@@ -109,9 +109,8 @@ public class ReceiveBuffer
      */
     public DataPacket poll(final int timeout, TimeUnit unit) throws InterruptedException {
         lock.lockInterruptibly();
-        long nanos = unit.toNanos(timeout);
-
         try {
+            long nanos = unit.toNanos(timeout);
             for (; ; ) {
                 if (numValidChunks.get() != 0) {
                     return poll();
@@ -125,7 +124,6 @@ public class ReceiveBuffer
                     notEmpty.signal(); // propagate to non-interrupted thread
                     throw ie;
                 }
-
             }
         }
         finally {

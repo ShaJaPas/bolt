@@ -477,7 +477,7 @@ public class Receiver {
      * @throws IOException
      */
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
-        final NegAck nAckPacket = new NegAck();
+        final Nak nAckPacket = new Nak();
         nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
@@ -495,7 +495,7 @@ public class Receiver {
     private void sendNAK(final List<Integer> seqNums) throws IOException {
         if (seqNums.isEmpty()) return;
         final List<Integer> toSend = (seqNums.size() > 300) ? seqNums.subList(0, 300) : seqNums;
-        final NegAck nAckPacket = new NegAck();
+        final Nak nAckPacket = new Nak();
         nAckPacket.addLossInfo(toSend);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         endpoint.doSend(nAckPacket, sessionState);

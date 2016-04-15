@@ -35,7 +35,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_noLatency_noJitter() throws Exception {
+    public void noLatency_noJitter() throws Exception {
         final BoltPacket p = createPacket(0);
 
         sut.offer(null, p);
@@ -44,7 +44,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_highLatency_noJitter() throws Exception {
+    public void highLatency_noJitter() throws Exception {
         setUp(50, 0, 0, 0);
         final BoltPacket p = createPacket(0);
 
@@ -55,7 +55,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_noLatency_highJitter() throws Exception {
+    public void noLatency_highJitter() throws Exception {
         final AtomicInteger n = new AtomicInteger();
         // Jitter will be: 25ms, 50ms, 75ms, 0ms
         IntUnaryOperator rand = (i) -> ((i / 4) * n.incrementAndGet()) % i;
@@ -74,7 +74,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_noLatency_fullPacketLoss() throws Exception {
+    public void noLatency_fullPacketLoss() throws Exception {
         final int count = 4;
         setUp(0, 0, 1f, 0);
 
@@ -86,7 +86,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_noLatency_halfPacketLoss() throws Exception {
+    public void noLatency_halfPacketLoss() throws Exception {
         final int count = 4;
         setUp(0, 0, 0.5f, 0);
 
@@ -100,7 +100,7 @@ public class NetworkQoSSimulationPipelineTest {
     }
 
     @Test
-    public void test_lowLatency_mediumPacketLoss_lowBandwidth() throws Exception {
+    public void lowLatency_mediumPacketLoss_lowBandwidth() throws Exception {
         final int count = 10;
         setUp(20, 0, 0.2f, 5);
 

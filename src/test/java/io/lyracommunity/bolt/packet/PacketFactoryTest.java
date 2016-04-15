@@ -28,11 +28,10 @@ public class PacketFactoryTest
 
         byte[] data = test.getBytes();
         data[0] = (byte) (data[0] & 0x0F);
-        BoltPacket p = PacketFactory.createPacket(data);
-        DataPacket recv = (DataPacket) p;
+        final BoltPacket p = PacketFactory.createPacket(data);
 
         assertTrue(p instanceof DataPacket);
-        assertArrayEquals(data, recv.getEncoded());
+        assertArrayEquals(data, p.getEncoded());
     }
 
     @Test
@@ -79,7 +78,7 @@ public class PacketFactoryTest
 
     @Test
     public void testNegativeAcknowledgement() throws IOException {
-        NegAck p1 = new NegAck();
+        Nak p1 = new Nak();
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -87,7 +86,7 @@ public class PacketFactoryTest
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        NegAck p2 = (NegAck) p;
+        Nak p2 = (Nak) p;
         assertEquals(p1, p2);
 
         assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
@@ -96,14 +95,14 @@ public class PacketFactoryTest
 
     @Test
     public void testNegativeAcknowledgement2() throws IOException {
-        final NegAck p1 = new NegAck();
+        final Nak p1 = new Nak();
         p1.setDestinationID(2);
         final List<Integer> loss = IntStream.of(5, 6, 7, 8, 9, 11).boxed().collect(Collectors.toList());
 
         p1.addLossInfo(loss);
         final byte[] encoded = p1.getEncoded();
 
-        final NegAck p2 = (NegAck) PacketFactory.createPacket(encoded);
+        final Nak p2 = (Nak) PacketFactory.createPacket(encoded);
         assertEquals(p1, p2);
 
         assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
@@ -112,7 +111,7 @@ public class PacketFactoryTest
 
     @Test
     public void testNegativeAcknowledgement3() throws IOException {
-        NegAck p1 = new NegAck();
+        Nak p1 = new Nak();
         p1.setDestinationID(2);
         p1.addLossInfo(5);
         p1.addLossInfo(6);
@@ -120,7 +119,7 @@ public class PacketFactoryTest
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);
-        NegAck p2 = (NegAck) p;
+        Nak p2 = (Nak) p;
         assertEquals(p1, p2);
     }
 

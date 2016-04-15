@@ -17,7 +17,6 @@ import rx.Subscription;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -32,14 +31,11 @@ public class BoltClient implements Client
     private final Config          config;
     private       ClientSession   clientSession;
 
-    public BoltClient(final InetAddress address, final int localPort) throws SocketException, UnknownHostException, IOException {
-        this(new Config(address, localPort));
-    }
 
     public BoltClient(final Config config) throws IOException {
         this.config = config;
         this.codecs = CodecRepository.basic();
-        this.clientEndpoint = new Endpoint(config);
+        this.clientEndpoint = new Endpoint("ClientEndpoint", config);
         LOG.info("Created client endpoint on port {}", clientEndpoint.getLocalPort());
     }
 
@@ -66,13 +62,14 @@ public class BoltClient implements Client
                 }
             }
             catch (final InterruptedException ex) {
-                LOG.info("Client interrupted. {}");
+                LOG.info("Client interrupted.");
             }
             catch (final Exception ex) {
                 LOG.error("Unexpected client error", ex);
                 subscriber.onError(ex);
             }
             if (endpointAndSession != null) {
+                LOG.info("Enforcing endpoint stop by client");
                 clientEndpoint.stop(subscriber);
                 endpointAndSession.unsubscribe();
             }
@@ -121,7 +118,7 @@ public class BoltClient implements Client
         // Create client session
         clientSession = new ClientSession(config, clientEndpoint, destination);
         clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
-        LOG.info("The BoltClient is connecting");
+        LOG.info("BoltClient is connecting");
         return clientSession.connect();
     }
 

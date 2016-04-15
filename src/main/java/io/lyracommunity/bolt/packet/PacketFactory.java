@@ -50,8 +50,8 @@ public class PacketFactory {
             packet = new Ack(additionalInfo, controlInformation);
         }
         else if (PacketType.NAK.getTypeId() == pktType) {
-            packet = new NegAck(controlInformation);
-            if (((NegAck) packet).getDecodedLossInfo().isEmpty()) {
+            packet = new Nak(controlInformation);
+            if (((Nak) packet).getDecodedLossInfo().isEmpty()) {
                 System.out.println("NO");
             }
         }
