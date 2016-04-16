@@ -53,36 +53,17 @@ public interface CongestionControl {
     /**
      * Callback function to be called when an ACK packet is received.
      *
-     * @param ackSeqno - the data sequence number acknowledged by this ACK.
-     *                 see spec. page(16-17)
+     * @param ackSeqNum the data sequence number acknowledged by this ACK.
      */
-    void onACK(long ackSeqno);
+    void onACK(long ackSeqNum);
 
     /**
      * Callback function to be called when a loss report is received.
-     *  @param lossInfo list of sequence number of packets
-     * @param currentReliabilitySequenceNumber the current highest reliability seq num.
-     */
-    void onLoss(List<Integer> lossInfo, int currentReliabilitySequenceNumber);
-
-    /**
-     * Callback function to be called when a timeout event occurs
-     */
-    void onTimeout();
-
-    /**
-     * Callback function to be called when a data packet is sent.
      *
-     * @param packetSeqNo - the data packet sequence number
+     * @param lossInfo            list of sequence number of packets.
+     * @param currentMaxRelSeqNum the current highest reliability seq num.
      */
-    void onPacketSend(long packetSeqNo);
-
-    /**
-     * Callback function to be called when a data packet is received.
-     *
-     * @param packetSeqNo - the data packet sequence number.
-     */
-    void onPacketReceive(long packetSeqNo);
+    void onLoss(List<Integer> lossInfo, int currentMaxRelSeqNum);
 
     /**
      * Callback function to be called when a Bolt connection is closed.

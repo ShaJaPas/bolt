@@ -132,7 +132,7 @@ public class SessionState {
 
     @Override
     public String toString() {
-        return "SessionState{" + "mySocketID=" + mySocketID + '}';
+        return "SessionState{" + "mySocketID=" + mySocketID + ", destSocketID=" + destination.getSocketID() + '}';
     }
 
 }

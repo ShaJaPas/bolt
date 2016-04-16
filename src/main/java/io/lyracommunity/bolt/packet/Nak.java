@@ -55,6 +55,7 @@ public class Nak extends ControlPacket {
                 final int end = lostSequence.next();
                 // And add all lost numbers to the result list.
                 for (int i = lost + 1; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
+                    System.out.println("NakSeq:  " + (i - (lost + 1)));
                     expanded.add(i);
                 }
             }

@@ -1,10 +1,9 @@
 package io.lyracommunity.bolt.session;
 
-import io.lyracommunity.bolt.Endpoint;
+import io.lyracommunity.bolt.ChannelOutStub;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.helper.TestData;
-import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.Destination;
@@ -14,7 +13,6 @@ import rx.Subscription;
 import rx.observers.TestSubscriber;
 import rx.schedulers.Schedulers;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Set;
@@ -30,18 +28,13 @@ public class ClientSessionTest {
 
     private ClientSession sut;
 
-    private Endpoint endpoint;
+    private ChannelOutStub endpoint;
 
     @Before
     public void setUp() throws Exception {
         final Config config = new Config(InetAddress.getLocalHost(), PortUtil.nextClientPort());
         final Destination remote = new Destination(InetAddress.getLocalHost(), PortUtil.nextServerPort());
-        endpoint = new Endpoint("", config) {
-            @Override
-            public void doSend(BoltPacket packet, SessionState sessionState) throws IOException {
-                // Do nothing
-            }
-        };
+        endpoint = new ChannelOutStub(config, true);
         sut = new ClientSession(config, endpoint, remote);
     }
 
@@ -59,7 +52,7 @@ public class ClientSessionTest {
 
     @Test
     public void connect_failureEndpointClosed() throws Exception {
-        endpoint.stop(new TestSubscriber<>());
+        endpoint.setOpen(false);
         final Set<Throwable> errors = new HashSet<>();
         final CountDownLatch complete = new CountDownLatch(1);
 

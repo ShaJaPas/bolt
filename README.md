@@ -8,6 +8,10 @@ Bolt UDP
 - [ ] Review all thread sleeps in production code
 - [ ] Optimize bandwidth limit pipe polling
 - [ ] Single Sender/Receiver threads
+- [ ] Compatibility version
+- [ ] Improve receiver performance
+- [ ] Rendezvous mode
+- [ ] Discoverable MTU
 - [X] Message assembly/disassembly
 - [X] Delivery strategy
 - [ ] Retransmit strategy (aggressive, on NAK)

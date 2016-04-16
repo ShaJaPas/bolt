@@ -1,7 +1,6 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
@@ -13,6 +12,8 @@ import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static io.lyracommunity.bolt.session.SessionStatus.*;
@@ -24,6 +25,7 @@ public class ClientSession extends Session {
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientSession.class);
 
+    private final Phaser handshakePhase = new Phaser(1);
 
     public ClientSession(Config config, ChannelOut endPoint, Destination dest) {
         super(config, endPoint, dest, "ClientSession localPort=" + endPoint.getLocalPort());
@@ -32,47 +34,58 @@ public class ClientSession extends Session {
 
     /**
      * Send connection handshake until a reply from server is received.
-     *
-     * @throws InterruptedException
-     * @throws IOException
      */
-    public Observable<?> connect() throws InterruptedException, IOException {
+    public Observable<?> connect() {
         return Observable.create(subscriber -> {
             int n = 0;
-            while (getStatus() != READY && !subscriber.isUnsubscribed()) {
-                try {
-                    if (getStatus() == INVALID) {
-                        throw new IOException("Can't connect!");
-                    }
-                    if (getStatus().seqNo() <= HANDSHAKING.seqNo()) {
-                        setStatus(HANDSHAKING);
-                        sendInitialHandShake();
-                    }
-                    else if (getStatus() == HANDSHAKING2) {
-                        sendSecondHandshake();
-                    }
+            int phase = 0;
+            try {
+                while (getStatus() != READY && !subscriber.isUnsubscribed()) {
+                    try {
+                        if (getStatus() == INVALID) {
+                            throw new IOException("Can't connect!");
+                        }
+                        if (getStatus().seqNo() <= HANDSHAKING.seqNo()) {
+                            if (getStatus() == START) setStatus(HANDSHAKING);
+                            sendInitialHandShake();
+                        }
+                        else if (getStatus() == HANDSHAKING2) {
+                            sendSecondHandshake();
+                        }
 
-                    if (getStatus() == INVALID) {
-                        throw new IllegalStateException("Can't connect!");
+                        if (getStatus() == INVALID) {
+                            throw new IllegalStateException("Can't connect!");
+                        }
+                        if (n++ > 50) {
+                            throw new TimeoutException("Could not connect to server within the timeout.");
+                        }
+                        else phase = awaitNextHandshakePhase(phase);
                     }
-                    if (n++ > 10) {
-                        throw new TimeoutException("Could not connect to server within the timeout.");
+                    catch (IllegalStateException | TimeoutException | IOException ex) {
+                        LOG.error("Client connection error", ex);
+                        subscriber.onError(ex);
                     }
-
-                    Thread.sleep(500);
                 }
-                catch (InterruptedException ex) {
-                    // Do nothing.
-                }
-                catch (IllegalStateException | TimeoutException | IOException ex) {
-                    LOG.error("Client connection error", ex);
-                    subscriber.onError(ex);
+                if (getStatus() == READY) {
+                    cc.init();
+                    LOG.info("Connected, {} handshake packets sent", n);
                 }
             }
-            cc.init();
-            LOG.info("Connected, {} handshake packets sent", n);
+            catch (InterruptedException ex) {
+                LOG.info("ClientSession was interrupted while connecting on attempt {}.", n);
+            }
             subscriber.onCompleted();
         }).subscribeOn(Schedulers.io());
+    }
+
+    private int awaitNextHandshakePhase(final int phase) throws InterruptedException {
+        try {
+            return handshakePhase.awaitAdvanceInterruptibly(phase, 100, TimeUnit.MILLISECONDS);
+        }
+        catch (TimeoutException ex) {
+            // Do nothing.
+        }
+        return phase;
     }
 
     @Override
@@ -87,6 +100,7 @@ public class ClientSession extends Session {
                     state.setSessionCookie(handshake.getCookie());
                     state.setDestinationSocketID(peerSocketID);
                     setStatus(HANDSHAKING2);
+                    handshakePhase.arrive();
                 }
                 catch (Exception ex) {
                     LOG.warn("Error creating socket", ex);
@@ -105,6 +119,7 @@ public class ClientSession extends Session {
             try {
                 LOG.info("Received confirmation handshake response from {}\n{}", peer, handshake);
                 setStatus(READY);
+                handshakePhase.arrive();
                 readyToStart = true;
             }
             catch (Exception ex) {

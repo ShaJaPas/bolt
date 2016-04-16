@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.session;
 
-import io.lyracommunity.bolt.Endpoint;
+import io.lyracommunity.bolt.ChannelOutStub;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
@@ -24,12 +24,15 @@ public class ServerSessionTest
 
     private Destination remote;
 
+    private ChannelOutStub endpoint;
+
     @Before
     public void setUp() throws Exception
     {
         remote = new Destination(InetAddress.getLocalHost(), PortUtil.nextClientPort());
         final Config config = new Config(InetAddress.getLocalHost(), PortUtil.nextServerPort());
-        sut = new ServerSession(config, new Endpoint("", config), remote);
+        endpoint = new ChannelOutStub(config, true);
+        sut = new ServerSession(config, endpoint, remote);
     }
 
     @Test

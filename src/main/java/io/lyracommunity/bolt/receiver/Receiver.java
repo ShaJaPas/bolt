@@ -173,7 +173,7 @@ public class Receiver {
             try {
                 Thread.currentThread().setName("Bolt-Receiver-" + threadSuffix);
 
-                while (!sessionState.isActive()) Thread.sleep(100);
+                while (!sessionState.isActive()) Thread.sleep(10);
 
                 LOG.info("STARTING RECEIVER for {}", sessionState);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;

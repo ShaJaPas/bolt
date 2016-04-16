@@ -8,6 +8,7 @@ import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.Session;
 import org.junit.Test;
 import rx.Subscription;
+import rx.observers.TestSubscriber;
 import rx.schedulers.Schedulers;
 
 import java.net.DatagramPacket;
@@ -30,7 +31,7 @@ public class UdpEndpointIT
         final int serverPort = PortUtil.nextServerPort();
 
         final Endpoint server = new Endpoint("ServerEndpoint", new Config(InetAddress.getByName("localhost"), serverPort));
-        server.start()
+        final Subscription sub = server.start()
                 .observeOn(Schedulers.computation())
                 .subscribe();
 
@@ -56,6 +57,7 @@ public class UdpEndpointIT
         assertEquals(numPackets, sent);
         assertEquals(numPackets, received);
 
+        sub.unsubscribe();
         cli.close();
     }
 
@@ -90,6 +92,7 @@ public class UdpEndpointIT
         float dataRate = dataSize * rate / 1024 / 1024;
         System.out.println("Data Rate:  " + (int) dataRate + " MBytes/sec.");
 
+        endpoint.stop(new TestSubscriber<>());
         sub.unsubscribe();
     }
 
@@ -100,8 +103,9 @@ public class UdpEndpointIT
 
     @Test
     public void testBindToAnyPort() throws Exception {
-        Endpoint ep = new Endpoint("Endpoint", new Config(InetAddress.getByName("localhost"), 0));
-        int port = ep.getLocalPort();
+        final Endpoint ep = new Endpoint("Endpoint", new Config(InetAddress.getByName("localhost"), 0));
+        final int port = ep.getLocalPort();
+        ep.stop(new TestSubscriber<>());
         assertTrue(port > 0);
     }
 

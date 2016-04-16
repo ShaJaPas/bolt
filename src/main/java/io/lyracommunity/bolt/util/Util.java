@@ -26,7 +26,7 @@ public class Util {
     }
 
     public static double getSYNTimeD() {
-        return 10000.0;
+        return 10_000.0;
     }
 
 }

@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Default Bolt congestion control.
  * <p>
- * The algorithm is adapted from the C++ reference implementation.
+ * Uses AIMD (Additive increase, multiplicative decrease).
  */
 public class BoltCongestionControl implements CongestionControl {
 
@@ -21,7 +21,7 @@ public class BoltCongestionControl implements CongestionControl {
     private static final long   PS          = Config.DEFAULT_DATAGRAM_SIZE;
     private static final double BETA_DIV_PS = 0.0000015 / PS;
 
-    protected final SessionState sessionState;
+    private final SessionState sessionState;
 
     private final BoltStatistics statistics;
 
@@ -97,14 +97,17 @@ public class BoltCongestionControl implements CongestionControl {
         this.lastDecreaseSeqNo = sessionState.getInitialSequenceNumber() - 1;
     }
 
+    @Override
     public void init() {
         // Do nothing.
     }
 
+    @Override
     public void setRTT(final long rtt, final long rttVar) {
         this.roundTripTime = rtt;
     }
 
+    @Override
     public void updatePacketArrivalRate(long rate, long linkCapacity) {
         packetArrivalRate = (packetArrivalRate > 0)
                 ? (packetArrivalRate * 7 + rate) / 8
@@ -115,14 +118,17 @@ public class BoltCongestionControl implements CongestionControl {
                 : linkCapacity;
     }
 
+    @Override
     public long getPacketArrivalRate() {
         return packetArrivalRate;
     }
 
+    @Override
     public long getEstimatedLinkCapacity() {
         return estimatedLinkCapacity;
     }
 
+    @Override
     public double getSendInterval() {
         return packetSendingPeriod;
     }
@@ -132,6 +138,7 @@ public class BoltCongestionControl implements CongestionControl {
      *
      * @return the congestion window size.
      */
+    @Override
     public double getCongestionWindowSize() {
         return congestionWindowSize;
     }
@@ -139,26 +146,24 @@ public class BoltCongestionControl implements CongestionControl {
     /**
      * @see CongestionControl#onACK(long)
      */
-    public void onACK(final long ackSeqNo) {
+    @Override
+    public void onACK(final long ackSeqNum) {
         // Increase window during slow start.
         if (slowStartPhase) {
-            congestionWindowSize += ackSeqNo - lastAckSeqNumber;
-            lastAckSeqNumber = ackSeqNo;
+            congestionWindowSize += ackSeqNum - lastAckSeqNumber;
+            lastAckSeqNumber = ackSeqNum;
             // But not beyond a maximum size.
             if (congestionWindowSize > sessionState.getFlowWindowSize()) {
                 slowStartPhase = false;
-                if (packetArrivalRate > 0) {
-                    packetSendingPeriod = 1000000.0 / packetArrivalRate;
-                }
-                else {
-                    packetSendingPeriod = congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
-                }
+                packetSendingPeriod = (packetArrivalRate > 0)
+                        ? 1000000.0 / packetArrivalRate
+                        : congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
             }
 
         }
         else {
-            // 1. if it's not in slow start phase,set the congestion window size to the product of packet arrival rate and(rtt +SYN)
-            final double A = packetArrivalRate / 1_000_000d * (roundTripTime + Util.getSYNTimeD());
+            // 1. If not in slow start phase, set congestion window size to product of packet arrival rate and (rtt + SYN)
+            final double A = (packetArrivalRate / 1_000_000d) * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Receive rate [{}]  RTT [{}]  Set to window size [{}]", packetArrivalRate, roundTripTime, (A + 16));
@@ -175,19 +180,16 @@ public class BoltCongestionControl implements CongestionControl {
         }
 
         // 4) Compute the increase in sent packets for the next SYN period
-        double numOfIncreasingPacket = computeNumOfIncreasingPacket();
+        final double numOfIncreasingPacket = computeNumOfIncreasingPacket();
 
         // 5) Update the send period
-        double factor = Util.getSYNTimeD() / (packetSendingPeriod * numOfIncreasingPacket + Util.getSYNTimeD());
+        final double factor = Util.getSYNTimeD() / (packetSendingPeriod * numOfIncreasingPacket + Util.getSYNTimeD());
         packetSendingPeriod = factor * packetSendingPeriod;
         // packetSendingPeriod=0.995*packetSendingPeriod;
 
         statistics.setSendPeriod(packetSendingPeriod);
     }
 
-    /**
-     * See spec page 16.
-     */
     private double computeNumOfIncreasingPacket() {
         // Difference between link capacity and sending speed, in packets per second.
         final double remaining = estimatedLinkCapacity - 1_000_000d / packetSendingPeriod;
@@ -202,7 +204,8 @@ public class BoltCongestionControl implements CongestionControl {
         }
     }
 
-    public void onLoss(final List<Integer> lossInfo, final int currentMaxRelSequenceNumber) {
+    @Override
+    public void onLoss(final List<Integer> lossInfo, final int currentMaxRelSeqNum) {
         loss = true;
         long firstBiggestLossSeqNo = lossInfo.get(0);
         nACKCount++;
@@ -230,7 +233,7 @@ public class BoltCongestionControl implements CongestionControl {
             // - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum
             decreaseRandom = (int) Math.ceil((averageNACKNum - 1) * Math.random() + 1);
             // -Update LastDecSeq
-            lastDecreaseSeqNo = currentMaxRelSequenceNumber;
+            lastDecreaseSeqNo = currentMaxRelSeqNum;
             // -Stop.
         }
         // 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
@@ -240,23 +243,14 @@ public class BoltCongestionControl implements CongestionControl {
             // b. Increase DecCount by 1;
             decCount++;
             // c. Record the current largest sent sequence number (LastDecSeq).
-            lastDecreaseSeqNo = currentMaxRelSequenceNumber;
+            lastDecreaseSeqNo = currentMaxRelSeqNum;
         }
 
         statistics.setSendPeriod(packetSendingPeriod);
     }
 
-    public void onTimeout() {
-    }
-
-    public void onPacketSend(long packetSeqNo) {
-    }
-
-    public void onPacketReceive(long packetSeqNo) {
-    }
-
+    @Override
     public void close() {
     }
-
 
 }

@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.sender.Sender;
 import io.lyracommunity.bolt.session.ServerSession;
@@ -15,6 +16,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import rx.Subscription;
+import rx.observers.TestSubscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
@@ -22,7 +24,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by omahoc9 on 4/5/16.
@@ -30,14 +31,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ReceiverTest
 {
 
-    private static final AtomicInteger CLIENT_PORT = new AtomicInteger(12045);
-    private static final AtomicInteger SERVER_PORT = new AtomicInteger(60321);
     private Config config;
     private Receiver        receiver;
     private List<Object>    events;
     private List<Throwable> errors;
     private AtomicBoolean   completed;
     private Subscription    subscription;
+    private Endpoint endpoint;
 
     @Before
     public void setUp() throws Exception
@@ -46,11 +46,11 @@ public class ReceiverTest
     }
 
     private void setUp(Long maybeExpTimerInterval) throws IOException {
-        config = new Config(InetAddress.getByName("localhost"), CLIENT_PORT.getAndIncrement());
+        config = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         if (maybeExpTimerInterval != null) config.setExpTimerInterval(maybeExpTimerInterval);
 
-        final Endpoint endpoint = new Endpoint("ReceiverEndpoint", config);
-        final Destination peer = new Destination(InetAddress.getByName("localhost"), SERVER_PORT.getAndIncrement());
+        endpoint = new Endpoint("ReceiverEndpoint", config);
+        final Destination peer = new Destination(InetAddress.getByName("localhost"), PortUtil.nextServerPort());
         final Session session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer);
         sessionState.setStatus(SessionStatus.READY);
@@ -70,6 +70,7 @@ public class ReceiverTest
     public void tearDown() throws Exception
     {
         if (subscription != null) subscription.unsubscribe();
+        endpoint.stop(new TestSubscriber<>());
     }
 
     @Test
