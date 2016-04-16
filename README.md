@@ -8,7 +8,9 @@ Bolt UDP
 - [ ] Review all thread sleeps in production code
 - [ ] Optimize bandwidth limit pipe polling
 - [ ] Single Sender/Receiver threads
+- [ ] Improve computed NAK seq numbers memory consumption
 - [ ] Compatibility version
+- [X] Improve handshake completion time
 - [ ] Improve receiver performance
 - [ ] Rendezvous mode
 - [ ] Discoverable MTU
@@ -30,7 +32,7 @@ Bolt UDP
 - [ ] Performance testing, high-volume of large messages
 - [ ] General performance testing
 - [ ] Validate thread cleanup
-- [ ] Review thread sleep times for efficiency
+- [X] Review thread sleep times for efficiency
 - [ ] Improve statistics legibility
 - [ ] Improve performance of sender onAcknowledgement
 - [ ] Improve performance in high-packet loss scenarios
