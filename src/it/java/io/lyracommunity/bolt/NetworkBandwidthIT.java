@@ -53,7 +53,7 @@ public class NetworkBandwidthIT
                 .setWaitCondition(inf -> inf.server().receivedOf(testData.getClass()) < numPackets);
 
         try (Infra i = builder.build()) {
-            final long millisTaken = i.start().awaitCompletion(expectedMinimumTime * 2, TimeUnit.MILLISECONDS);
+            final long millisTaken = i.start().awaitCompletion(expectedMinimumTime * 4, TimeUnit.MILLISECONDS);
             System.out.println("Expected minimum time: " + expectedMinimumTime + " ms.");
 
             assertEquals(numPackets, i.server().receivedOf(testData.getClass()));

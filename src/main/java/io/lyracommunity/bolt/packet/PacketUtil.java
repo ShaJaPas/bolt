@@ -25,13 +25,13 @@ public class PacketUtil {
         return new byte[]{m4, m3, m2, m1};
     }
 
-    public static byte[] encodeShort(int value) {
+    static byte[] encodeShort(int value) {
         byte m2 = (byte) (value >> 8);
         byte m1 = (byte) (value);
         return new byte[] { m2, m1 };
     }
 
-    public static byte[] encodeSetHighest(boolean highest, long value) {
+    static byte[] encodeSetHighest(boolean highest, long value) {
         byte m4;
         if (highest) {
             m4 = (byte) (0x80 | value >> 24);
@@ -44,8 +44,7 @@ public class PacketUtil {
         return new byte[]{m4, m3, m2, m1};
     }
 
-
-    public static byte[] encodeControlPacketType(int type) {
+    static byte[] encodeControlPacketType(int type) {
         byte m4 = (byte) 0x80;
 
         byte m3 = (byte) type;
@@ -58,6 +57,12 @@ public class PacketUtil {
 
     public static byte setBit(byte b, int bitIndex, boolean isSet) {
         return (byte) (isSet
+                ? b | (1 << bitIndex)   // set bit to 1
+                : b & ~(1 << bitIndex)); // set bit to 0
+    }
+
+    public static int setIntBit(int b, int bitIndex, boolean isSet) {
+        return (isSet
                 ? b | (1 << bitIndex)   // set bit to 1
                 : b & ~(1 << bitIndex)); // set bit to 0
     }

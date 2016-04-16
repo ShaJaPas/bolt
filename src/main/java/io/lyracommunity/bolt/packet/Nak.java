@@ -2,11 +2,11 @@ package io.lyracommunity.bolt.packet;
 
 import io.lyracommunity.bolt.util.SeqNum;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Negative Acknowledgement (NAK) carries information about lost packets.
@@ -20,22 +20,46 @@ import java.util.List;
  */
 public class Nak extends ControlPacket {
 
-    /**
-     * This contains the loss information intervals.
-     */
-    final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
+//    /**
+//     * This contains the loss information intervals.
+//     */
+//    final private ByteArrayOutputStream lossInfo = new ByteArrayOutputStream();
     /**
      * After decoding this contains the lost sequence numbers.
      */
-    private List<Integer> lostSequenceNumbers;
+    private final List<Integer> lostSequenceNumbers;
 
     public Nak() {
         super(PacketType.NAK);
+        lostSequenceNumbers = new ArrayList<>();
     }
 
     Nak(final byte[] controlInformation) {
-        this();
+        super(PacketType.NAK);
         lostSequenceNumbers = decode(controlInformation);
+    }
+
+    public List<Integer> computeExpandedLossList() {
+        final List<Integer> expanded = new ArrayList<>();
+        final Iterator<Integer> lostSequence = getDecodedLossInfo().iterator();
+        while (lostSequence.hasNext()) {
+            final int read = lostSequence.next();
+            final int lost = PacketUtil.setIntBit(read, 31, false);
+            final boolean isNotSingle = PacketUtil.isBitSet(read, 31);
+
+            // Add the first.
+            expanded.add(lost);
+
+            // Add the tail of the sequence, if any.
+            if (isNotSingle) {
+                final int end = lostSequence.next();
+                // And add all lost numbers to the result list.
+                for (int i = lost + 1; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
+                    expanded.add(i);
+                }
+            }
+        }
+        return expanded;
     }
 
     /**
@@ -46,28 +70,30 @@ public class Nak extends ControlPacket {
     protected List<Integer> decode(final byte[] lossInfo) {
         final List<Integer> lostSequenceNumbers = new ArrayList<>();
         final ByteBuffer bb = ByteBuffer.wrap(lossInfo);
-        byte[] buffer = new byte[4];
+//        byte[] buffer = new byte[4];
         while (bb.remaining() > 0) {
-            // Read 4 bytes
-            buffer[0] = bb.get();
-            buffer[1] = bb.get();
-            buffer[2] = bb.get();
-            buffer[3] = bb.get();
-            final boolean isNotSingle = (buffer[0] & 128) != 0;
-            // Set highest bit back to 0
-            buffer[0] = (byte) (buffer[0] & 0x7f);
-            final int lost = ByteBuffer.wrap(buffer).getInt();
-            if (isNotSingle) {
-                // Get the end of the interval
-                int end = bb.getInt();
-                // And add all lost numbers to the result list
-                for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
-                    lostSequenceNumbers.add(i);
-                }
-            }
-            else {
-                lostSequenceNumbers.add(lost);
-            }
+            final int lost = bb.getInt();
+            lostSequenceNumbers.add(lost);
+//            // Read 4 bytes
+//            buffer[0] = bb.get();
+//            buffer[1] = bb.get();
+//            buffer[2] = bb.get();
+//            buffer[3] = bb.get();
+//            final boolean isNotSingle = (buffer[0] & 128) != 0;
+//            // Set highest bit back to 0
+//            buffer[0] = (byte) (buffer[0] & 0x7f);
+//            final int lost = ByteBuffer.wrap(buffer).getInt();
+//            if (isNotSingle) {
+//                // Get the end of the interval
+//                int end = bb.getInt();
+//                // And add all lost numbers to the result list
+//                for (int i = lost; SeqNum.compare16(i, end) <= 0; i = SeqNum.increment16(i)) {
+//                    lostSequenceNumbers.add(i);
+//                }
+//            }
+//            else {
+//                lostSequenceNumbers.add(lost);
+//            }
         }
         return lostSequenceNumbers;
     }
@@ -75,15 +101,17 @@ public class Nak extends ControlPacket {
     /**
      * Add a single lost packet number.
      *
-     * @param singleSequenceNumber packet sequence number that was lost.
+     * @param singleRelSeqNum packet sequence number that was lost.
      */
-    void addLossInfo(long singleSequenceNumber) {
-        byte[] enc = PacketUtil.encodeSetHighest(false, singleSequenceNumber);
-        try {
-            lossInfo.write(enc);
-        }
-        catch (IOException ignore) {
-        }
+    private void addLossInfo(final int singleRelSeqNum) {
+//        byte[] enc = PacketUtil.encodeSetHighest(false, singleRelSeqNum);
+//        try {
+            final int enc = PacketUtil.setIntBit(singleRelSeqNum, 31, false);
+            lostSequenceNumbers.add(enc);
+//            lossInfo.write(enc);
+//        }
+//        catch (IOException ignore) {
+//        }
     }
 
     /**
@@ -92,33 +120,36 @@ public class Nak extends ControlPacket {
      * @param firstSequenceNumber
      * @param lastSequenceNumber
      */
-    public void addLossInfo(long firstSequenceNumber, long lastSequenceNumber) {
+    public void addLossInfo(final int firstSequenceNumber, final int lastSequenceNumber) {
         // Check if we really need an interval
         if (lastSequenceNumber - firstSequenceNumber == 0) {
             addLossInfo(firstSequenceNumber);
-            return;
         }
-        // Else add an interval
-        byte[] enc1 = PacketUtil.encodeSetHighest(true, firstSequenceNumber);
-        byte[] enc2 = PacketUtil.encodeSetHighest(false, lastSequenceNumber);
-        try {
-            lossInfo.write(enc1);
-            lossInfo.write(enc2);
-        }
-        catch (IOException ignore) {
+        else {
+            // Else add an interval
+            lostSequenceNumbers.add(PacketUtil.setIntBit(firstSequenceNumber, 31, true));
+            lostSequenceNumbers.add(PacketUtil.setIntBit(lastSequenceNumber, 31, false));
+            //        byte[] enc1 = PacketUtil.encodeSetHighest(true, firstSequenceNumber);
+            //        byte[] enc2 = PacketUtil.encodeSetHighest(false, lastSequenceNumber);
+            //        try {
+            //            lossInfo.write(enc1);
+            //            lossInfo.write(enc2);
+            //        }
+            //        catch (IOException ignore) {
+            //        }
         }
     }
 
     /**
      * pack the given list of sequence numbers and add them to the loss info
      *
-     * @param sequenceNumbers - a list of sequence numbers
+     * @param sequenceNumbers a list of sequence numbers.
      */
-    public void addLossInfo(List<Integer> sequenceNumbers) {
+    public void addLossInfo(final List<Integer> sequenceNumbers) {
         int index = 0;
         do {
-            long start = sequenceNumbers.get(index);
-            long end = 0;
+            int start = sequenceNumbers.get(index);
+            int end = 0;
             int c = 0;
             do {
                 c++;
@@ -143,14 +174,16 @@ public class Nak extends ControlPacket {
     /**
      * @return the lost packet numbers
      */
-    public List<Integer> getDecodedLossInfo() {
+    private List<Integer> getDecodedLossInfo() {
         return lostSequenceNumbers;
     }
 
     @Override
     public byte[] encodeControlInformation() {
         try {
-            return lossInfo.toByteArray();
+            final ByteBuffer encoded = ByteBuffer.allocate(lostSequenceNumbers.size() * 4);
+            lostSequenceNumbers.forEach(encoded::putInt);
+            return encoded.array();
         }
         catch (Exception e) {
             // can't happen
@@ -159,37 +192,17 @@ public class Nak extends ControlPacket {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Nak other = (Nak) obj;
-
-        final List<Integer> thisLost;
-        final List<Integer> otherLost;
-
-        // Compare the loss info
-        if (lostSequenceNumbers != null) {
-            thisLost = lostSequenceNumbers;
-        }
-        else {
-            thisLost = decode(lossInfo.toByteArray());
-        }
-        if (other.lostSequenceNumbers != null) {
-            otherLost = other.lostSequenceNumbers;
-        }
-        else {
-            otherLost = other.decode(other.lossInfo.toByteArray());
-        }
-        if (!thisLost.equals(otherLost)) {
-            return false;
-        }
-
-        return true;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        Nak nak = (Nak) o;
+        return Objects.equals(lostSequenceNumbers, nak.lostSequenceNumbers);
     }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), lostSequenceNumbers);
+    }
 
 }

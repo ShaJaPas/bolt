@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -80,8 +81,7 @@ public class PacketFactoryTest
     public void testNegativeAcknowledgement() throws IOException {
         Nak p1 = new Nak();
         p1.setDestinationID(2);
-        p1.addLossInfo(5);
-        p1.addLossInfo(6);
+        p1.addLossInfo(Arrays.asList(5, 6));
         p1.addLossInfo(7, 10);
         byte[] p1_data = p1.getEncoded();
 
@@ -89,12 +89,12 @@ public class PacketFactoryTest
         Nak p2 = (Nak) p;
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
-        assertEquals(6, p2.getDecodedLossInfo().size());
+        assertEquals((Integer) 5, p2.computeExpandedLossList().get(0));
+        assertEquals(6, p2.computeExpandedLossList().size());
     }
 
     @Test
-    public void testNegativeAcknowledgement2() throws IOException {
+    public void testNak2() throws IOException {
         final Nak p1 = new Nak();
         p1.setDestinationID(2);
         final List<Integer> loss = IntStream.of(5, 6, 7, 8, 9, 11).boxed().collect(Collectors.toList());
@@ -105,16 +105,15 @@ public class PacketFactoryTest
         final Nak p2 = (Nak) PacketFactory.createPacket(encoded);
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, p2.getDecodedLossInfo().get(0));
-        assertEquals(6, p2.getDecodedLossInfo().size());
+        assertEquals((Integer) 5, p2.computeExpandedLossList().get(0));
+        assertEquals(6, p2.computeExpandedLossList().size());
     }
 
     @Test
     public void testNegativeAcknowledgement3() throws IOException {
         Nak p1 = new Nak();
         p1.setDestinationID(2);
-        p1.addLossInfo(5);
-        p1.addLossInfo(6);
+        p1.addLossInfo(Arrays.asList(5, 6));
         p1.addLossInfo(147, 226);
         byte[] p1_data = p1.getEncoded();
 

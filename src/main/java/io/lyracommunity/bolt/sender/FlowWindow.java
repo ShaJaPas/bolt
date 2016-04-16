@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * It is assumed that a single thread (the producer) stores new data,
  * and another single thread (the consumer) reads/removes data.
  */
-public class FlowWindow {
+class FlowWindow {
 
     private final DataPacket[] packets;
 
@@ -40,7 +40,7 @@ public class FlowWindow {
      * @param flowWindowSize flow window size
      * @param chunkSize      data chunk size
      */
-    public FlowWindow(final int flowWindowSize, final int chunkSize) {
+    FlowWindow(final int flowWindowSize, final int chunkSize) {
         this.length = flowWindowSize + 1;
         this.packets = new DataPacket[length];
         for (int i = 0; i < packets.length; i++) {
@@ -50,7 +50,7 @@ public class FlowWindow {
         this.lock = new ReentrantLock(true);
     }
 
-    public boolean tryProduce(final DataPacket src) {
+    boolean tryProduce(final DataPacket src) {
         // Do quick check before locking for performance.
         if (isFull) return false;
         lock.lock();
@@ -72,7 +72,7 @@ public class FlowWindow {
         return true;
     }
 
-    public DataPacket consumeData() {
+    DataPacket consumeData() {
         // Do quick check before locking.
         if (isEmpty) return null;
 

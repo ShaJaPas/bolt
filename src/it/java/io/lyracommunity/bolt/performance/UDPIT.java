@@ -5,6 +5,8 @@ import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.statistic.MeanValue;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.DatagramPacket;
@@ -26,6 +28,17 @@ public class UDPIT {
     private final        Queue<DatagramPacket> handoff       = new ConcurrentLinkedQueue<>();
     private volatile     boolean               serverRunning = true;
     private              long                  total         = 0;
+    private DatagramSocket serverSocket;
+
+    @Before
+    public void setUp() throws Exception {
+        serverSocket = new DatagramSocket(SERVER_PORT);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        serverSocket.close();
+    }
 
     @Test
     public void test1() throws Exception {
@@ -75,7 +88,6 @@ public class UDPIT {
     }
 
     private void runServer() throws Exception {
-        final DatagramSocket serverSocket = new DatagramSocket(SERVER_PORT);
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -102,7 +114,7 @@ public class UDPIT {
             try {
                 int counter = 0;
                 long start = System.currentTimeMillis();
-                while (counter < num_packets) {
+                while (counter < num_packets && serverRunning) {
                     DatagramPacket dp = handoff.poll();
                     if (dp != null) {
                         total += dp.getLength();

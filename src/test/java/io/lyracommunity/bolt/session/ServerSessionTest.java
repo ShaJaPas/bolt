@@ -2,6 +2,7 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import org.junit.Before;
@@ -26,8 +27,8 @@ public class ServerSessionTest
     @Before
     public void setUp() throws Exception
     {
-        remote = new Destination(InetAddress.getLocalHost(), 12345);
-        final Config config = new Config(InetAddress.getLocalHost(), 65432);
+        remote = new Destination(InetAddress.getLocalHost(), PortUtil.nextClientPort());
+        final Config config = new Config(InetAddress.getLocalHost(), PortUtil.nextServerPort());
         sut = new ServerSession(config, new Endpoint("", config), remote);
     }
 

@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
+import java.text.MessageFormat;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -21,7 +22,11 @@ public class QualityOfServiceIT {
      */
     @Test
     public void test_HighLatencyAndHighPacketLoss_TimeTakeToDeliveryReliable() throws Throwable {
-        doTest(500, 0.2f, 20, TestObjects.reliableUnordered(100), 1500);
+//        while (true) {
+            doTest(500, 0.2f, 20, TestObjects.reliableUnordered(100), 1500);
+//            System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+//            Thread.sleep(1000);
+//        }
     }
 
     /**
@@ -70,7 +75,8 @@ public class QualityOfServiceIT {
             final long millisTaken = i.start().awaitCompletion(2, TimeUnit.MINUTES);
 
             assertEquals(numPackets, i.server().receivedOf(toSend.getClass()));
-            assertTrue(minimumExpectedTotalTime <= millisTaken);
+            assertTrue(MessageFormat.format("Took shorter [{0}] than min expected [{1}]", millisTaken, minimumExpectedTotalTime),
+                    minimumExpectedTotalTime <= millisTaken);
         }
     }
 

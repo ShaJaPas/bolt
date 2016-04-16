@@ -2,6 +2,7 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.DataPacket;
@@ -33,8 +34,8 @@ public class ClientSessionTest {
 
     @Before
     public void setUp() throws Exception {
-        final Config config = new Config(InetAddress.getLocalHost(), 12345);
-        final Destination remote = new Destination(InetAddress.getLocalHost(), 65432);
+        final Config config = new Config(InetAddress.getLocalHost(), PortUtil.nextClientPort());
+        final Destination remote = new Destination(InetAddress.getLocalHost(), PortUtil.nextServerPort());
         endpoint = new Endpoint("", config) {
             @Override
             public void doSend(BoltPacket packet, SessionState sessionState) throws IOException {

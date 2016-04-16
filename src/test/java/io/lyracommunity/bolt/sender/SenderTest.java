@@ -4,21 +4,23 @@ import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.ChannelOutStub;
 import io.lyracommunity.bolt.CongestionControl;
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.packet.Ack;
-import io.lyracommunity.bolt.packet.Destination;
-import io.lyracommunity.bolt.packet.Nak;
-import io.lyracommunity.bolt.packet.PacketType;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.session.SessionState;
+import io.lyracommunity.bolt.session.SessionStatus;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import org.junit.Before;
 import org.junit.Test;
+import rx.Subscription;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by omahoc9 on 4/5/16.
@@ -31,11 +33,13 @@ public class SenderTest {
 
     private ChannelOutStub endpoint;
 
+    private SessionState sessionState;
+
     @Before
     public void setUp() throws Exception {
         senderLossList = new SenderLossList();
         final Destination remote = new Destination(InetAddress.getLocalHost(), 65432);
-        final SessionState sessionState = new SessionState(remote);
+        sessionState = new SessionState(remote);
         final Config config = new Config(InetAddress.getByName("localhost"), 12345);
         endpoint = new ChannelOutStub(config, true);
         final BoltStatistics statistics = new BoltStatistics("testStatistics", Config.DEFAULT_DATAGRAM_SIZE);
@@ -68,13 +72,33 @@ public class SenderTest {
 
         sut.receive(nak);
 
-//        assertEquals(lossCount, senderLossList.size());
+        assertEquals(lossCount, senderLossList.size());
+        assertTrue(sut.haveLostPackets());
     }
 
     @Test
-    public void testStart() throws Exception {
+    public void ExpEvent_HaveUnacknowledgedPackets_AddedToLossList() throws Exception {
+        final DataPacket dp = new DataPacket();
+        dp.setDelivery(DeliveryType.RELIABLE_ORDERED);
+        sessionState.setStatus(SessionStatus.READY);
 
-        // TODO implement test
+        sut.start();
+        final Subscription sub = sut.doStart("Test").subscribeOn(Schedulers.io()).subscribe();
+        try {
+            sut.sendPacket(dp, 10, TimeUnit.MILLISECONDS);
+
+            for (int i = 0; i < 100; i++) {
+                if (endpoint.sendCountOfType(PacketType.DATA) > 0) break;
+                Thread.sleep(20);
+            }
+
+            sut.putUnacknowledgedPacketsIntoLossList();
+
+            assertEquals(1, senderLossList.size());
+        }
+        finally {
+            sub.unsubscribe();
+        }
     }
 
     @Test

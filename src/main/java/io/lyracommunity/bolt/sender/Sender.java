@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -186,7 +187,7 @@ public class Sender {
      *
      * @param timeout
      * @param units
-     * @return
+     *
      * @throws InterruptedException
      */
     public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws InterruptedException {
@@ -287,15 +288,15 @@ public class Sender {
      * @param nak NAK packet received.
      */
     private void onNakReceived(final Nak nak) {
-        for (final Integer i : nak.getDecodedLossInfo()) {
+        final List<Integer> lostRelSeqNums = nak.computeExpandedLossList();
+        for (final Integer i : lostRelSeqNums) {
             senderLossList.insert(i);
         }
-        cc.onLoss(nak.getDecodedLossInfo(), getCurrentReliabilitySequenceNumber());
+        cc.onLoss(lostRelSeqNums, getCurrentReliabilitySequenceNumber());
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("NAK for {} packets lost, set send period to {}",
-                    nak.getDecodedLossInfo().size(), cc.getSendInterval());
+            LOG.debug("NAK for {} packets lost, set send period to {}", lostRelSeqNums.size(), cc.getSendInterval());
         }
     }
 
@@ -409,7 +410,7 @@ public class Sender {
     }
 
     /**
-     * For processing EXP event (see spec. p 13).
+     * For processing EXP event.
      */
     public void putUnacknowledgedPacketsIntoLossList() {
         synchronized (sendLock) {
@@ -423,7 +424,7 @@ public class Sender {
      * The next sequence number for data packets.
      * The initial sequence number is "0".
      */
-    public int nextPacketSequenceNumber() {
+    private int nextPacketSequenceNumber() {
         return currentSequenceNumber = SeqNum.incrementPacketSeqNum(currentSequenceNumber);
     }
 
@@ -431,7 +432,7 @@ public class Sender {
      * The next sequence number for data packets.
      * The initial sequence number is "0".
      */
-    public int nextReliabilitySequenceNumber() {
+    private int nextReliabilitySequenceNumber() {
         return currentReliabilitySequenceNumber = SeqNum.increment16(currentReliabilitySequenceNumber);
     }
 
@@ -439,7 +440,7 @@ public class Sender {
      * The next sequence number for data packets.
      * The initial sequence number is "0".
      */
-    public int nextOrderSequenceNumber() {
+    private int nextOrderSequenceNumber() {
         return currentOrderSequenceNumber = SeqNum.increment16(currentOrderSequenceNumber);
     }
 

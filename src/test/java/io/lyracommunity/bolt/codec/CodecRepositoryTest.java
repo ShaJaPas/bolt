@@ -4,6 +4,7 @@ import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.PacketUtil;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.*;
@@ -47,6 +48,7 @@ public class CodecRepositoryTest
     @Test(expected = NoSuchElementException.class)
     public void testEncode_ErrorNoEncoder() throws Throwable {
         // Given (don't register any Codec)
+        assembleBuffer = new MessageAssembleBuffer();
         codecRepository = CodecRepository.create();
 
         // When
@@ -57,6 +59,7 @@ public class CodecRepositoryTest
     public void testDecode_ErrorNoDecoder() throws Throwable {
         // Given (don't register any Codec)
         codecRepository = CodecRepository.create();
+        assembleBuffer = new MessageAssembleBuffer();
         final DataPacket dp = new DataPacket();
         dp.setClassID(1);
         dp.setData(new byte[8]);

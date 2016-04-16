@@ -93,7 +93,8 @@ public class DeliveryReliabilityIT
         Infra.Builder builder = Infra.Builder.withServerAndClients(1)
                 .onEventServer((ts, evt) -> {
                     if (evt instanceof TestObjects.BaseDataClass) {
-                        if (deliveryCount.incrementAndGet() % 20 == 0) {
+                        final int newCount = deliveryCount.incrementAndGet();
+                        if (newCount % 40 == 0) {
                             System.out.println(format("Recv {0} {1}", evt.getClass().getSimpleName(), deliveryCount.get()));
                         }
                     }

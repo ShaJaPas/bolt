@@ -9,29 +9,29 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * the lost packets fed back by the receiver through NAK packets or
  * inserted in a timeout event. The numbers are stored in increasing order.
  */
-public class SenderLossList {
+class SenderLossList {
 
     private final ConcurrentSkipListSet<Integer> backingList;
 
     /**
      * Create a new sender lost list.
      */
-    public SenderLossList() {
+    SenderLossList() {
         backingList = new ConcurrentSkipListSet<>(this::compareLosses);
     }
 
-    public void insert(final Integer obj) {
+    void insert(final Integer obj) {
         backingList.add(obj);
     }
 
-    public void remove(final Integer obj) {
+    void remove(final Integer obj) {
         backingList.remove(obj);
     }
 
     /**
      * Retrieves the loss list entry with the lowest sequence number, or null if loss list is empty.
      */
-    public Integer getFirstEntry() {
+    Integer getFirstEntry() {
         return backingList.pollFirst();
     }
 
