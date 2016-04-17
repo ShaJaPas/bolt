@@ -393,7 +393,8 @@ public class Receiver {
     private boolean isSessionExpired() {
         return config.isAllowSessionExpiry()
                 && expCount > config.getExpLimit()
-                && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
+                ;
+//                && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
     }
 
     private void processPacket(final BoltPacket p) throws IOException {

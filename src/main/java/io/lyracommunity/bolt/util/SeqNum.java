@@ -101,12 +101,26 @@ public class SeqNum {
     }
 
     /**
-     * increment by one
-     *
-     * @param seq
+     * Increment by one.
      */
     public static int increment(int seq, int max) {
         return (seq == max) ? 0 : seq + 1;
+    }
+
+    /**
+     * Add to a sequence number.
+     */
+    public static int add(int seq, int add, int max) {
+        final int added = seq + add;
+        return (added >= max) ? added % max : added;
+    }
+
+
+    /**
+     * Add to a 16-bit sequence number.
+     */
+    public static int add16(int seq, int add) {
+        return add(seq, add, MAX_SEQ_NUM_16_BIT);
     }
 
     /**

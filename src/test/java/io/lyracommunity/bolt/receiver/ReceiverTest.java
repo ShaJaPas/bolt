@@ -1,11 +1,13 @@
 package io.lyracommunity.bolt.receiver;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
+import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.ChannelOutStub;
 import io.lyracommunity.bolt.CongestionControl;
-import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.helper.PortUtil;
 import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.KeepAlive;
 import io.lyracommunity.bolt.sender.Sender;
 import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.session.Session;
@@ -16,7 +18,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import rx.Subscription;
-import rx.observers.TestSubscriber;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
@@ -25,44 +26,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Created by omahoc9 on 4/5/16.
  */
 public class ReceiverTest
 {
 
-    private Config config;
-    private Receiver        receiver;
+    private Config          config;
+    private Receiver        sut;
     private List<Object>    events;
     private List<Throwable> errors;
     private AtomicBoolean   completed;
     private Subscription    subscription;
-    private Endpoint endpoint;
+    private ChannelOut      endpoint;
 
     @Before
     public void setUp() throws Exception
     {
-        setUp(null);
+        setUp(null, null);
     }
 
-    private void setUp(Long maybeExpTimerInterval) throws IOException {
+    private void setUp(Long maybeExpTimerInterval, final Double initialCongestionWindowSize) throws IOException {
         config = new Config(InetAddress.getByName("localhost"), PortUtil.nextClientPort());
         if (maybeExpTimerInterval != null) config.setExpTimerInterval(maybeExpTimerInterval);
+        if (initialCongestionWindowSize != null) config.setInitialCongestionWindowSize(initialCongestionWindowSize);
 
-        endpoint = new Endpoint("ReceiverEndpoint", config);
+        endpoint = new ChannelOutStub(config, true);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), PortUtil.nextServerPort());
         final Session session = new ServerSession(config, endpoint, peer);
         final SessionState sessionState = new SessionState(peer);
         sessionState.setStatus(SessionStatus.READY);
         sessionState.setActive(true);
 
-        final CongestionControl cc = new BoltCongestionControl(sessionState, session.getStatistics());
+        final CongestionControl cc = new BoltCongestionControl(sessionState, session.getStatistics(), config.getInitialCongestionWindowSize());
         final Sender sender = new Sender(config, sessionState, endpoint, cc, session.getStatistics());
-        receiver = new Receiver(config, sessionState, endpoint, sender, session.getStatistics());
+        sut = new Receiver(config, sessionState, endpoint, sender, session.getStatistics());
         events = new ArrayList<>();
         errors = new ArrayList<>();
         completed = new AtomicBoolean(false);
-        subscription = receiver.start("ServerSession").subscribeOn(Schedulers.io()).observeOn(Schedulers.computation())
+        subscription = sut.start("Server").subscribeOn(Schedulers.computation()).observeOn(Schedulers.computation())
                 .subscribe(events::add, errors::add, () -> completed.set(true));
     }
 
@@ -70,28 +75,35 @@ public class ReceiverTest
     public void tearDown() throws Exception
     {
         if (subscription != null) subscription.unsubscribe();
-        endpoint.stop(new TestSubscriber<>());
     }
 
     @Test
-    public void testReceiveAndProcessAck() throws Exception
+    public void testExpiry() throws Exception
     {
-        // TODO implement test
-//        final Ack ack = Ack.buildAcknowledgement(1, 1, 10_000, 5_000, 1000, 1, 1000, 1000);
-//        receiver.receive(ack);
+        config.setExpLimit(2);
+        config.setExpTimerInterval(1);
 
-
+        for (int i = 0; i < 100 && errors.isEmpty(); i++) Thread.sleep(5);
+        assertFalse(errors.isEmpty());
     }
 
     @Test
     public void testReceiveAndProcessKeepAlive() throws Exception
     {
-        // TODO implement test
+        config.setExpLimit(2);
+        config.setExpTimerInterval(10_000);
+
+        for (int i = 0; i < 100 && errors.isEmpty(); i++) {
+            sut.receive(new KeepAlive());
+            Thread.sleep(2);
+        }
+        assertTrue(errors.isEmpty());
     }
 
     @Test
-    public void testReceiveAndProcessNack() throws Exception
+    public void testReceiveAndProcessNak() throws Exception
     {
+//        sut.receive();
         // TODO implement test
     }
 
@@ -141,7 +153,7 @@ public class ReceiverTest
             Thread.sleep(50);
         }
 
-        Assert.assertFalse(errors.isEmpty());
+        assertFalse(errors.isEmpty());
         Assert.assertEquals(IllegalStateException.class, errors.get(0).getClass());
     }
 

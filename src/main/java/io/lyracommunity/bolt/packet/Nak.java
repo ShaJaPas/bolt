@@ -84,7 +84,7 @@ public class Nak extends ControlPacket {
      *
      * @param singleRelSeqNum packet sequence number that was lost.
      */
-    private void addLossSingle(final int singleRelSeqNum) {
+    public void addLossSingle(final int singleRelSeqNum) {
         final int enc = PacketUtil.setIntBit(singleRelSeqNum, 31, false);
         lostSequenceNumbers.add(enc);
     }

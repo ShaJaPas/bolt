@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
 
 /**
@@ -70,11 +69,11 @@ public class Sender {
     private final ReentrantLock ackLock      = new ReentrantLock();
     private final Condition     ackCondition = ackLock.newCondition();
     private final CongestionControl cc;
-    private final SessionState sessionState;
+    private final SessionState      sessionState;
     /**
      * For generating data packet sequence numbers.
      */
-    private volatile int currentSequenceNumber = 0;
+    private volatile int currentSequenceNumber            = 0;
     /**
      * For generating reliability sequence numbers.
      */
@@ -82,16 +81,16 @@ public class Sender {
     /**
      * For generating order sequence numbers.
      */
-    private volatile int currentOrderSequenceNumber = 0;
+    private volatile int currentOrderSequenceNumber       = 0;
     /**
      * The largest data packet sequence number that has actually been sent out.
      */
-    private volatile int largestSentSequenceNumber = -1;
+    private volatile int largestSentSequenceNumber        = -1;
     /**
      * Last acknowledge number, initialised to the initial sequence number.
      */
     private volatile int lastAckReliabilitySequenceNumber;
-    private volatile boolean started = false;
+    private volatile boolean        started    = false;
     /**
      * Used to signal that the sender should start to send
      */
@@ -104,7 +103,7 @@ public class Sender {
     }
 
     Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
-                  final BoltStatistics statistics, final SenderLossList senderLossList) {
+           final BoltStatistics statistics, final SenderLossList senderLossList) {
         this.endpoint = endpoint;
         this.cc = cc;
         this.statistics = statistics;
@@ -185,12 +184,9 @@ public class Sender {
      * Writes a data packet, waiting at most for the specified time.
      * If this is not possible due to a full send queue.
      *
-     * @param timeout
-     * @param units
-     *
-     * @throws InterruptedException
+     * @throws InterruptedException if the thread was interrupted while waiting to send.
      */
-    public void sendPacket(final DataPacket src, int timeout, TimeUnit units) throws InterruptedException {
+    public void sendPacket(final DataPacket src) throws InterruptedException {
         if (!started) start();
         src.setDestinationID(sessionState.getDestinationSocketID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
@@ -287,8 +283,8 @@ public class Sender {
      * @param nak NAK packet received.
      */
     private void onNakReceived(final Nak nak) {
-        final IntStream lostRelSeqNums = nak.computeExpandedLossList();
-        lostRelSeqNums.forEach(senderLossList::insert);
+        nak.computeExpandedLossList().forEach(senderLossList::insert);
+
         cc.onLoss(nak.computeExpandedLossList(), getCurrentReliabilitySequenceNumber());
         statistics.incNumberOfNAKReceived();
 
@@ -323,73 +319,70 @@ public class Sender {
      * congestion control and t is the total time used by step 1 to step 5. Go to 1).
      * </ol>
      *
-     * @throws IOException on failure to send the DataPacket.
+     * @throws IOException          on failure to send the DataPacket.
+     * @throws InterruptedException on the thread being interrupted.
      */
-    private void senderAlgorithm(final Supplier<Boolean> stopped) throws IOException {
+    private void senderAlgorithm(final Supplier<Boolean> stopped) throws IOException, InterruptedException {
         while (!stopped.get()) {
-            try {
-                final long iterationStart = Util.getCurrentTime();
-                // If the sender's loss list is not empty
-                final Integer entry = senderLossList.getFirstEntry();
-                if (entry != null) {
-                    handleRetransmit(entry);
-                }
-                else {
-                    // If the number of unacknowledged data packets does not exceed the congestion
-                    // and the flow window sizes, pack a new packet.
-                    final int unAcknowledged = unacknowledged.get();
+            final long iterationStart = Util.getCurrentTime();
+            // If the sender's loss list is not empty
+            final Integer entry = senderLossList.getFirstEntry();
+            if (entry != null) {
+                handleRetransmit(entry);
+            }
+            else {
+                // If the number of unacknowledged data packets does not exceed the congestion
+                // and the flow window sizes, pack a new packet.
+                final int unAcknowledged = unacknowledged.get();
 
-                    if (unAcknowledged < cc.getCongestionWindowSize()
-                            && unAcknowledged < sessionState.getFlowWindowSize()) {
-                        // Check for application data
-                        final DataPacket dp = flowWindow.consumeData();
-                        if (dp != null) {
-                            send(dp);
-                        }
-                        else {
-                            statistics.incNumberOfMissingDataEvents();
-                        }
+                if (unAcknowledged < cc.getCongestionWindowSize()
+                        && unAcknowledged < sessionState.getFlowWindowSize()) {
+                    // Check for application data
+                    final DataPacket dp = flowWindow.consumeData();
+                    if (dp != null) {
+                        send(dp);
                     }
                     else {
-                        // Congestion window full, wait for an ack
-                        if (unAcknowledged >= cc.getCongestionWindowSize()) {
-                            statistics.incNumberOfCCWindowExceededEvents();
-                        }
-                        waitForAck();
+                        statistics.incNumberOfMissingDataEvents();
                     }
                 }
-
-                // Wait
-                if (largestSentSequenceNumber % 16 != 0) {
-                    final long snd = (long) cc.getSendInterval();
-                    long passed = Util.getCurrentTime() - iterationStart;
-                    int x = 0;
-                    while (snd - passed > 0) {
-                        // Can't wait with microsecond precision :(
-                        if (x == 0) {
-                            statistics.incNumberOfCCSlowDownEvents();
-                            x++;
-                        }
-                        passed = Util.getCurrentTime() - iterationStart;
-                        if (stopped.get()) return;
+                else {
+                    // Congestion window full, wait for an ack
+                    if (unAcknowledged >= cc.getCongestionWindowSize()) {
+                        statistics.incNumberOfCCWindowExceededEvents();
                     }
+                    waitForAck();
                 }
             }
-            catch (InterruptedException e) {
-                LOG.info("Sender caught an interrupt {}", e.getMessage());
+
+            // Wait
+            if (largestSentSequenceNumber % 16 != 0) {
+                final long snd = (long) cc.getSendInterval();
+                long passed = Util.getCurrentTime() - iterationStart;
+                int x = 0;
+                while (snd - passed > 0) {
+                    // Can't wait with microsecond precision :(
+                    if (x == 0) {
+                        statistics.incNumberOfCCSlowDownEvents();
+                        x++;
+                    }
+                    passed = Util.getCurrentTime() - iterationStart;
+                    if (stopped.get()) return;
+                }
             }
         }
+
     }
 
     /**
      * Re-transmit an entry from the sender loss list.
      *
-     * @param relSeqNumber reliability sequence number to retransmit.
+     * @param reliabilitySeqNum reliability sequence number to retransmit.
      */
-    private void handleRetransmit(final Integer relSeqNumber) {
+    private void handleRetransmit(final Integer reliabilitySeqNum) {
         try {
-            // Retransmit the packet and remove it from the list.
-            final DataPacket data = sendBuffer.get(relSeqNumber);
+            // Retransmit the packet.
+            final DataPacket data = sendBuffer.get(reliabilitySeqNum);
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
@@ -398,7 +391,7 @@ public class Sender {
                 statistics.incNumberOfRetransmittedDataPackets();
             }
             else {
-                LOG.info("Did not find expected data in sendBuffer [{}]", relSeqNumber);
+                LOG.info("Did not find expected data in sendBuffer [{}]", reliabilitySeqNum);
             }
         }
         catch (Exception e) {
@@ -418,24 +411,21 @@ public class Sender {
     }
 
     /**
-     * The next sequence number for data packets.
-     * The initial sequence number is "0".
+     * The next packet sequence number for data packets. The initial sequence number is {@code 0}.
      */
     private int nextPacketSequenceNumber() {
         return currentSequenceNumber = SeqNum.incrementPacketSeqNum(currentSequenceNumber);
     }
 
     /**
-     * The next sequence number for data packets.
-     * The initial sequence number is "0".
+     * The next reliability sequence number for data packets. The initial sequence number is {@code 0}.
      */
     private int nextReliabilitySequenceNumber() {
         return currentReliabilitySequenceNumber = SeqNum.increment16(currentReliabilitySequenceNumber);
     }
 
     /**
-     * The next sequence number for data packets.
-     * The initial sequence number is "0".
+     * The next order sequence number for data packets. The initial sequence number is {@code 0}.
      */
     private int nextOrderSequenceNumber() {
         return currentOrderSequenceNumber = SeqNum.increment16(currentOrderSequenceNumber);
@@ -464,7 +454,7 @@ public class Sender {
     /**
      * Wait until the given sequence number has been acknowledged.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException if thread was interrupted while awaiting.
      */
     public void waitForAck(final int relSequenceNumber) throws InterruptedException {
         while (!sessionState.isShutdown() && !haveAcknowledgementFor(relSequenceNumber)) {

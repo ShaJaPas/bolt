@@ -144,7 +144,7 @@ public abstract class Session
         this.endPoint = endpoint;
         this.statistics = new BoltStatistics(description, datagramSize);
         this.state = new SessionState(destination);
-        this.cc = new BoltCongestionControl(state, statistics);
+        this.cc = new BoltCongestionControl(state, statistics, config.getInitialCongestionWindowSize());
         this.assembleBuffer = new MessageAssembleBuffer();
 
         this.sender = new Sender(config, state, endpoint, cc, statistics);
@@ -182,7 +182,7 @@ public abstract class Session
 
     public void doWrite(final DataPacket dataPacket) throws IOException {
         try {
-            sender.sendPacket(dataPacket, 10, TimeUnit.MILLISECONDS);
+            sender.sendPacket(dataPacket);
         } catch (InterruptedException ie) {
             throw new IOException(ie);
         }

@@ -7,56 +7,58 @@ import java.net.InetAddress;
 /**
  * Created by omahoc9 on 3/11/16.
  */
-public class Config
-{
+public class Config {
 
+    public static final int DEFAULT_DATAGRAM_SIZE = 1400;
+    private final int datagramSize = 1400;
     private volatile float packetDropRate;
-
-    /** Simulated network latency, in milliseconds. */
+    /**
+     * Simulated network latency, in milliseconds.
+     */
     private int simulatedLatency;
-
-    /** Simulated network jitter, in milliseconds. */
+    /**
+     * Simulated network jitter, in milliseconds.
+     */
     private int simulatedMaxJitter;
-
-    /** Simulated network bandwidth, in KB/sec. */
+    /**
+     * Simulated network bandwidth, in KB/sec.
+     */
     private int simulatedBandwidth;
-
     private InetAddress localAddress;
-
     private int localPort;
-
-    private boolean allowSessionExpiry = true;
-
+    private boolean allowSessionExpiry          = true;
     /**
      * The consecutive number of EXP events before the session expires.
      */
-    private int expLimit = 16;
-
+    private int     expLimit                    = 16;
+    /**
+     * The initial congestion window size, in packets.
+     */
+    private double  initialCongestionWindowSize = 16;
     /**
      * If larger than 0, the receiver should acknowledge every n'th packet.
      */
-    private int ackInterval = 16;
-
-    public static final int DEFAULT_DATAGRAM_SIZE = 1400;
-
-    private final int datagramSize = 1400;
-
+    private int     ackInterval                 = 16;
     /**
      * Microseconds to next EXP event. Default to 500 millis.
      */
-    private long expTimerInterval = 50 * Util.getSYNTime();
+    private long    expTimerInterval            = 50 * Util.getSYNTime();
 
-    /** Max ACK timer interval, in microseconds. */
+    /**
+     * Max ACK timer interval, in microseconds.
+     */
     private long maxAckTimerInterval = 10 * Util.getSYNTime();
 
-    /** Whether to collect more detailed statistics or not. */
+    /**
+     * Whether to collect more detailed statistics or not.
+     */
     private boolean deepStatistics = true;
 
     /**
      * Create a new instance.
      *
      * @param localAddress local address to bind to. null for default network interface of machine.
-     * @param localPort port to bind to. If 0, an ephemeral port is chosen.
+     * @param localPort    port to bind to. If 0, an ephemeral port is chosen.
      */
     public Config(final InetAddress localAddress, final int localPort) {
         this.localAddress = localAddress;
@@ -69,6 +71,10 @@ public class Config
 
     public int getLocalPort() {
         return localPort;
+    }
+
+    public void setLocalPort(final int localPort) {
+        this.localPort = localPort;
     }
 
     /**
@@ -119,23 +125,20 @@ public class Config
         return datagramSize;
     }
 
-    public void setExpLimit(final int expLimit)
-    {
-        if (expLimit <= 1) throw new IllegalArgumentException("expLimit must be at least 2 or greater");
-        this.expLimit = expLimit;
-    }
-
     public int getExpLimit() {
         return expLimit;
     }
 
-    public long getExpTimerInterval()
-    {
+    public void setExpLimit(final int expLimit) {
+        if (expLimit <= 1) throw new IllegalArgumentException("expLimit must be at least 2 or greater");
+        this.expLimit = expLimit;
+    }
+
+    public long getExpTimerInterval() {
         return expTimerInterval;
     }
 
-    public void setExpTimerInterval(long expTimerInterval)
-    {
+    public void setExpTimerInterval(long expTimerInterval) {
         this.expTimerInterval = expTimerInterval;
     }
 
@@ -183,8 +186,11 @@ public class Config
         this.deepStatistics = deepStatistics;
     }
 
-    public void setLocalPort(final int localPort) {
-        this.localPort = localPort;
+    public double getInitialCongestionWindowSize() {
+        return initialCongestionWindowSize;
     }
 
+    public void setInitialCongestionWindowSize(double initialCongestionWindowSize) {
+        this.initialCongestionWindowSize = initialCongestionWindowSize;
+    }
 }

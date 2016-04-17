@@ -49,7 +49,7 @@ public class BoltCongestionControl implements CongestionControl {
     /**
      * Congestion window size, in packets.
      */
-    private double congestionWindowSize = 16;
+    private double congestionWindowSize;
 
     /**
      * Number of decreases in a congestion epoch.
@@ -91,10 +91,11 @@ public class BoltCongestionControl implements CongestionControl {
      */
     private boolean loss = false;
 
-
-    public BoltCongestionControl(final SessionState sessionState, final BoltStatistics statistics) {
+    public BoltCongestionControl(final SessionState sessionState, final BoltStatistics statistics,
+                                 final double initialCongestionWindowSize) {
         this.sessionState = sessionState;
         this.statistics = statistics;
+        this.congestionWindowSize = initialCongestionWindowSize;
         this.lastDecreaseRelSeqNo = 0;
     }
 
