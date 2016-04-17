@@ -498,7 +498,7 @@ public class Receiver {
         if (seqNums.isEmpty()) return;
         final List<Integer> toSend = (seqNums.size() > 300) ? seqNums.subList(0, 300) : seqNums;
         final Nak nAckPacket = new Nak();
-        nAckPacket.addLossInfo(toSend);
+        nAckPacket.addLossList(toSend);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         endpoint.doSend(nAckPacket, sessionState);
         statistics.incNumberOfNAKSent();

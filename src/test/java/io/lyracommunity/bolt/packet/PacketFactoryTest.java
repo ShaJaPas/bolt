@@ -81,7 +81,7 @@ public class PacketFactoryTest
     public void testNegativeAcknowledgement() throws IOException {
         Nak p1 = new Nak();
         p1.setDestinationID(2);
-        p1.addLossInfo(Arrays.asList(5, 6));
+        p1.addLossList(Arrays.asList(5, 6));
         p1.addLossRange(7, 10);
         byte[] p1_data = p1.getEncoded();
 
@@ -99,7 +99,7 @@ public class PacketFactoryTest
         p1.setDestinationID(2);
         final List<Integer> loss = IntStream.of(5, 6, 7, 8, 9, 11).boxed().collect(Collectors.toList());
 
-        p1.addLossInfo(loss);
+        p1.addLossList(loss);
         final byte[] encoded = p1.getEncoded();
 
         final Nak p2 = (Nak) PacketFactory.createPacket(encoded);
@@ -113,7 +113,7 @@ public class PacketFactoryTest
     public void testNegativeAcknowledgement3() throws IOException {
         Nak p1 = new Nak();
         p1.setDestinationID(2);
-        p1.addLossInfo(Arrays.asList(5, 6));
+        p1.addLossList(Arrays.asList(5, 6));
         p1.addLossRange(147, 226);
         byte[] p1_data = p1.getEncoded();
 

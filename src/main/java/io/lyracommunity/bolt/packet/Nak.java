@@ -35,27 +35,6 @@ public class Nak extends ControlPacket {
         super(PacketType.NAK);
         lostSequenceNumbers = decode(controlInformation);
     }
-//
-//    public static void main(String[] args) {
-//        final AtomicInteger result = new AtomicInteger(0);
-//        final IntConsumer intAction = (a) -> {};
-//        final Consumer<? super Integer> boxedIntAction = (a) -> {};
-////        final Consumer<? super Integer> intAction = result::addAndGet;
-//        final Nak nak = new Nak();
-//        nak.addLossRange(600, 900);
-//        nak.addLossRange(Arrays.asList(908, 988, 1655, 1788));
-//        nak.addLossRange(SeqNum.MAX_SEQ_NUM_16_BIT - 2000, 500);
-//        final int spins = 1_000_000;
-//        Consumer<Runnable> timed = (r) -> {
-//            final long start = System.nanoTime();
-//            for (int i = 0; i < spins; i++) r.run();
-//            System.out.println("TIME:  " + ((System.nanoTime() - start) / 1_000_000) + "ms");
-//            System.out.println("RESULT:  " + result.get());
-//        };
-//        timed.accept( () -> nak.computeExpandedLossList().forEach(boxedIntAction));
-//        result.set(0);
-//        timed.accept( () -> nak.computeExpandedLossListLazy().forEach(intAction));
-//    }
 
     public IntStream computeExpandedLossList() {
         IntStream result = IntStream.empty();
@@ -105,7 +84,7 @@ public class Nak extends ControlPacket {
      *
      * @param singleRelSeqNum packet sequence number that was lost.
      */
-    private void addLossInfo(final int singleRelSeqNum) {
+    private void addLossSingle(final int singleRelSeqNum) {
         final int enc = PacketUtil.setIntBit(singleRelSeqNum, 31, false);
         lostSequenceNumbers.add(enc);
     }
@@ -119,7 +98,7 @@ public class Nak extends ControlPacket {
     public void addLossRange(final int firstReliabilitySeqNumInclusive, final int lastReliabilitySeqNumInclusive) {
         // Check if we really need an interval
         if (lastReliabilitySeqNumInclusive - firstReliabilitySeqNumInclusive == 0) {
-            addLossInfo(firstReliabilitySeqNumInclusive);
+            addLossSingle(firstReliabilitySeqNumInclusive);
         }
         else {
             // Else add an interval
@@ -133,7 +112,7 @@ public class Nak extends ControlPacket {
      *
      * @param reliabilitySeqNums a list of sequence numbers.
      */
-    public void addLossInfo(final List<Integer> reliabilitySeqNums) {
+    public void addLossList(final List<Integer> reliabilitySeqNums) {
         int index = 0;
         do {
             int start = reliabilitySeqNums.get(index);
@@ -149,7 +128,7 @@ public class Nak extends ControlPacket {
             while (end - start == c);
 
             if (end == 0) {
-                addLossInfo(start);
+                addLossSingle(start);
             }
             else {
                 end = reliabilitySeqNums.get(index - 1);

@@ -68,7 +68,7 @@ public class SenderTest {
     public void receiveNak() throws Exception {
         final int lossCount = 100;
         final Nak nak = new Nak();
-        nak.addLossInfo(IntStream.range(0, lossCount).boxed().collect(Collectors.toList()));
+        nak.addLossList(IntStream.range(0, lossCount).boxed().collect(Collectors.toList()));
 
         sut.receive(nak);
 
