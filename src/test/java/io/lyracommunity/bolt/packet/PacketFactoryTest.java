@@ -82,15 +82,15 @@ public class PacketFactoryTest
         Nak p1 = new Nak();
         p1.setDestinationID(2);
         p1.addLossInfo(Arrays.asList(5, 6));
-        p1.addLossInfo(7, 10);
+        p1.addLossRange(7, 10);
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);
         Nak p2 = (Nak) p;
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, p2.computeExpandedLossList().get(0));
-        assertEquals(6, p2.computeExpandedLossList().size());
+        assertEquals(5, p2.computeExpandedLossList().findFirst().orElse(0));
+        assertEquals(6, p2.computeExpandedLossList().count());
     }
 
     @Test
@@ -105,8 +105,8 @@ public class PacketFactoryTest
         final Nak p2 = (Nak) PacketFactory.createPacket(encoded);
         assertEquals(p1, p2);
 
-        assertEquals((Integer) 5, p2.computeExpandedLossList().get(0));
-        assertEquals(6, p2.computeExpandedLossList().size());
+        assertEquals(5, p2.computeExpandedLossList().findFirst().orElse(0));
+        assertEquals(6, p2.computeExpandedLossList().count());
     }
 
     @Test
@@ -114,7 +114,7 @@ public class PacketFactoryTest
         Nak p1 = new Nak();
         p1.setDestinationID(2);
         p1.addLossInfo(Arrays.asList(5, 6));
-        p1.addLossInfo(147, 226);
+        p1.addLossRange(147, 226);
         byte[] p1_data = p1.getEncoded();
 
         BoltPacket p = PacketFactory.createPacket(p1_data);

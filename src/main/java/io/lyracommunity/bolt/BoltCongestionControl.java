@@ -3,11 +3,12 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
+import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.stream.IntStream;
 
 
 /**
@@ -63,7 +64,7 @@ public class BoltCongestionControl implements CongestionControl {
     /**
      * Average number of NAKs per congestion.
      */
-    private long averageNACKNum;
+    private long averageNakNum;
 
     /**
      * If in slow start phase.
@@ -76,14 +77,14 @@ public class BoltCongestionControl implements CongestionControl {
     private long lastAckSeqNumber = -1;
 
     /**
-     * Max packet seq. no. sent out when last decrease happened.
+     * Max reliability sequence number, sent out when last decrease happened.
      */
-    private long lastDecreaseSeqNo;
+    private int lastDecreaseRelSeqNo;
 
     /**
      * NAK counter.
      */
-    private long nACKCount = 1;
+    private long nakCount = 1;
 
     /**
      * This flag avoids immediate rate increase after a NAK.
@@ -94,7 +95,7 @@ public class BoltCongestionControl implements CongestionControl {
     public BoltCongestionControl(final SessionState sessionState, final BoltStatistics statistics) {
         this.sessionState = sessionState;
         this.statistics = statistics;
-        this.lastDecreaseSeqNo = sessionState.getInitialSequenceNumber() - 1;
+        this.lastDecreaseRelSeqNo = 0;
     }
 
     @Override
@@ -165,8 +166,8 @@ public class BoltCongestionControl implements CongestionControl {
             // 1. If not in slow start phase, set congestion window size to product of packet arrival rate and (rtt + SYN)
             final double A = (packetArrivalRate / 1_000_000d) * (roundTripTime + Util.getSYNTimeD());
             congestionWindowSize = (long) A + 16;
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Receive rate [{}]  RTT [{}]  Set to window size [{}]", packetArrivalRate, roundTripTime, (A + 16));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Receive rate [{}]  RTT [{}]  Set to window size [{}]", packetArrivalRate, roundTripTime, (A + 16));
             }
         }
 
@@ -205,10 +206,11 @@ public class BoltCongestionControl implements CongestionControl {
     }
 
     @Override
-    public void onLoss(final List<Integer> lossInfo, final int currentMaxRelSeqNum) {
+    public void onLoss(final IntStream lossInfo, final int currentMaxRelSeqNum) {
         loss = true;
-        long firstBiggestLossSeqNo = lossInfo.get(0);
-        nACKCount++;
+        final int firstBiggestLossRelSeqNo = lossInfo.findFirst()
+                .orElseThrow(() -> new IllegalStateException("Loss info was empty"));
+        nakCount++;
         // 1) If it is in slow start phase, set inter-packet interval to 1/recvrate. Slow start ends. Stop.
         if (slowStartPhase) {
             if (packetArrivalRate > 0) {
@@ -222,28 +224,28 @@ public class BoltCongestionControl implements CongestionControl {
         }
 
         // 2) If this NAK starts a new congestion epoch
-        if (firstBiggestLossSeqNo > lastDecreaseSeqNo) {
-            // -increase inter-packet interval
+        if (SeqNum.compare16(firstBiggestLossRelSeqNo, lastDecreaseRelSeqNo) > 0) {
+            // Increase inter-packet interval.
             packetSendingPeriod = Math.ceil(packetSendingPeriod * 1.125);
-            // -Update AvgNAKNum(the average number of NAKs per congestion)
-            averageNACKNum = (int) Math.ceil(averageNACKNum * 0.875 + nACKCount * 0.125);
-            // -reset NAKCount and DecCount to 1,
-            nACKCount = 1;
+            // Update AvgNakNum (the average number of NAKs per congestion).
+            averageNakNum = (int) Math.ceil(averageNakNum * 0.875 + nakCount * 0.125);
+            // Reset NAKCount and DecCount to 1,
+            nakCount = 1;
             decCount = 1;
-            // - compute DecRandom to a random (average distribution) number between 1 and AvgNAKNum
-            decreaseRandom = (int) Math.ceil((averageNACKNum - 1) * Math.random() + 1);
-            // -Update LastDecSeq
-            lastDecreaseSeqNo = currentMaxRelSeqNum;
-            // -Stop.
+            // Compute decrease random to a random (average distribution) number between 1 and AvgNakNum.
+            decreaseRandom = (int) Math.ceil((averageNakNum - 1) * Math.random() + 1);
+            // Update last decrease sequence number.
+            lastDecreaseRelSeqNo = currentMaxRelSeqNum;
+            // Stop.
         }
         // 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
-        else if (decCount <= 5 && nACKCount == decCount * decreaseRandom) {
+        else if (decCount <= 5 && nakCount == decCount * decreaseRandom) {
             // a. Update SND period: SND = SND * 1.125;
             packetSendingPeriod = Math.ceil(packetSendingPeriod * 1.125);
             // b. Increase DecCount by 1;
             decCount++;
             // c. Record the current largest sent sequence number (LastDecSeq).
-            lastDecreaseSeqNo = currentMaxRelSeqNum;
+            lastDecreaseRelSeqNo = currentMaxRelSeqNum;
         }
 
         statistics.setSendPeriod(packetSendingPeriod);

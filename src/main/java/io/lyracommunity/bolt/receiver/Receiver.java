@@ -175,7 +175,7 @@ public class Receiver {
 
                 while (!sessionState.isActive()) Thread.sleep(10);
 
-                LOG.info("STARTING RECEIVER for {}", sessionState);
+                LOG.info("Starting Receiver for {}", sessionState);
                 nextACK = Util.getCurrentTime() + ackTimerInterval;
                 nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
                 nextEXP = Util.getCurrentTime() + 2 * config.getExpTimerInterval();
@@ -190,7 +190,7 @@ public class Receiver {
                 LOG.error("Unexpected receiver exception", ex);
                 subscriber.onError(ex);
             }
-            LOG.info("STOPPING RECEIVER for {}", sessionState);
+            LOG.info("Stopping Receiver for {}", sessionState);
             subscriber.onCompleted();
         });
     }
@@ -421,7 +421,9 @@ public class Receiver {
         ReceiveBuffer.OfferResult OK = receiveBuffer.offer(dp);
         if (!OK.success) {
             if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
-            LOG.debug("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
+            }
             return;
         }
 
@@ -478,7 +480,7 @@ public class Receiver {
      */
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
         final Nak nAckPacket = new Nak();
-        nAckPacket.addLossInfo(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
+        nAckPacket.addLossRange(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
         for (int i = SeqNum.increment16(largestReceivedRelSeqNumber);

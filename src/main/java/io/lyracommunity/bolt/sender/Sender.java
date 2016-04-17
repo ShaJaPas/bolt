@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -23,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 
 /**
@@ -199,8 +199,7 @@ public class Sender {
 
         boolean complete = false;
         while (!complete) {
-            complete = flowWindow.tryProduce(src);
-            if (!complete) Thread.sleep(1);
+            complete = flowWindow.tryProduce(src, 100, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -288,15 +287,13 @@ public class Sender {
      * @param nak NAK packet received.
      */
     private void onNakReceived(final Nak nak) {
-        final List<Integer> lostRelSeqNums = nak.computeExpandedLossList();
-        for (final Integer i : lostRelSeqNums) {
-            senderLossList.insert(i);
-        }
-        cc.onLoss(lostRelSeqNums, getCurrentReliabilitySequenceNumber());
+        final IntStream lostRelSeqNums = nak.computeExpandedLossList();
+        lostRelSeqNums.forEach(senderLossList::insert);
+        cc.onLoss(nak.computeExpandedLossList(), getCurrentReliabilitySequenceNumber());
         statistics.incNumberOfNAKReceived();
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("NAK for {} packets lost, set send period to {}", lostRelSeqNums.size(), cc.getSendInterval());
+            LOG.debug("NAK for {} packets lost, set send period to {}", cc.getSendInterval());
         }
     }
 

@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt;
 
-import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Congestion control interface.
@@ -63,7 +63,7 @@ public interface CongestionControl {
      * @param lossInfo            list of sequence number of packets.
      * @param currentMaxRelSeqNum the current highest reliability seq num.
      */
-    void onLoss(List<Integer> lossInfo, int currentMaxRelSeqNum);
+    void onLoss(IntStream lossInfo, int currentMaxRelSeqNum);
 
     /**
      * Callback function to be called when a Bolt connection is closed.

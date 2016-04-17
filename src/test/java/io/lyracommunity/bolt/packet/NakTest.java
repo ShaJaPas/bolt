@@ -21,7 +21,7 @@ public class NakTest {
 
             final int start = SeqNum.MAX_SEQ_NUM_16_BIT - 1 - r.nextInt(1000);
             final int end = (start + 1 + r.nextInt(10_000)) % SeqNum.MAX_SEQ_NUM_16_BIT;
-            nack.addLossInfo(start, end);
+            nack.addLossRange(start, end);
             final byte[] encoded = nack.getEncoded();
 
             final Nak mirror = (Nak) PacketFactory.createPacket(encoded);

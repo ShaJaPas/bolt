@@ -78,14 +78,14 @@ public class ReceiveBuffer
                     return OfferResult.ERROR_LOOKAHEAD;
                 }
             }
-            return insert(data);
+            return insertAndSignal(data);
         }
         finally {
             lock.unlock();
         }
     }
 
-    private OfferResult insert(DataPacket data) {
+    private OfferResult insertAndSignal(DataPacket data) {
         if (duplicateDetector.receivePacket(data)) {
             return OfferResult.ERROR_DUPLICATE;
         }

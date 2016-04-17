@@ -132,7 +132,7 @@ public abstract class ControlPacket implements BoltPacket {
      *
      * @return the encoded header byte array.
      */
-    public byte[] getHeader() {
+    byte[] getHeader() {
         byte[] res = new byte[CONTROL_HEADER_LENGTH];
         System.arraycopy(PacketUtil.encodeControlPacketType(controlPacketType), 0, res, 0, 4);
         System.arraycopy(PacketUtil.encode(getAdditionalInfo()), 0, res, 4, 4);

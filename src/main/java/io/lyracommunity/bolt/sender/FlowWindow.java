@@ -2,6 +2,8 @@ package io.lyracommunity.bolt.sender;
 
 import io.lyracommunity.bolt.packet.DataPacket;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -14,10 +16,11 @@ class FlowWindow {
 
     private final DataPacket[] packets;
 
-    private final int length;
+    private final int           length;
     private final ReentrantLock lock;
+    private final Condition     notFull;
     private volatile boolean isEmpty = true;
-    private volatile boolean isFull = false;
+    private volatile boolean isFull  = false;
 
     /**
      * Valid entries that can be read.
@@ -32,7 +35,7 @@ class FlowWindow {
     /**
      * One before the index where the next data packet will be read from.
      */
-    private volatile int readPos = -1;
+    private volatile int readPos  = -1;
     private volatile int consumed = 0;
     private volatile int produced = 0;
 
@@ -48,14 +51,18 @@ class FlowWindow {
             packets[i].setData(new byte[chunkSize]);
         }
         this.lock = new ReentrantLock(true);
+        this.notFull = lock.newCondition();
     }
 
-    boolean tryProduce(final DataPacket src) {
+    boolean tryProduce(final DataPacket src, final int timeout, final TimeUnit unit) throws InterruptedException {
         // Do quick check before locking for performance.
-        if (isFull) return false;
         lock.lock();
         try {
-            if (isFull) return false;
+            long nanos = unit.toNanos(timeout);
+            while (isFull) {
+                if (nanos <= 0) return false;
+                nanos = notFull.awaitNanos(nanos);
+            }
 
             final DataPacket toProduce = packets[writePos];
             toProduce.copyFrom(src);
@@ -87,6 +94,7 @@ class FlowWindow {
             isEmpty = validEntries == 0;
             isFull = false;
             ++consumed;
+            notFull.signal();
             return p;
         }
         finally {

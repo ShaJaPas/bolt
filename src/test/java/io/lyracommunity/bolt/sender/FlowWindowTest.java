@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.*;
@@ -21,12 +22,12 @@ public class FlowWindowTest
     public void testFillWindow() throws InterruptedException, TimeoutException {
         FlowWindow fw = new FlowWindow(3, 128);
 
-        assertTrue(fw.tryProduce(createPacket(1, 1)));
-        assertTrue(fw.tryProduce(createPacket(2, 1)));
-        assertTrue(fw.tryProduce(createPacket(3, 1)));
+        assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(3, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.isFull());
 
-        assertFalse("Window should be full", fw.tryProduce(createPacket(1, 1)));
+        assertFalse("Window should be full", fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.isFull());
 
         assertEquals(1, fw.consumeData().getClassID());
@@ -37,12 +38,39 @@ public class FlowWindowTest
     }
 
     @Test
+    public void ConsumedFromFullWindow_ProducerWaitingForSignal_ProducerIsNotified() throws Exception {
+        FlowWindow fw = new FlowWindow(3, 128);
+
+        assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(3, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.isFull());
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(10);
+                fw.consumeData();
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        assertTrue(fw.tryProduce(createPacket(1, 1), 100, TimeUnit.MILLISECONDS));
+
+        assertEquals(2, fw.consumeData().getClassID());
+        assertEquals(3, fw.consumeData().getClassID());
+        assertEquals(1, fw.consumeData().getClassID());
+
+        assertTrue(fw.isEmpty());
+    }
+
+    @Test
     public void testOverflow() throws InterruptedException, TimeoutException {
         FlowWindow fw = new FlowWindow(3, 64);
 
-        assertTrue(fw.tryProduce(createPacket(1, 1)));
-        assertTrue(fw.tryProduce(createPacket(2, 1)));
-        assertTrue(fw.tryProduce(createPacket(3, 1)));
+        assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
+        assertTrue(fw.tryProduce(createPacket(3, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.isFull());
 
         // Read one
@@ -50,10 +78,10 @@ public class FlowWindowTest
         assertFalse(fw.isFull());
 
         // Now a slot for writing should be free again
-        assertTrue(fw.tryProduce(createPacket(4, 1)));
+        assertTrue(fw.tryProduce(createPacket(4, 1), 10, TimeUnit.MILLISECONDS));
         fw.consumeData();
 
-        assertTrue(fw.tryProduce(createPacket(1, 1)));
+        assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
 
         assertEquals(3, fw.consumeData().getClassID());
         assertEquals(4, fw.consumeData().getClassID());
@@ -117,7 +145,7 @@ public class FlowWindowTest
         try {
             for (int i = 0; i < N; i++) {
                 boolean complete = false;
-                while (!complete) complete = fw.tryProduce(createPacket(i, 10));
+                while (!complete) complete = fw.tryProduce(createPacket(i, 10), 10, TimeUnit.MILLISECONDS);
             }
         }
         catch (Exception ex) {
