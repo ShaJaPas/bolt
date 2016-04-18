@@ -2,14 +2,12 @@ package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.CongestionControl;
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
-import io.lyracommunity.bolt.packet.BoltPacket;
-import io.lyracommunity.bolt.packet.ConnectionHandshake;
-import io.lyracommunity.bolt.packet.DataPacket;
-import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.*;
 import io.lyracommunity.bolt.packet.Shutdown;
+import io.lyracommunity.bolt.receiver.EventTimers;
 import io.lyracommunity.bolt.receiver.Receiver;
 import io.lyracommunity.bolt.sender.Sender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
@@ -148,7 +146,7 @@ public abstract class Session
         this.assembleBuffer = new MessageAssembleBuffer();
 
         this.sender = new Sender(config, state, endpoint, cc, statistics);
-        this.receiver = new Receiver(config, state, endpoint, sender, statistics);
+        this.receiver = new Receiver(config, state, endpoint, sender, statistics, new EventTimers(config));
     }
 
     public abstract void received(BoltPacket packet, Subscriber subscriber);

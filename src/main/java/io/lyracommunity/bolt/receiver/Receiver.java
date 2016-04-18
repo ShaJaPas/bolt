@@ -39,10 +39,6 @@ public class Receiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(Receiver.class);
 
-    /**
-     * Milliseconds to timeout a new session that stays idle.
-     */
-    private static final long IDLE_TIMEOUT = 3 * 1000;
 
     private final ChannelOut     endpoint;
     private final SessionState   sessionState;
@@ -72,12 +68,6 @@ public class Receiver {
      */
     private final PacketPairWindow packetPairWindow;
 
-    // EXP event related
-    /**
-     * Instant when the session was created (for expiry checking).
-     */
-    private final long sessionUpSince;
-
     /**
      * Buffer size for storing data.
      */
@@ -89,6 +79,7 @@ public class Receiver {
     private final BlockingQueue<BoltPacket> handOffQueue;
     private final Config                    config;
     private final ReceiveBuffer             receiveBuffer;
+    private final EventTimers               timers;
     /**
      * Round trip time, calculated from ACK/ACK2 pairs.
      */
@@ -114,28 +105,10 @@ public class Receiver {
      */
     private volatile long largestAcknowledgedAckNumber = -1;
     /**
-     * Record number of consecutive EXP time-out events.
-     */
-    private volatile long expCount                     = 0;
-    /**
-     * to check the ACK, NAK, or EXP timer
-     */
-    private long nextACK;
-    /**
-     * Microseconds to next ACK event.
-     */
-    private long ackTimerInterval = Util.getSYNTime();
-    /**
-     * Microseconds to next NAK event.
-     */
-    private long nakTimerInterval = Util.getSYNTime();
-    private long nextNAK;
-    private long nextEXP;
-    /**
      * Number of reliable received data packets.
      */
-    private          int reliableN         = 0;
-    private volatile int ackSequenceNumber = 0;
+    private          int  reliableN                    = 0;
+    private volatile int  ackSequenceNumber            = 0;
 
     /**
      * Create a receiver with a valid {@link Session}.
@@ -144,16 +117,17 @@ public class Receiver {
      * @param sessionState the owning session state.
      * @param endpoint     the network endpoint.
      * @param sender       the matching sender.
-     * @param statistics
+     * @param statistics   statistics for the session.
+     * @param timers       the ACK/NAK/EXP event timers.
      */
     public Receiver(final Config config, final SessionState sessionState, final ChannelOut endpoint,
-                    final Sender sender, final BoltStatistics statistics) {
+                    final Sender sender, final BoltStatistics statistics, EventTimers timers) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
         this.sender = sender;
         this.config = config;
-        this.sessionUpSince = System.currentTimeMillis();
         this.statistics = statistics;
+        this.timers = timers;
         this.ackHistoryWindow = new AckHistoryWindow(16);
         this.packetHistoryWindow = new PacketHistoryWindow(16);
         this.receiverLossList = new ReceiverLossList();
@@ -176,9 +150,7 @@ public class Receiver {
                 while (!sessionState.isActive()) Thread.sleep(10);
 
                 LOG.info("Starting Receiver for {}", sessionState);
-                nextACK = Util.getCurrentTime() + ackTimerInterval;
-                nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
-                nextEXP = Util.getCurrentTime() + 2 * config.getExpTimerInterval();
+                timers.init();
                 while (!subscriber.isUnsubscribed()) {
                     receiverAlgorithm(subscriber);
                 }
@@ -247,7 +219,7 @@ public class Receiver {
 
         if (packet != null) {
             // Reset EXP count for any packet.
-            resetEXPCount();
+            timers.resetEXPCount();
 
             statistics.beginProcess();
             processPacket(packet);
@@ -256,22 +228,13 @@ public class Receiver {
     }
 
     private void checkTimers(final Subscriber<? super Object> subscriber) throws IOException {
-        // Check ACK timer.
         final long currentTime = Util.getCurrentTime();
-        if (nextACK < currentTime) {
-            nextACK = currentTime + ackTimerInterval;
-            processACKEvent(true);
-        }
+        // Check ACK timer.
+        if (timers.checkIsNextAck(currentTime)) processACKEvent(true);
         // Check NAK timer.
-        if (nextNAK < currentTime) {
-            nextNAK = currentTime + nakTimerInterval;
-            processNAKEvent();
-        }
+        if (timers.checkIsNextNak(currentTime)) processNAKEvent();
         // Check EXP timer.
-        if (nextEXP < currentTime) {
-            nextEXP = currentTime + config.getExpTimerInterval();
-            processEXPEvent(subscriber);
-        }
+        if (timers.checkIsNextExp(currentTime)) processEXPEvent(subscriber);
     }
 
     /**
@@ -380,21 +343,14 @@ public class Receiver {
         if (!sessionState.isActive()) return;
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
-        if (isSessionExpired() && !subscriber.isUnsubscribed()) {
+        if (timers.isSessionExpired() && !subscriber.isUnsubscribed()) {
             LOG.error("Session {} expired.", sessionState);
             subscriber.onError(new IllegalStateException("Session expired."));
         }
         else if (!sender.haveLostPackets()) {
             sendKeepAlive();
         }
-        expCount++;
-    }
-
-    private boolean isSessionExpired() {
-        return config.isAllowSessionExpiry()
-                && expCount > config.getExpLimit()
-                ;
-//                && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
+        timers.incrementExpCount();
     }
 
     private void processPacket(final BoltPacket p) throws IOException {
@@ -408,7 +364,7 @@ public class Receiver {
             final PacketType packetType = p.getPacketType();
             // If this is an ACK or NAK control packet, reset the EXP timer.
             if (PacketType.NAK == packetType || PacketType.ACK == packetType) {
-                resetEXPTimer();
+                timers.resetEXPTimer();
             }
             else if (p.getPacketType() == PacketType.ACK2) {
                 final Ack2 ack2 = (Ack2) p;
@@ -447,7 +403,7 @@ public class Receiver {
         if (dp.isReliable()) {
             reliableN++;
             final int relSeqNum = dp.getReliabilitySeqNumber();
-            // 6) Number of detected lossed packet
+            // 6) Number of detected lost packet
             if (SeqNum.compare16(relSeqNum, SeqNum.increment16(largestReceivedRelSeqNumber)) > 0) {
                 // 6.a) If the number of the current data packet is greater than LSRN + 1,
                 // put all the sequence numbers between (but excluding) these two values
@@ -495,9 +451,10 @@ public class Receiver {
         statistics.incNumberOfNAKSent();
     }
 
-    private void sendNAK(final List<Integer> seqNums) throws IOException {
-        if (seqNums.isEmpty()) return;
-        final List<Integer> toSend = (seqNums.size() > 300) ? seqNums.subList(0, 300) : seqNums;
+    private void sendNAK(final List<Integer> reliabilitySeqNumbers) throws IOException {
+        if (reliabilitySeqNumbers.isEmpty()) return;
+        final List<Integer> toSend = (reliabilitySeqNumbers.size() > 300)
+                ? reliabilitySeqNumbers.subList(0, 300) : reliabilitySeqNumbers;
         final Nak nAckPacket = new Nak();
         nAckPacket.addLossList(toSend);
         nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
@@ -545,18 +502,15 @@ public class Receiver {
     private void onAck2PacketReceived(Ack2 ack2) {
         final AckHistoryEntry entry = ackHistoryWindow.getEntry(ack2.getAckSequenceNumber());
         if (entry != null) {
-            long ackNumber = entry.getAckNumber();
+            final long ackNumber = entry.getAckNumber();
             largestAcknowledgedAckNumber = Math.max(ackNumber, largestAcknowledgedAckNumber);
 
-            long rtt = entry.getAge();
-            if (roundTripTime > 0) roundTripTime = (roundTripTime * 7 + rtt) / 8;
-            else roundTripTime = rtt;
+            final long rtt = entry.getAge();
+            roundTripTime = (roundTripTime > 0) ? ((roundTripTime * 7 + rtt) / 8) : rtt;
             roundTripTimeVar = (roundTripTimeVar * 3 + Math.abs(roundTripTimeVar - rtt)) / 4;
-            ackTimerInterval = 4 * roundTripTime + roundTripTimeVar + Util.getSYNTime();
-            if (config.getMaxAckTimerInterval() > 0) {
-                ackTimerInterval = Math.min(config.getMaxAckTimerInterval(), ackTimerInterval);
-            }
-            nakTimerInterval = ackTimerInterval;
+
+            // Calculate ack timer interval and update timer with this.
+            timers.updateTimerIntervals(roundTripTime, roundTripTimeVar);
             statistics.setRTT(roundTripTime, roundTripTimeVar);
         }
     }
@@ -565,14 +519,6 @@ public class Receiver {
         final KeepAlive ka = new KeepAlive();
         ka.setDestinationID(sessionState.getDestinationSocketID());
         endpoint.doSend(ka, sessionState);
-    }
-
-    private void resetEXPTimer() {
-        nextEXP = Util.getCurrentTime() + config.getExpTimerInterval();
-    }
-
-    private void resetEXPCount() {
-        expCount = 1;
     }
 
     public String toString() {

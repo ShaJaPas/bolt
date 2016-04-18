@@ -56,7 +56,7 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
     /**
      * Order by increasing sequence number.
      */
-    public int compareTo(ReceiverLossListEntry o) {
+    public int compareTo(final ReceiverLossListEntry o) {
         return SeqNum.compare16(sequenceNumber, o.sequenceNumber);
     }
 
