@@ -13,8 +13,7 @@ import java.util.Objects;
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class PacketCodec<T> implements Codec<T, List<DataPacket>>
-{
+public class PacketCodec<T> implements Codec<T, List<DataPacket>> {
 
     // TODO consider changing 1400 to a variable MTU
     private final int maxPacketSize = Config.DEFAULT_DATAGRAM_SIZE - DataPacket.MAX_HEADER_SIZE;
@@ -23,8 +22,7 @@ public class PacketCodec<T> implements Codec<T, List<DataPacket>>
 
     private DeliveryType deliveryType;
 
-    public PacketCodec(final ObjectCodec<T> objectCodec)
-    {
+    public PacketCodec(final ObjectCodec<T> objectCodec) {
         this(objectCodec, DeliveryType.RELIABLE_ORDERED_MESSAGE);
     }
 
@@ -41,17 +39,26 @@ public class PacketCodec<T> implements Codec<T, List<DataPacket>>
      * @return decoded object, or null if packet was a chunk of a yet incomplete message.
      */
     @Override
-    public T decode(final List<DataPacket> data)
-    {
-        // TODO this method needs testing (include performance testing).
-        final int byteCount = data.stream().map(d -> d.getData().length).reduce(0, (acc, x) -> acc + x);
-        final byte[] bytes = new byte[byteCount];
-        data.stream().map(DataPacket::getData).reduce(0, (acc, x) -> {
-            System.arraycopy(x, 0, bytes, acc, x.length);
-            return acc + x.length;
-        }, (a, b) -> a + b);
+    public T decode(final List<DataPacket> data) {
+        if (data.size() == 1) {
+            return objectCodec.decode(data.get(0).getData());
+        }
+        else {
+            // Get total bytes in object.
+            int byteCount = 0;
+            for (DataPacket p : data) byteCount += p.getDataLength();
 
-        return objectCodec.decode(bytes);
+            // Copy all data packets into single byte array.
+            final byte[] bytes = new byte[byteCount];
+            int destPos = 0;
+            for (DataPacket p : data) {
+                System.arraycopy(p.getData(), 0, bytes, destPos, p.getDataLength());
+                destPos += p.getDataLength();
+            }
+
+            // Decode byte array into object.
+            return objectCodec.decode(bytes);
+        }
     }
 
     /**
@@ -63,7 +70,7 @@ public class PacketCodec<T> implements Codec<T, List<DataPacket>>
     @Override
     public List<DataPacket> encode(final T object) throws BoltException {
         final byte[] bytes = objectCodec.encode(object);
-        final int chunkCount = (int) Math.ceil(bytes.length / (double)maxPacketSize);
+        final int chunkCount = (int) Math.ceil(bytes.length / (double) maxPacketSize);
         final DeliveryType computedDeliveryType = computeDeliveryType(chunkCount);
 
         validateEncoding(chunkCount, computedDeliveryType);

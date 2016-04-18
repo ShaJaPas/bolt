@@ -4,8 +4,9 @@ import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.codec.ObjectCodec;
 import io.lyracommunity.bolt.codec.PacketCodec;
 import io.lyracommunity.bolt.packet.DeliveryType;
-import io.lyracommunity.bolt.packet.PacketUtil;
 
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -67,22 +68,29 @@ public class TestObjects {
         final ObjectCodec<T> o = new ObjectCodec<T>() {
             @Override
             public T decode(byte[] data) {
-                final List<Integer> ints = new ArrayList<>();
-                for (int i = 0; i < data.length; i += 4) ints.add(PacketUtil.decodeInt(data, i));
+                final List<Integer> ints = new ArrayList<>(data.length * 4);
+                IntBuffer ib = ByteBuffer.wrap(data).asIntBuffer();
+                while (ib.hasRemaining()) {
+                    ints.add(ib.get());
+                }
                 return constructor.apply(ints);
             }
 
             @Override
             public byte[] encode(T t) {
-                final byte[] encoded = new byte[t.getData().size() * 4];
-                for (int i = 0; i < t.getData().size(); i++) {
-                    System.arraycopy(PacketUtil.encodeInt(t.getData().get(i)), 0, encoded, i * 4, 4);
-                }
-                return encoded;
+                ByteBuffer ib = ByteBuffer.allocate(t.getData().size() * 4);
+                for (Integer i : t.getData()) ib.putInt(i);
+                return ib.array();
             }
         };
         return new PacketCodec<>(o, deliveryType);
     }
+
+    public static void main(String[] args) {
+
+    }
+
+    private static final byte[] dd = TestData.getRandomData(1200);
 
     public static class BaseDataClass {
         private final List<Integer> data;
@@ -92,7 +100,7 @@ public class TestObjects {
         }
 
         public BaseDataClass(final List<Integer> data) {
-            this.data = new ArrayList<>(data);
+            this.data = data;
         }
 
         public List<Integer> getData() {

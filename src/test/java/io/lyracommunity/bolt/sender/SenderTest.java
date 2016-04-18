@@ -123,6 +123,7 @@ public class SenderTest {
             // Now wait until send has occurred.
             for (int i = 0; i < 100 && endpoint.sendCountOfType(PacketType.DATA) == 0; i++) Thread.sleep(5);
             sut.receive(nak);
+            for (int i = 0; i < 200 && endpoint.sendCountOfType(PacketType.DATA) == 1; i++) Thread.sleep(5);
 
             // Then
             assertEquals(2, endpoint.sendCountOfType(PacketType.DATA));

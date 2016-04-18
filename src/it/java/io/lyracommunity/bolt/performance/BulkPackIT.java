@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt.performance;
 
 import io.lyracommunity.bolt.helper.Infra;
+import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
@@ -21,6 +22,13 @@ public class BulkPackIT
 
     private final AtomicInteger received = new AtomicInteger(0);
 
+
+    @Test
+    public void testBulkPackets_rawData() throws Throwable {
+        doTest(true, TestData.getRandomData(SIZE * 4));
+
+        assertEquals(PACKET_COUNT, received.get());
+    }
 
     @Test
     public void testBulkPackets_reliableOrdered() throws Throwable {

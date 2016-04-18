@@ -2,6 +2,7 @@ package io.lyracommunity.bolt.codec;
 
 import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.helper.PerfSupport;
 import io.lyracommunity.bolt.helper.TestObjects.BaseDataClass;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.DeliveryType;
@@ -29,12 +30,12 @@ public class PacketCodecTest {
 
     @Before
     public void setUp() throws Exception {
-        setUp(DeliveryType.RELIABLE_ORDERED_MESSAGE);
+        setUp(DeliveryType.RELIABLE_ORDERED_MESSAGE, DEFAULT_DATA_COUNT);
     }
 
-    private void setUp(final DeliveryType delivery) {
+    private void setUp(final DeliveryType delivery, final int sizeInInts) {
         sut = createPacketCodec(delivery, BaseDataClass::new);
-        o = new BaseDataClass(DEFAULT_DATA_COUNT);
+        o = new BaseDataClass(sizeInInts);
         encoded = sut.encode(o);
     }
 
@@ -48,7 +49,7 @@ public class PacketCodecTest {
 
     @Test (expected = BoltException.class)
     public void encodeToMultiplePacketsWithNonMessageDelivery_NotAllowed() throws Exception {
-        setUp(DeliveryType.RELIABLE_ORDERED);
+        setUp(DeliveryType.RELIABLE_ORDERED, DEFAULT_DATA_COUNT);
 
         sut.encode(o);
 
@@ -61,5 +62,16 @@ public class PacketCodecTest {
 
         assertEquals(4, packets.size());
     }
+
+//    @Test
+    public void decodePerformanceTest() throws Exception {
+
+        final int sizeInInts = 300;
+        final int iterations = 1_000_000;
+        setUp(DeliveryType.RELIABLE_ORDERED_MESSAGE, sizeInInts);
+
+        PerfSupport.timed( () -> sut.decode(encoded), iterations);
+    }
+
 
 }
