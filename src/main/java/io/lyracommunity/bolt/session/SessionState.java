@@ -36,7 +36,6 @@ public class SessionState {
      */
     private int flowWindowSize = 1024 * 10;
 
-    // TODO review whether statstics belongs to this class or outside
     /**
      * Initial packet sequence number.
      */
