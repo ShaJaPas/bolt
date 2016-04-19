@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static io.lyracommunity.bolt.helper.TestSupport.sleepUnchecked;
@@ -32,6 +33,26 @@ public class ConnectivityIT {
             i.start().awaitCompletion(1, TimeUnit.MINUTES);
 
             assertEquals(1, i.server().receivedOf(PeerDisconnected.class));
+        }
+    }
+
+    @Test
+    public void testServerReactionToMultiClientExpiry() throws Throwable {
+        final int clientCount = 2;
+        final AtomicInteger connected = new AtomicInteger(0);
+        Infra.Builder builder = Infra.Builder.withServerAndClients(clientCount)
+                .preconfigureServer(s -> s.config().setExpTimerInterval(10_000))
+                .onReadyServer((ts, evt) -> {
+                    if (connected.incrementAndGet() == clientCount) {
+                        ts.server.config().setPacketLoss(1f);
+                    }
+                })
+                .setWaitCondition(inf -> inf.server().receivedOf(PeerDisconnected.class) < clientCount);
+
+        try (Infra i = builder.build()) {
+            i.start().awaitCompletion(1, TimeUnit.MINUTES);
+
+            assertEquals(clientCount, i.server().receivedOf(PeerDisconnected.class));
         }
     }
 
