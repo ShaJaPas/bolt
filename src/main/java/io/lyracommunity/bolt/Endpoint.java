@@ -21,8 +21,8 @@ import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 
 /**
- * The UDPEndpoint takes care of sending and receiving UDP network packets,
- * dispatching them to the correct {@link Session}
+ * The Endpoint takes care of sending and receiving UDP network packets,
+ * dispatching them to the {@link SessionController}.
  */
 public class Endpoint implements ChannelOut {
 

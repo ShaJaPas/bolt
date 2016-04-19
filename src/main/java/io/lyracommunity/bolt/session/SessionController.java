@@ -23,7 +23,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Created by keen on 19/04/16.
+ * The SessionController acts a front controller for all received packets.
+ * <p>
+ * The handshake negotiation process is handled here. Once a session is
+ * successfully negotiated, the controller is also responsible for
+ * dispatching packets to that session
+ *
+ * @author Cian O'Mahony
  */
 public class SessionController {
 
@@ -93,8 +99,7 @@ public class SessionController {
 
 
     /**
-     * Called when a "connection handshake" packet was received and no
-     * matching session yet exists.
+     * Called whenever a connection handshake packet was received.
      *
      * @param packet   the received handshake packet.
      * @param peer     peer that sent the handshake.
