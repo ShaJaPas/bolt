@@ -99,11 +99,10 @@ public class SessionController {
      * @param packet   the received handshake packet.
      * @param peer     peer that sent the handshake.
      * @param endpoint the UDP endpoint.
-     * @return true if connection is ready to start, otherwise false.
      */
-    private synchronized Session connectionHandshake(final Subscriber<? super Object> subscriber,
-                                                     final ConnectionHandshake packet, final Destination peer,
-                                                     final ChannelOut endpoint) {
+    private synchronized void connectionHandshake(final Subscriber<? super Object> subscriber,
+                                                  final ConnectionHandshake packet, final Destination peer,
+                                                  final ChannelOut endpoint) {
         final int destID = packet.getDestinationID();
         Session session = getSession(destID);
         if (session == null) {
@@ -121,7 +120,7 @@ public class SessionController {
             }
             else if (destID > 0) {  // Ignore dest == 0, as it must be a duplicate client initial handshake packet.
                 LOG.warn("Destination ID sent by client does not match");
-                return null;
+                return;
             }
             final Integer peerSocketID = packet.getSocketID();
             peer.setSocketID(peerSocketID);
@@ -134,7 +133,6 @@ public class SessionController {
             sessionSubscriptions.put(destID, sessionSubscription);
             subscriber.onNext(new ConnectionReady(session));
         }
-        return session;
     }
 
     public void addSession(final Integer destinationID, final Session session) {
