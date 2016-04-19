@@ -134,7 +134,7 @@ public class ReceiveBuffer
     /**
      * Return a data chunk, guaranteed to be in-order.
      */
-    DataPacket poll() {
+    public DataPacket poll() {
         if (numValidChunks.get() == 0) {
             return null;
         }

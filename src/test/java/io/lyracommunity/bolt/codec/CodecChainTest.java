@@ -18,7 +18,7 @@ public class CodecChainTest {
 
 
 
-    @Test
+//    @Test
     public void performanceTest() {
         final int spins = 1_000_000;
         CodecRepository r = CodecRepository.basic();

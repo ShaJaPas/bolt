@@ -6,6 +6,7 @@ import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestData;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.Session;
+import io.lyracommunity.bolt.session.SessionController;
 import org.junit.Test;
 import rx.Subscription;
 import rx.observers.TestSubscriber;
@@ -21,8 +22,7 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class UdpEndpointIT
-{
+public class UdpEndpointIT {
 
 
     @Test
@@ -30,7 +30,9 @@ public class UdpEndpointIT
         final int numPackets = 50 + new Random().nextInt(50);
         final int serverPort = PortUtil.nextServerPort();
 
-        final Endpoint server = new Endpoint("ServerEndpoint", new Config(InetAddress.getByName("localhost"), serverPort));
+        final Config serverConf = new Config(InetAddress.getByName("localhost"), serverPort);
+        final SessionController serverSessions = new SessionController(serverConf, true);
+        final Endpoint server = new Endpoint("ServerEndpoint", serverConf, serverSessions);
         final Subscription sub = server.start()
                 .observeOn(Schedulers.computation())
                 .subscribe();
@@ -44,16 +46,16 @@ public class UdpEndpointIT
         boolean done = false;
         while (!done) {
             Thread.sleep(10);
-            List<Session> sessions = new ArrayList<>(server.getSessions());
+            List<Session> sessions = new ArrayList<>(serverSessions.getSessions());
             Session s = sessions.isEmpty() ? null : sessions.get(0);
             done = (s != null && s.isStarted() && s.getStatistics().getNumberOfReceivedDataPackets() >= numPackets);
         }
 
         System.out.println(cli.client.getStatistics());
-        System.out.println(server.getSessions().iterator().next().getStatistics());
+        System.out.println(serverSessions.getSessions().iterator().next().getStatistics());
 
         int sent = cli.client.getStatistics().getNumberOfSentDataPackets();
-        int received = server.getSessions().iterator().next().getStatistics().getNumberOfReceivedDataPackets();
+        int received = serverSessions.getSessions().iterator().next().getStatistics().getNumberOfReceivedDataPackets();
         assertEquals(numPackets, sent);
         assertEquals(numPackets, received);
 
@@ -72,7 +74,8 @@ public class UdpEndpointIT
         final int serverPort = PortUtil.nextServerPort();
         final int clientPort = PortUtil.nextClientPort();
         InetAddress localhost = InetAddress.getByName("localhost");
-        Endpoint endpoint = new Endpoint("Endpoint", new Config(localhost, serverPort));
+        final Config serverConf = new Config(localhost, serverPort);
+        Endpoint endpoint = new Endpoint("Endpoint", serverConf, new SessionController(serverConf, true));
         Subscription sub = endpoint.start().subscribe();
         Destination d1 = new Destination(localhost, clientPort);
         final int dataSize = Config.DEFAULT_DATAGRAM_SIZE;
@@ -103,7 +106,8 @@ public class UdpEndpointIT
 
     @Test
     public void testBindToAnyPort() throws Exception {
-        final Endpoint ep = new Endpoint("Endpoint", new Config(InetAddress.getByName("localhost"), 0));
+        final Config conf = new Config(InetAddress.getByName("localhost"), 0);
+        final Endpoint ep = new Endpoint("Endpoint", conf, new SessionController(conf, true));
         final int port = ep.getLocalPort();
         ep.stop(new TestSubscriber<>());
         assertTrue(port > 0);

@@ -216,6 +216,10 @@ public abstract class Session
         return receiver.pollReceiveBuffer(timeout, unit);
     }
 
+    public DataPacket pollReceiveBuffer() {
+        return receiver.pollReceiveBuffer();
+    }
+
     /**
      * Close the connection.
      *

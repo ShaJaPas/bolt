@@ -171,6 +171,10 @@ public class Receiver {
         return receiveBuffer.poll(timeout, unit);
     }
 
+    public DataPacket pollReceiveBuffer() {
+        return receiveBuffer.poll();
+    }
+
     /**
      * Packets are written by the endpoint.
      */

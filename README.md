@@ -2,21 +2,21 @@ Bolt UDP
 ==============
 
 **TODO**
-- [X] Reliable/Unreliable packets
-- [X] In-order and out-of-order delivery
-- [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - 65536 values - not safe enough)
-- [ ] Review all thread sleeps in production code
-- [ ] Optimize bandwidth limit pipe polling
 - [ ] Single Sender/Receiver threads
-- [X] Improve computed NAK seq numbers memory consumption
+- [ ] Review all thread sleeps in production code
+- [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - 65536 values - not safe enough)
+- [ ] Optimize bandwidth limit pipe polling
 - [ ] Compatibility version
-- [X] Improve handshake completion time
-- [X] Improve receiver performance
 - [ ] Rendezvous mode
 - [ ] Discoverable MTU
+- [ ] Retransmit strategy (aggressive, on NAK)
+- [X] Reliable/Unreliable packets
+- [X] In-order and out-of-order delivery
+- [X] Improve computed NAK seq numbers memory consumption
+- [X] Improve handshake completion time
+- [X] Improve receiver performance
 - [X] Message assembly/disassembly
 - [X] Delivery strategy
-- [ ] Retransmit strategy (aggressive, on NAK)
 - [X] Trim control and data packets
 - [X] Simulated packet-loss
 - [X] Simulated latency

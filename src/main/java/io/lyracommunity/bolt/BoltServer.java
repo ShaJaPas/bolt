@@ -6,6 +6,7 @@ import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
+import io.lyracommunity.bolt.session.SessionController;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -37,6 +38,8 @@ public class BoltServer implements Server
 
     private volatile Endpoint serverEndpoint;
 
+    private final SessionController serverSessions;
+
 
     public BoltServer(final Config config) {
         this(CodecRepository.basic(), config);
@@ -45,6 +48,7 @@ public class BoltServer implements Server
     private BoltServer(final CodecRepository codecs, final Config config) {
         this.codecs = codecs;
         this.config = config;
+        this.serverSessions = new SessionController(config, true);
     }
 
     @Override
@@ -53,7 +57,7 @@ public class BoltServer implements Server
             Subscription endpointSub = null;
             try {
                 Thread.currentThread().setName("Bolt-Poller-Server" + Util.THREAD_INDEX.incrementAndGet());
-                this.serverEndpoint = new Endpoint("ServerEndpoint", config);
+                this.serverEndpoint = new Endpoint("ServerEndpoint", config, serverSessions);
                 endpointSub = this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {
@@ -76,8 +80,8 @@ public class BoltServer implements Server
     }
 
     private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
-        for (Session session : serverEndpoint.getSessions()) {
-            // TODO never breaks.
+//        serverSessions.awaitMoreWork(50, TimeUnit.MILLISECONDS);
+        for (Session session : serverSessions.getSessions()) {
             final DataPacket packet = session.pollReceiveBuffer(1, TimeUnit.MILLISECONDS);
 
             if (packet != null) {
@@ -87,6 +91,7 @@ public class BoltServer implements Server
                 }
             }
         }
+
     }
 
     public int getPort() {
@@ -94,7 +99,7 @@ public class BoltServer implements Server
     }
 
     public void sendToAll(final Object obj) throws IOException {
-        final List<Integer> ids = serverEndpoint.getSessions().stream()
+        final List<Integer> ids = serverSessions.getSessions().stream()
                 .map(Session::getSocketID)
                 .collect(Collectors.toList());
         send(obj, ids);
@@ -108,7 +113,7 @@ public class BoltServer implements Server
     public void send(final Object obj, final List<Integer> destIDs) throws IOException {
         Collection<DataPacket> data = null;
         for (final Integer destID : destIDs) {
-            final Session session = Optional.ofNullable(serverEndpoint).map(e -> e.getSession(destID)).orElse(null);
+            final Session session = Optional.ofNullable(serverSessions).map(e -> e.getSession(destID)).orElse(null);
             if (session != null) {
                 if (data == null) data = codecs.encode(obj, session.getAssembleBuffer());
                 for (final DataPacket dp : data) {
@@ -119,7 +124,7 @@ public class BoltServer implements Server
     }
 
     public List<BoltStatistics> getStatistics() {
-        return serverEndpoint.getSessions().stream().map(Session::getStatistics).collect(Collectors.toList());
+        return serverSessions.getSessions().stream().map(Session::getStatistics).collect(Collectors.toList());
     }
 
     public Config config() {

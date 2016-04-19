@@ -1,11 +1,11 @@
 package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.event.ConnectionReady;
-import io.lyracommunity.bolt.event.PeerDisconnected;
-import io.lyracommunity.bolt.packet.*;
-import io.lyracommunity.bolt.session.ServerSession;
+import io.lyracommunity.bolt.packet.BoltPacket;
+import io.lyracommunity.bolt.packet.Destination;
+import io.lyracommunity.bolt.packet.PacketFactory;
 import io.lyracommunity.bolt.session.Session;
+import io.lyracommunity.bolt.session.SessionController;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.util.NetworkQoSSimulationPipeline;
 import io.lyracommunity.bolt.util.Util;
@@ -13,19 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
-import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.*;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * The UDPEndpoint takes care of sending and receiving UDP network packets,
@@ -41,14 +34,7 @@ public class Endpoint implements ChannelOut {
     private final Config         config;
     private final String         name;
 
-    /**
-     * Active sessions keyed by socket ID.
-     */
-    private final Map<Integer, Session> sessions = new ConcurrentHashMap<>();
-
-    private final Map<Destination, Session> sessionsBeingConnected = new ConcurrentHashMap<>();
-
-    private final Map<Integer, Subscription> sessionSubscriptions = new ConcurrentHashMap<>();
+    private final SessionController sessionController;
 
     /**
      * Bind to the given address and port.
@@ -57,9 +43,10 @@ public class Endpoint implements ChannelOut {
      * @param config config containing the address information to bind.
      * @throws SocketException if for example if the port is already bound to.
      */
-    public Endpoint(final String name, final Config config) throws SocketException {
+    Endpoint(final String name, final Config config, final SessionController sessionController) throws SocketException {
         this.config = config;
         this.name = name;
+        this.sessionController = sessionController;
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
         this.port = (config.getLocalPort() > 0) ? config.getLocalPort() : dgSocket.getLocalPort();
@@ -81,23 +68,10 @@ public class Endpoint implements ChannelOut {
         return Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io());
     }
 
-    public void stop(final Subscriber<? super Object> subscriber) {
+    void stop(final Subscriber<? super Object> subscriber) {
         LOG.info("Stopping {}", name);
-        sessionsBeingConnected.clear();
-        final Set<Integer> destIDs = Stream.concat(sessions.keySet().stream(), sessionSubscriptions.keySet().stream())
-                .collect(Collectors.toSet());
-        destIDs.forEach(destID -> endSession(subscriber, destID, name + " is closing."));
-        sessions.clear();
-        sessionSubscriptions.clear();
+        sessionController.stop(subscriber, name + " is closing.");
         dgSocket.close();
-    }
-
-    private void endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
-        final Session session = sessions.remove(destinationID);
-        final Subscription sessionSub = sessionSubscriptions.remove(destinationID);
-        if (session != null) session.cleanup();
-        if (sessionSub != null) sessionSub.unsubscribe();
-        if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
     }
 
     @Override
@@ -107,19 +81,6 @@ public class Endpoint implements ChannelOut {
 
     DatagramSocket getSocket() {
         return dgSocket;
-    }
-
-    void addSession(final Integer destinationID, final Session session) {
-        LOG.info("{} is adding session [{}]", name, destinationID);
-        sessions.put(destinationID, session);
-    }
-
-    Session getSession(final Integer destinationID) {
-        return sessions.get(destinationID);
-    }
-
-    Collection<Session> getSessions() {
-        return sessions.values();
     }
 
     /**
@@ -135,7 +96,8 @@ public class Endpoint implements ChannelOut {
         LOG.info("{} started.", name);
 
         final NetworkQoSSimulationPipeline qosSimulationPipeline = new NetworkQoSSimulationPipeline(config,
-                (peer, pkt) -> processPacket(subscriber, peer, pkt), (peer, pkt) -> markPacketAsDropped(pkt));
+                (peer, pkt) -> sessionController.processPacket(subscriber, peer, pkt, this),
+                (peer, pkt) -> markPacketAsDropped(pkt));
         while (!subscriber.isUnsubscribed()) {
             try {
                 // Will block until a packet is received or timeout has expired.
@@ -173,74 +135,8 @@ public class Endpoint implements ChannelOut {
     }
 
     private void markPacketAsDropped(final BoltPacket packet) {
-        final Session session = sessions.get(packet.getDestinationID());
+        final Session session = sessionController.getSession(packet.getDestinationID());
         if (session != null) session.getStatistics().incNumberOfArtificialDrops();
-    }
-
-    private void processPacket(final Subscriber<? super Object> subscriber, final Destination peer, final BoltPacket packet) {
-        final int destID = packet.getDestinationID();
-        final Session session = getSession(destID);
-
-        if (PacketType.HANDSHAKE == packet.getPacketType()) {
-            connectionHandshake(subscriber, (ConnectionHandshake) packet, peer, session);
-        }
-        else if (session != null) {
-            if (PacketType.SHUTDOWN == packet.getPacketType()) {
-                endSession(subscriber, packet.getDestinationID(), "Shutdown received");
-            }
-            // Dispatch to existing session.
-            else {
-                session.received(packet, subscriber);
-            }
-        }
-        else {
-            LOG.info("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
-        }
-    }
-
-    /**
-     * Called when a "connection handshake" packet was received and no
-     * matching session yet exists.
-     *
-     * @param packet the received handshake packet.
-     * @param peer   peer that sent the handshake.
-     * @return true if connection is ready to start, otherwise false.
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private synchronized Session connectionHandshake(final Subscriber<? super Object> subscriber,
-                                                     final ConnectionHandshake packet, final Destination peer,
-                                                     final Session existingSession) {
-        final int destID = packet.getDestinationID();
-        Session session = existingSession;
-        if (session == null) {
-            session = sessionsBeingConnected.get(peer);
-            // New session
-            if (session == null) {
-                session = new ServerSession(config, this, peer);
-                sessionsBeingConnected.put(peer, session);
-                sessions.put(session.getSocketID(), session);
-            }
-            // Confirmation handshake
-            else if (session.getSocketID() == destID) {
-                sessionsBeingConnected.remove(peer);
-                addSession(destID, session);
-            }
-            else if (destID > 0) {  // Ignore dest == 0, as it must be a duplicate client initial handshake packet.
-                subscriber.onError(new IOException("Destination ID sent by client does not match"));
-            }
-            Integer peerSocketID = packet.getSocketID();
-            peer.setSocketID(peerSocketID);
-        }
-        final boolean readyToStart = session.receiveHandshake(subscriber, packet, peer);
-        if (readyToStart) {
-            final Subscription sessionSubscription = session.start().subscribe(subscriber::onNext,
-                    ex -> endSession(subscriber, destID, ex.getMessage()),
-                    () -> endSession(subscriber, destID, "Session ended successfully"));
-            sessionSubscriptions.put(destID, sessionSubscription);
-            subscriber.onNext(new ConnectionReady(session));
-        }
-        return session;
     }
 
     @Override

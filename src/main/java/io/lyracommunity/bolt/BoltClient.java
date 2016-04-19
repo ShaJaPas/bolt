@@ -8,6 +8,7 @@ import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.ClientSession;
+import io.lyracommunity.bolt.session.SessionController;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
@@ -26,16 +27,18 @@ public class BoltClient implements Client
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
-    private final Endpoint        clientEndpoint;
-    private final CodecRepository codecs;
-    private final Config          config;
-    private       ClientSession   clientSession;
+    private final Endpoint          clientEndpoint;
+    private final CodecRepository   codecs;
+    private final Config            config;
+    private       ClientSession     clientSession;
+    private final SessionController clientSessions;
 
 
     public BoltClient(final Config config) throws IOException {
         this.config = config;
         this.codecs = CodecRepository.basic();
-        this.clientEndpoint = new Endpoint("ClientEndpoint", config);
+        this.clientSessions = new SessionController(config, false);
+        this.clientEndpoint = new Endpoint("ClientEndpoint", config, clientSessions);
         LOG.info("Created client endpoint on port {}", clientEndpoint.getLocalPort());
     }
 
@@ -117,7 +120,7 @@ public class BoltClient implements Client
         final Destination destination = new Destination(address, port);
         // Create client session
         clientSession = new ClientSession(config, clientEndpoint, destination);
-        clientEndpoint.addSession(clientSession.getSocketID(), clientSession);
+        clientSessions.addSession(clientSession.getSocketID(), clientSession);
         LOG.info("BoltClient is connecting");
         return clientSession.connect();
     }

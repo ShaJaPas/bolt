@@ -36,7 +36,7 @@ public class ChannelOutStub implements ChannelOut {
     }
 
     public long sendCountOfType(final PacketType packetType) {
-        return sent.stream().filter(p -> packetType == p.getPacketType()).count();
+        return new ArrayList<>(sent).stream().filter(p -> packetType == p.getPacketType()).count();
     }
 
     @Override
