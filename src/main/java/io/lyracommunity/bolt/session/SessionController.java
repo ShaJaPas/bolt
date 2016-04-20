@@ -1,8 +1,8 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.SharedCondition;
-import io.lyracommunity.bolt.SharedCondition.PhaseStrategy;
+import io.lyracommunity.bolt.util.SharedCondition;
+import io.lyracommunity.bolt.util.SharedCondition.PhaseStrategy;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;

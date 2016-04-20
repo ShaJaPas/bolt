@@ -1,4 +1,4 @@
-package io.lyracommunity.bolt;
+package io.lyracommunity.bolt.util;
 
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
