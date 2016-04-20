@@ -80,7 +80,7 @@ public class NetworkQoSSimulationPipeline {
                 ? 0
                 : intRNG.applyAsInt(config.getSimulatedMaxJitter()) * 1000L;
         final long latency = Math.max(0, config.getSimulatedLatency()) * 1000L;
-        final long queueUntil = Util.getCurrentTime() + latency + jitter;
+        final long queueUntil = Util.currentTimeMicros() + latency + jitter;
         latencyQueue.offer(new QosPacket(queueUntil, packet, peer));
     }
 
@@ -176,6 +176,7 @@ public class NetworkQoSSimulationPipeline {
 
     public void close() {
         latencyRunning.set(false);
+        bandwidthRunning.set(false);
     }
 
     public interface PacketConsumer extends BiConsumer<Destination, BoltPacket> {
@@ -189,7 +190,7 @@ public class NetworkQoSSimulationPipeline {
         private final Destination peer;
 
         private QosPacket(final BoltPacket packet, final Destination peer) {
-            this(Util.getCurrentTime(), packet, peer);
+            this(Util.currentTimeMicros(), packet, peer);
         }
         private QosPacket(final long timestamp, final BoltPacket packet, final Destination peer) {
             this.timestamp = timestamp;
@@ -199,7 +200,7 @@ public class NetworkQoSSimulationPipeline {
 
         @Override
         public long getDelay(final TimeUnit unit) {
-            return unit.convert(timestamp - Util.getCurrentTime(), TimeUnit.MICROSECONDS);
+            return unit.convert(timestamp - Util.currentTimeMicros(), TimeUnit.MICROSECONDS);
         }
 
         @Override

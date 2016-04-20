@@ -19,24 +19,24 @@ public class ReceiverLossListEntry implements Comparable<ReceiverLossListEntry> 
      *
      * @param sequenceNumber sequence number lost.
      */
-    public ReceiverLossListEntry(final int sequenceNumber) {
+    ReceiverLossListEntry(final int sequenceNumber) {
         if (sequenceNumber < 0) {
             throw new IllegalArgumentException("Got sequence number " + sequenceNumber);
         }
         this.sequenceNumber = sequenceNumber;
-        this.lastFeedbackTime = Util.getCurrentTime();
+        this.lastFeedbackTime = Util.currentTimeMicros();
     }
 
 
     /**
      * Call once when this seqNo is fed back in NAK.
      */
-    public void feedback() {
+    void feedback() {
         k++;
-        lastFeedbackTime = Util.getCurrentTime();
+        lastFeedbackTime = Util.currentTimeMicros();
     }
 
-    public int getSequenceNumber() {
+    int getSequenceNumber() {
         return sequenceNumber;
     }
 

@@ -1,9 +1,7 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.Endpoint;
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.util.SeqNum;
@@ -56,7 +54,7 @@ public class ServerSession extends Session {
         }
 
         else if (getStatus().seqNo() < READY.seqNo()) {
-            state.setDestinationSocketID(handshake.getSocketID());
+            state.setDestinationSocketID(handshake.getSessionID());
 
             if (getStatus().seqNo() < HANDSHAKING.seqNo()) {
                 setStatus(HANDSHAKING);
@@ -65,7 +63,7 @@ public class ServerSession extends Session {
             try {
                 boolean handShakeComplete = handleSecondHandShake(handshake);
                 if (handShakeComplete) {
-                    LOG.info("Handshake complete for Server!  [{}]", getSocketID());
+                    LOG.info("Handshake complete for Server!  [{}]", getSessionID());
                     setStatus(READY);
                     readyToStart = true;
                     cc.init();
@@ -79,24 +77,6 @@ public class ServerSession extends Session {
             }
         }
         return readyToStart;
-    }
-
-    @Override
-    public void received(final BoltPacket packet, final Subscriber subscriber) {
-
-        if (getStatus() == READY) {
-            state.setActive(true);
-            try {
-                sender.receive(packet);
-                receiver.receive(packet);
-            }
-            catch (Exception ex) {
-                // Invalidate session
-                LOG.error("Session error receiving packet", ex);
-                setStatus(INVALID);
-                subscriber.onError(ex);
-            }
-        }
     }
 
     /**
@@ -140,7 +120,7 @@ public class ServerSession extends Session {
         if (localAddress == null) throw new IllegalStateException("Could not get local endpoint address for handshake response");
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), localAddress);
+                handshake.getMaxFlowWndSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), localAddress);
         LOG.info("Sending reply {}", responseHandshake);
         endPoint.doSend(responseHandshake, state);
     }
@@ -157,7 +137,7 @@ public class ServerSession extends Session {
             setDatagramSize((int) bufferSize);
 
             finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
-                    handshake.getMaxFlowWndSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+                    handshake.getMaxFlowWndSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), endPoint.getLocalAddress());
         }
         LOG.info("Sending final handshake ack {}", finalConnectionHandshake);
         endPoint.doSend(finalConnectionHandshake, state);

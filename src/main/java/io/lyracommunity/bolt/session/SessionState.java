@@ -58,7 +58,7 @@ public class SessionState {
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
     }
 
-    int getSocketID() {
+    int getSessionID() {
         return mySocketID;
     }
 
@@ -70,12 +70,12 @@ public class SessionState {
         return destination;
     }
 
-    public int getDestinationSocketID() {
-        return destination.getSocketID();
+    public int getDestinationSessionID() {
+        return destination.getSessionID();
     }
 
     void setDestinationSocketID(final int destSocketID) {
-        destination.setSocketID(destSocketID);
+        destination.setSessionID(destSocketID);
     }
 
     public boolean isReady() {
@@ -131,7 +131,7 @@ public class SessionState {
 
     @Override
     public String toString() {
-        return "SessionState{" + "mySocketID=" + mySocketID + ", destSocketID=" + destination.getSocketID() + '}';
+        return "SessionState{" + "mySocketID=" + mySocketID + ", destSocketID=" + destination.getSessionID() + '}';
     }
 
 }

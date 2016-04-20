@@ -9,8 +9,6 @@ import io.lyracommunity.bolt.packet.DeliveryType;
 import io.lyracommunity.bolt.packet.Destination;
 import org.junit.Before;
 import org.junit.Test;
-import rx.Subscription;
-import rx.observers.TestSubscriber;
 import rx.schedulers.Schedulers;
 
 import java.net.InetAddress;
@@ -19,7 +17,8 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by omahoc9 on 4/5/16.
@@ -67,17 +66,17 @@ public class ClientSessionTest {
     }
 
     @Test
-    public void receiveData() throws Exception {
-        final DataPacket received = createPacket();
+    public void ReceivePacket_ReadyToReceive() throws Exception {
         sut.setStatus(SessionStatus.READY);
-        final Subscription sub = sut.start().subscribeOn(Schedulers.computation()).subscribe();
 
-        sut.received(received, new TestSubscriber<>());
+        assertTrue(sut.received(createPacket()));
+    }
 
-        final DataPacket polled = sut.pollReceiveBuffer(10000, TimeUnit.MILLISECONDS);
+    @Test
+    public void ReceivePacket_NotReadyToReceive() throws Exception {
+        sut.setStatus(SessionStatus.HANDSHAKING);
 
-        assertEquals(received, polled);
-        sub.unsubscribe();
+        assertFalse(sut.received(createPacket()));
     }
 
     private DataPacket createPacket() {

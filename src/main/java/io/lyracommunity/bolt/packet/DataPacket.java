@@ -165,7 +165,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
         this.messageId = messageId;
     }
 
-    public int getDestinationID() {
+    public int getDestinationSessionID() {
         return this.destinationID;
     }
 
@@ -233,7 +233,7 @@ public class DataPacket implements BoltPacket, Comparable<BoltPacket> {
     public void copyFrom(final DataPacket src) {
         setClassID(src.getClassID());
         setPacketSeqNumber(src.getPacketSeqNumber());
-        setDestinationID(src.getDestinationID());
+        setDestinationID(src.getDestinationSessionID());
 
         setData(src.getData());
         setDelivery(src.getDelivery());

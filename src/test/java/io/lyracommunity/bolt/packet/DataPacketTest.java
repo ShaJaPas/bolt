@@ -126,7 +126,7 @@ public class DataPacketTest
         assertEquals(true, dp2.isMessage());
         assertEquals(127, dp2.getPacketSeqNumber());
         assertEquals(35457, dp2.getMessageId());
-        assertEquals(255, dp2.getDestinationID());
+        assertEquals(255, dp2.getDestinationSessionID());
         assertEquals("test", new String(dp2.getData()));
     }
 

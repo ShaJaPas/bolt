@@ -4,6 +4,8 @@ import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.PacketFactory;
+import io.lyracommunity.bolt.receiver.ReceiverThread;
+import io.lyracommunity.bolt.sender.SenderThread;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionController;
 import io.lyracommunity.bolt.session.SessionState;
@@ -36,6 +38,10 @@ public class Endpoint implements ChannelOut {
 
     private final SessionController sessionController;
 
+    private final ReceiverThread receiverThread;
+
+    private final SenderThread senderThread;
+
     /**
      * Bind to the given address and port.
      *
@@ -50,6 +56,8 @@ public class Endpoint implements ChannelOut {
         this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
         // If the port is zero, the system will pick an ephemeral port.
         this.port = (config.getLocalPort() > 0) ? config.getLocalPort() : dgSocket.getLocalPort();
+        this.receiverThread = new ReceiverThread(config, sessionController);
+        this.senderThread = new SenderThread(sessionController);
         configureSocket();
     }
 
@@ -65,7 +73,10 @@ public class Endpoint implements ChannelOut {
      * Start the endpoint.
      */
     public Observable<?> start() {
-        return Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io());
+        return Observable.merge(
+                receiverThread.start().subscribeOn(Schedulers.io()),
+                senderThread.start().subscribeOn(Schedulers.io()),
+                Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io()));
     }
 
     void stop(final Subscriber<? super Object> subscriber) {
@@ -135,7 +146,7 @@ public class Endpoint implements ChannelOut {
     }
 
     private void markPacketAsDropped(final BoltPacket packet) {
-        final Session session = sessionController.getSession(packet.getDestinationID());
+        final Session session = sessionController.getSession(packet.getDestinationSessionID());
         if (session != null) session.getStatistics().incNumberOfArtificialDrops();
     }
 

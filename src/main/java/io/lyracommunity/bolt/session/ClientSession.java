@@ -96,7 +96,7 @@ public class ClientSession extends Session {
             LOG.info("Received initial handshake response from {}\n{}", peer, handshake);
             if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
                 try {
-                    final int peerSocketID = handshake.getSocketID();
+                    final int peerSocketID = handshake.getSessionID();
                     state.setSessionCookie(handshake.getCookie());
                     state.setDestinationSocketID(peerSocketID);
                     setStatus(HANDSHAKING2);
@@ -131,30 +131,12 @@ public class ClientSession extends Session {
         return readyToStart;
     }
 
-    @Override
-    public void received(final BoltPacket packet, final Subscriber subscriber) {
-        if (getStatus() == READY) {
-            state.setActive(true);
-            try {
-                // Send all packets to both sender and receiver
-                sender.receive(packet);
-                receiver.receive(packet);
-            }
-            catch (Exception ex) {
-                // Session is invalid.
-                LOG.error("Error in " + toString(), ex);
-                subscriber.onError(ex);
-                setStatus(INVALID);
-            }
-        }
-    }
-
     /**
      * Initial handshake for connect.
      */
     private void sendInitialHandShake() throws IOException {
         final ConnectionHandshake handshake = ConnectionHandshake.ofClientInitial(getDatagramSize(), state.getInitialSequenceNumber(),
-                state.getFlowWindowSize(), state.getSocketID(), endPoint.getLocalAddress());
+                state.getFlowWindowSize(), state.getSessionID(), endPoint.getLocalAddress());
         LOG.info("Sending {}", handshake);
         endPoint.doSend(handshake, state);
     }
@@ -164,7 +146,7 @@ public class ClientSession extends Session {
      */
     private void sendSecondHandshake() throws IOException {
         final ConnectionHandshake ch = ConnectionHandshake.ofClientSecond(getDatagramSize(), state.getInitialSequenceNumber(),
-                state.getFlowWindowSize(), getSocketID(), state.getDestinationSocketID(), state.getSessionCookie(), endPoint.getLocalAddress());
+                state.getFlowWindowSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), endPoint.getLocalAddress());
         LOG.info("Sending confirmation {}", ch);
         endPoint.doSend(ch, state);
     }

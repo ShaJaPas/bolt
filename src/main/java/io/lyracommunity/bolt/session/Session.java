@@ -11,15 +11,14 @@ import io.lyracommunity.bolt.receiver.EventTimers;
 import io.lyracommunity.bolt.receiver.Receiver;
 import io.lyracommunity.bolt.sender.Sender;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
-import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 import rx.Subscriber;
-import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+
+import static io.lyracommunity.bolt.session.SessionStatus.READY;
 
 
 /**
@@ -134,8 +133,8 @@ public abstract class Session
     private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
 
     // Processing received data
-    final Receiver receiver;
-    final Sender   sender;
+    private final Receiver receiver;
+    private final Sender   sender;
 
 
     Session(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
@@ -149,28 +148,32 @@ public abstract class Session
         this.receiver = new Receiver(config, state, endpoint, sender, statistics, new EventTimers(config));
     }
 
-    public abstract void received(BoltPacket packet, Subscriber subscriber);
+    public boolean received(final BoltPacket packet) throws IOException {
+        final boolean canReceive = (getStatus() == READY);
+        if (canReceive) {
+            state.setActive(true);
+
+            sender.receive(packet);
+            receiver.receive(packet);
+        }
+        return canReceive;
+    }
 
     public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
 
-
-    public Observable<?> start() throws IllegalStateException {
-        if (state.isActive()) throw new IllegalStateException();
-
-        final String threadSuffix = ((this instanceof ServerSession) ? "Server" : "Client") + "Session-"
-                + getSocketID() + "-" + Util.THREAD_INDEX.incrementAndGet();
-        return Observable.merge(
-                receiver.start(threadSuffix).subscribeOn(Schedulers.io()),
-                sender.doStart(threadSuffix).subscribeOn(Schedulers.io()))
-                .doOnSubscribe(() -> state.setActive(true));
+    /**
+     * Marks the session as active and ready to Sender/Receiver processing.
+     */
+    public void start() {
+        state.setActive(true);
     }
 
-    public void cleanup() {
+    void cleanup() {
         try {
             close();
             assembleBuffer.clear();
             if (endPoint.isOpen()) {
-                endPoint.doSend(new Shutdown(state.getDestinationSocketID()), state);
+                endPoint.doSend(new Shutdown(state.getDestinationSessionID()), state);
             }
         }
         catch (IOException ex) {
@@ -239,6 +242,10 @@ public abstract class Session
         return sender;
     }
 
+    public Receiver getReceiver() {
+        return receiver;
+    }
+
     SessionStatus getStatus() {
         return state.getStatus();
     }
@@ -248,8 +255,8 @@ public abstract class Session
         state.setStatus(status);
     }
 
-    public int getSocketID() {
-        return state.getSocketID();
+    public int getSessionID() {
+        return state.getSessionID();
     }
 
     int getDatagramSize() {

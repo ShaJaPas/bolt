@@ -11,17 +11,14 @@ import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 
 /**
@@ -90,11 +87,8 @@ public class Sender {
      * Last acknowledge number, initialised to the initial sequence number.
      */
     private volatile int lastAckReliabilitySequenceNumber;
-    private volatile boolean        started    = false;
-    /**
-     * Used to signal that the sender should start to send
-     */
-    private volatile CountDownLatch startLatch = new CountDownLatch(1);
+    private volatile boolean started = false;
+    private volatile long nextStep;
 
 
     public Sender(final Config config, final SessionState state, final ChannelOut endpoint, final CongestionControl cc,
@@ -122,39 +116,8 @@ public class Sender {
      * Start the sender thread.
      */
     public void start() {
-        LOG.info("STARTING SENDER for {}", sessionState);
-        startLatch.countDown();
+        LOG.info("Starting sender for {}", sessionState);
         started = true;
-    }
-
-    /**
-     * Starts the sender algorithm.
-     *
-     * @throws IllegalStateException if the session is not in a ready state.
-     */
-    public Observable<?> doStart(final String threadSuffix) throws IllegalStateException {
-        if (!sessionState.isReady()) throw new IllegalStateException("Session is not ready.");
-        return Observable.create(subscriber -> {
-            try {
-                Thread.currentThread().setName("Bolt-Sender-" + threadSuffix);
-
-                final Supplier<Boolean> stopped = subscriber::isUnsubscribed;
-//                while (!stopped.get()) {
-                // Wait until explicitly (re)started.
-                startLatch.await();
-                senderAlgorithm(stopped);
-//                }
-            }
-            catch (InterruptedException ex) {
-                LOG.info("Finished with an interrupt {}", (Object) ex);
-            }
-            catch (IOException ex) {
-                LOG.error("Sender error", ex);
-                subscriber.onError(ex);
-            }
-            LOG.info("STOPPING SENDER for {}", threadSuffix);
-            subscriber.onCompleted();
-        });
     }
 
     /**
@@ -188,7 +151,7 @@ public class Sender {
      */
     public void sendPacket(final DataPacket src) throws InterruptedException {
         if (!started) start();
-        src.setDestinationID(sessionState.getDestinationSocketID());
+        src.setDestinationID(sessionState.getDestinationSessionID());
         src.setPacketSeqNumber(nextPacketSequenceNumber());
         src.setReliabilitySeqNumber(src.isReliable() ? nextReliabilitySequenceNumber() : 0);
         src.setOrderSeqNumber(src.isOrdered() ? nextOrderSequenceNumber() : 0);
@@ -294,7 +257,7 @@ public class Sender {
     }
 
     private void sendAck2(long ackSequenceNumber) throws IOException {
-        final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, sessionState.getDestinationSocketID());
+        final Ack2 ackOfAckPkt = Ack2.build(ackSequenceNumber, sessionState.getDestinationSessionID());
         endpoint.doSend(ackOfAckPkt, sessionState);
     }
 
@@ -319,59 +282,56 @@ public class Sender {
      * congestion control and t is the total time used by step 1 to step 5. Go to 1).
      * </ol>
      *
+     * @return minimum time that the next step should begin, in microseconds.
      * @throws IOException          on failure to send the DataPacket.
      * @throws InterruptedException on the thread being interrupted.
      */
-    private void senderAlgorithm(final Supplier<Boolean> stopped) throws IOException, InterruptedException {
-        while (!stopped.get()) {
-            final long iterationStart = Util.getCurrentTime();
-            // If the sender's loss list is not empty
-            final Integer entry = senderLossList.getFirstEntry();
-            if (entry != null) {
-                handleRetransmit(entry);
-            }
-            else {
-                // If the number of unacknowledged data packets does not exceed the congestion
-                // and the flow window sizes, pack a new packet.
-                final int unAcknowledged = unacknowledged.get();
+    long senderAlgorithm() throws IOException, InterruptedException {
+        final long stepStartTime = Util.currentTimeMicros();
 
-                if (unAcknowledged < cc.getCongestionWindowSize()
-                        && unAcknowledged < sessionState.getFlowWindowSize()) {
-                    // Check for application data
-                    final DataPacket dp = flowWindow.consumeData();
-                    if (dp != null) {
-                        send(dp);
-                    }
-                    else {
-                        statistics.incNumberOfMissingDataEvents();
-                    }
+        // If step or session not ready, prevent entering.
+        if (stepStartTime < nextStep) return nextStep;
+        if (!sessionState.isReady() || !started) return nextStep = Util.currentTimeMicros() + 5_000;
+
+        // If the sender's loss list is not empty
+        final Integer lossEntry = senderLossList.getFirstEntry();
+        if (lossEntry != null) {
+            handleRetransmit(lossEntry);
+        }
+        else {
+            // If the number of unacknowledged data packets does not exceed the congestion
+            // and the flow window sizes, pack a new packet.
+            final int unAcknowledged = unacknowledged.get();
+
+            if (unAcknowledged < cc.getCongestionWindowSize()
+                    && unAcknowledged < sessionState.getFlowWindowSize()) {
+                // Check for application data
+                final DataPacket dp = flowWindow.consumeData();
+                if (dp != null) {
+                    send(dp);
                 }
                 else {
-                    // Congestion window full, wait for an ack
-                    if (unAcknowledged >= cc.getCongestionWindowSize()) {
-                        statistics.incNumberOfCCWindowExceededEvents();
-                    }
-                    waitForAck();
+                    statistics.incNumberOfMissingDataEvents();
                 }
             }
-
-            // Wait
-            if (largestSentSequenceNumber % 16 != 0) {
-                final long snd = (long) cc.getSendInterval();
-                long passed = Util.getCurrentTime() - iterationStart;
-                int x = 0;
-                while (snd - passed > 0) {
-                    // Can't wait with microsecond precision :(
-                    if (x == 0) {
-                        statistics.incNumberOfCCSlowDownEvents();
-                        x++;
-                    }
-                    passed = Util.getCurrentTime() - iterationStart;
-                    if (stopped.get()) return;
+            else {
+                // Congestion window full, wait for an ack
+                if (unAcknowledged >= cc.getCongestionWindowSize()) {
+                    statistics.incNumberOfCCWindowExceededEvents();
                 }
+                waitForAck();
             }
         }
 
+        // Wait
+        if (largestSentSequenceNumber % 16 != 0) {
+            final long snd = (long) cc.getSendInterval();
+            nextStep = snd + stepStartTime;
+            if (Util.currentTimeMicros() < nextStep) {
+                statistics.incNumberOfCCSlowDownEvents();
+            }
+        }
+        return nextStep;
     }
 
     /**
@@ -386,7 +346,7 @@ public class Sender {
             if (data != null) {
                 final DataPacket retransmit = new DataPacket();
                 retransmit.copyFrom(data);
-                retransmit.setDestinationID(sessionState.getDestinationSocketID());
+                retransmit.setDestinationID(sessionState.getDestinationSessionID());
                 endpoint.doSend(retransmit, sessionState);
                 statistics.incNumberOfRetransmittedDataPackets();
             }

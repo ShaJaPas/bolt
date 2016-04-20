@@ -8,7 +8,7 @@ public interface BoltPacket extends Comparable<BoltPacket> {
     /**
      * Get the ID of the destination socket.
      */
-    int getDestinationID();
+    int getDestinationSessionID();
 
     /**
      * Identifies whether this is a control packet (more performant than instanceof).

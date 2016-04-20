@@ -118,7 +118,7 @@ public abstract class ControlPacket implements BoltPacket {
         return PacketType.byTypeId(controlPacketType);
     }
 
-    public int getDestinationID() {
+    public int getDestinationSessionID() {
         return destinationID;
     }
 

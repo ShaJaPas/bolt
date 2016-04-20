@@ -5,7 +5,7 @@ import io.lyracommunity.bolt.util.Util;
 /**
  * Store the Sent Acknowledge packet number and the time it is sent out.
  */
-public class AckHistoryEntry {
+class AckHistoryEntry {
 
     private final long ackSequenceNumber;
 
@@ -15,22 +15,17 @@ public class AckHistoryEntry {
     /** Time when the Acknowledgement entry was sent. */
     private final long sentTime;
 
-    public AckHistoryEntry(final long ackSequenceNumber, final long ackNumber, final long sentTime) {
+    AckHistoryEntry(final long ackSequenceNumber, final long ackNumber, final long sentTime) {
         this.ackSequenceNumber = ackSequenceNumber;
         this.ackNumber = ackNumber;
         this.sentTime = sentTime;
     }
 
-
-    public long getAckSequenceNumber() {
-        return ackSequenceNumber;
-    }
-
-    public long getAckNumber() {
+    long getAckNumber() {
         return ackNumber;
     }
 
-    public long getSentTime() {
+    long getSentTime() {
         return sentTime;
     }
 
@@ -39,8 +34,8 @@ public class AckHistoryEntry {
      *
      * @return the age.
      */
-    public long getAge() {
-        return Util.getCurrentTime() - sentTime;
+    long getAge() {
+        return Util.currentTimeMicros() - sentTime;
     }
 
 

@@ -14,7 +14,7 @@ public class Util {
     /**
      * Get the current timer value in microseconds.
      */
-    public static long getCurrentTime() {
+    public static long currentTimeMicros() {
         return System.nanoTime() / 1000L;
     }
 

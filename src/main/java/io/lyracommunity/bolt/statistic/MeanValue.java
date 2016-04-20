@@ -51,11 +51,11 @@ public class MeanValue {
     }
 
     public void begin() {
-        start = Util.getCurrentTime();
+        start = Util.currentTimeMicros();
     }
 
     public void end() {
-        if (start > 0) addValue(Util.getCurrentTime() - start);
+        if (start > 0) addValue(Util.currentTimeMicros() - start);
     }
 
     String getName() {

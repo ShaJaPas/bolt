@@ -110,29 +110,5 @@ class TokenBuffer<T extends TokenBuffer.Token> {
     interface Token {
         int getLength();
     }
-//
-//
-//    private class DelayItem<T> implements Delayed {
-//
-//        private final long        timestamp;
-//        private final T  item;
-//
-//
-//
-//        @Override
-//        public long getDelay(final TimeUnit unit) {
-//            return unit.convert(timestamp - Util.getCurrentTime(), TimeUnit.MICROSECONDS);
-//        }
-//
-//        @Override
-//        public int compareTo(Delayed o) {
-//            return Long.compare(timestamp, ((NetworkQoSSimulationPipeline.QosPacket) o).timestamp);
-//        }
-//
-//        @Override
-//        public int getLength() {
-//            return packet.getLength();
-//        }
-//    }
 
 }

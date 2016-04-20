@@ -16,25 +16,25 @@ import java.util.concurrent.PriorityBlockingQueue;
  *
  * @see ReceiverLossListEntry
  */
-public class ReceiverLossList {
+class ReceiverLossList {
 
     private final PriorityBlockingQueue<ReceiverLossListEntry> backingList;
 
-    public ReceiverLossList() {
+    ReceiverLossList() {
         backingList = new PriorityBlockingQueue<>(32);
     }
 
-    public void insert(ReceiverLossListEntry entry) {
+    void insert(ReceiverLossListEntry entry) {
         if (!contains(entry)) {
             backingList.add(entry);
         }
     }
 
-    public void remove(final int relSeqNo) {
+    void remove(final int relSeqNo) {
         backingList.remove(new ReceiverLossListEntry(relSeqNo));
     }
 
-    public boolean contains(final ReceiverLossListEntry obj) {
+    private boolean contains(final ReceiverLossListEntry obj) {
         return backingList.contains(obj);
     }
 
@@ -47,7 +47,7 @@ public class ReceiverLossList {
      *
      * @return the read entry.
      */
-    public ReceiverLossListEntry getFirstEntry() {
+    ReceiverLossListEntry getFirstEntry() {
         return backingList.peek();
     }
 
@@ -63,12 +63,12 @@ public class ReceiverLossList {
      *                   be reset (using {@link ReceiverLossListEntry#feedback()} )
      * @return the sequence numbers.
      */
-    public List<Integer> getFilteredSequenceNumbers(final long RTT, final boolean doFeedback) {
+    List<Integer> getFilteredSequenceNumbers(final long RTT, final boolean doFeedback) {
         final List<Integer> result = new ArrayList<>();
         final ReceiverLossListEntry[] sorted = backingList.toArray(new ReceiverLossListEntry[0]);
         Arrays.sort(sorted);
         for (ReceiverLossListEntry e : sorted) {
-            if ((Util.getCurrentTime() - e.getLastFeedbackTime()) > e.getK() * RTT) {
+            if ((Util.currentTimeMicros() - e.getLastFeedbackTime()) > e.getK() * RTT) {
                 result.add(e.getSequenceNumber());
                 if (doFeedback) e.feedback();
             }

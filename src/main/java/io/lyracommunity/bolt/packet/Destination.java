@@ -2,7 +2,6 @@ package io.lyracommunity.bolt.packet;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Objects;
 
 public class Destination {
@@ -14,7 +13,7 @@ public class Destination {
     private final InetSocketAddress socketAddress;
 
     /** Bolt socket ID of the peer */
-    private int socketID;
+    private int sessionID;
 
     public Destination(InetAddress address, int port) {
         this.address = address;
@@ -30,20 +29,16 @@ public class Destination {
         return port;
     }
 
-    public int getSocketID() {
-        return socketID;
+    public int getSessionID() {
+        return sessionID;
     }
 
-    public InetSocketAddress getSocketAddress() {
-        return socketAddress;
-    }
-
-    public void setSocketID(int socketID) {
-        this.socketID = socketID;
+    public void setSessionID(int sessionID) {
+        this.sessionID = sessionID;
     }
 
     public String toString() {
-        return ("Destination [" + address.getHostName() + " port=" + port + " socketID=" + socketID) + "]";
+        return ("Destination [" + address.getHostName() + " port=" + port + " sessionID=" + sessionID) + "]";
     }
 
     @Override
@@ -55,14 +50,14 @@ public class Destination {
             return false;
         final Destination that = (Destination) o;
         return port == that.port &&
-                socketID == that.socketID &&
+                sessionID == that.sessionID &&
                 Objects.equals(address, that.address);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(port, address, socketID);
+        return Objects.hash(port, address, sessionID);
     }
 
 

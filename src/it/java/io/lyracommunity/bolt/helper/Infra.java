@@ -38,12 +38,12 @@ public class Infra implements AutoCloseable {
 
     public long awaitCompletion(final long time, final TimeUnit unit) throws Throwable {
         final long maxWaitMicros = unit.toMicros(time);
-        final long startTime = Util.getCurrentTime();
+        final long startTime = Util.currentTimeMicros();
         while (server.getErrors().isEmpty()
                 && clients.stream().allMatch(c -> c.getErrors().isEmpty())
                 && waitCondition.test(this)) {
             Thread.sleep(3);
-            if (Util.getCurrentTime() - startTime > maxWaitMicros) throw new TimeoutException("Timed out");
+            if (Util.currentTimeMicros() - startTime > maxWaitMicros) throw new TimeoutException("Timed out");
         }
         final long readyTime = clients.stream().mapToLong(TestClient::getReadyTime).min().orElse(0);
         totalTime.set(System.currentTimeMillis() - readyTime);

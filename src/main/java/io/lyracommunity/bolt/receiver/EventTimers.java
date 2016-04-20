@@ -10,17 +10,6 @@ public class EventTimers {
 
 
     /**
-     * Milliseconds to timeout a new session that stays idle.
-     */
-    private static final long IDLE_TIMEOUT = 3 * 1000;
-
-    // EXP event related
-    /**
-     * Instant when the session was created (for expiry checking).
-     */
-    private final long sessionUpSince;
-
-    /**
      * Record number of consecutive EXP time-out events.
      */
     private volatile long expCount = 0;
@@ -44,13 +33,14 @@ public class EventTimers {
 
     public EventTimers(final Config config) {
         this.config = config;
-        this.sessionUpSince = System.currentTimeMillis();
     }
 
-    void init() {
-        nextACK = Util.getCurrentTime() + ackTimerInterval;
-        nextNAK = (long) (Util.getCurrentTime() + 1.5 * nakTimerInterval);
-        nextEXP = Util.getCurrentTime() + 2 * config.getExpTimerInterval();
+    void ensureInit() {
+        if (nextACK == 0) {
+            nextACK = Util.currentTimeMicros() + ackTimerInterval;
+            nextNAK = (long) (Util.currentTimeMicros() + 1.5 * nakTimerInterval);
+            nextEXP = Util.currentTimeMicros() + 2 * config.getExpTimerInterval();
+        }
     }
 
     boolean checkIsNextAck(final long currentTimeMicros) {
@@ -88,13 +78,11 @@ public class EventTimers {
 
     boolean isSessionExpired() {
         return config.isAllowSessionExpiry()
-                && expCount > config.getExpLimit()
-                ;
-//                && System.currentTimeMillis() - sessionUpSince > IDLE_TIMEOUT;
+                && expCount > config.getExpLimit();
     }
 
     void resetEXPTimer() {
-        nextEXP = Util.getCurrentTime() + config.getExpTimerInterval();
+        nextEXP = Util.currentTimeMicros() + config.getExpTimerInterval();
     }
 
     void resetEXPCount() {

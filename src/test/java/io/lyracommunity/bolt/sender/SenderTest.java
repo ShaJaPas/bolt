@@ -10,8 +10,6 @@ import io.lyracommunity.bolt.session.SessionStatus;
 import io.lyracommunity.bolt.statistic.BoltStatistics;
 import org.junit.Before;
 import org.junit.Test;
-import rx.Subscription;
-import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -86,23 +84,13 @@ public class SenderTest {
         dp.setDelivery(DeliveryType.RELIABLE_ORDERED);
         sessionState.setStatus(SessionStatus.READY);
 
-        sut.start();
-        final Subscription sub = sut.doStart("Test").subscribeOn(Schedulers.io()).subscribe();
-        try {
-            sut.sendPacket(dp);
+        sut.sendPacket(dp);
 
-            for (int i = 0; i < 100; i++) {
-                if (endpoint.sendCountOfType(PacketType.DATA) > 0) break;
-                Thread.sleep(20);
-            }
+        sut.senderAlgorithm();
 
-            sut.putUnacknowledgedPacketsIntoLossList();
+        sut.putUnacknowledgedPacketsIntoLossList();
 
-            assertEquals(1, senderLossList.size());
-        }
-        finally {
-            sub.unsubscribe();
-        }
+        assertEquals(1, senderLossList.size());
     }
 
     @Test
@@ -116,22 +104,15 @@ public class SenderTest {
         nak.addLossSingle(1);
 
         // When
-        Subscription sub = sut.doStart("Test").subscribeOn(Schedulers.io()).subscribe();
-        try {
-            sut.sendPacket(dp);
-            sut.start();
-            // Now wait until send has occurred.
-            for (int i = 0; i < 100 && endpoint.sendCountOfType(PacketType.DATA) == 0; i++) Thread.sleep(5);
-            sut.receive(nak);
-            for (int i = 0; i < 200 && endpoint.sendCountOfType(PacketType.DATA) == 1; i++) Thread.sleep(5);
+        sut.sendPacket(dp);
+        // Now wait until send has occurred.
+        sut.senderAlgorithm();
+        sut.receive(nak);
+        sut.senderAlgorithm();
 
-            // Then
-            assertEquals(2, endpoint.sendCountOfType(PacketType.DATA));
-            assertFalse(sut.haveLostPackets());
-        }
-        finally {
-            sub.unsubscribe();
-        }
+        // Then
+        assertEquals(2, endpoint.sendCountOfType(PacketType.DATA));
+        assertFalse(sut.haveLostPackets());
     }
 
     @Test
@@ -143,19 +124,11 @@ public class SenderTest {
         dp.setDelivery(DeliveryType.RELIABLE_UNORDERED);
 
         // When
-        Subscription sub = sut.doStart("Test").subscribeOn(Schedulers.io()).subscribe();
-        try {
-            sut.sendPacket(dp);
-            sut.start();
-            // Now wait until send has occurred.
-            for (int i = 0; i < 100 && endpoint.sendCountOfType(PacketType.DATA) == 0; i++) Thread.sleep(5);
+        sut.sendPacket(dp);
+        sut.senderAlgorithm();
 
-            // Then
-            assertTrue(sut.isSentOut(sessionState.getInitialSequenceNumber()));
-        }
-        finally {
-            sub.unsubscribe();
-        }
+        // Then
+        assertTrue(sut.isSentOut(sessionState.getInitialSequenceNumber()));
     }
 
 }

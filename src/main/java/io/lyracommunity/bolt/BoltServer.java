@@ -27,18 +27,15 @@ import java.util.stream.Collectors;
 /**
  * Created by omahoc9 on 3/3/16.
  */
-public class BoltServer implements Server
-{
+public class BoltServer implements Server {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltServer.class);
 
     private final CodecRepository codecs;
 
     private final Config config;
-
-    private volatile Endpoint serverEndpoint;
-
     private final SessionController serverSessions;
+    private volatile Endpoint serverEndpoint;
 
 
     public BoltServer(final Config config) {
@@ -80,16 +77,22 @@ public class BoltServer implements Server
     }
 
     private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
-//        serverSessions.awaitMoreWork(50, TimeUnit.MILLISECONDS);
-        for (Session session : serverSessions.getSessions()) {
-            final DataPacket packet = session.pollReceiveBuffer(1, TimeUnit.MILLISECONDS);
 
-            if (packet != null) {
-                final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
-                if (decoded != null) {
-                    subscriber.onNext(new ReceiveObject<>(session.getSocketID(), decoded));
+        serverSessions.awaitPacketReady(100, TimeUnit.MILLISECONDS);
+
+        for (final Session session : serverSessions.getSessions()) {
+            DataPacket packet;
+            do {
+                packet = session.pollReceiveBuffer();
+
+                if (packet != null) {
+                    final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
+                    if (decoded != null) {
+                        subscriber.onNext(new ReceiveObject<>(session.getSessionID(), decoded));
+                    }
                 }
             }
+            while (packet != null);
         }
 
     }
@@ -100,7 +103,7 @@ public class BoltServer implements Server
 
     public void sendToAll(final Object obj) throws IOException {
         final List<Integer> ids = serverSessions.getSessions().stream()
-                .map(Session::getSocketID)
+                .map(Session::getSessionID)
                 .collect(Collectors.toList());
         send(obj, ids);
     }

@@ -16,34 +16,24 @@ import io.lyracommunity.bolt.session.ServerSession;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionState;
 import io.lyracommunity.bolt.session.SessionStatus;
-import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import rx.Subscription;
-import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 /**
- * Created by omahoc9 on 4/5/16.
+ * Test class for  {@link Receiver}.
  */
 public class ReceiverTest {
 
-    private Config          config;
-    private Receiver        sut;
-    private List<Throwable> errors;
-    private AtomicBoolean   completed;
-    private Subscription    subscription;
+    private Config   config;
+    private Receiver sut;
 
     @Before
     public void setUp() throws Exception {
@@ -65,25 +55,17 @@ public class ReceiverTest {
         final CongestionControl cc = new BoltCongestionControl(sessionState, session.getStatistics(), config.getInitialCongestionWindowSize());
         final Sender sender = new Sender(config, sessionState, endpoint, cc, session.getStatistics());
         sut = new Receiver(config, sessionState, endpoint, sender, session.getStatistics(), timers);
-        List<Object> events = new ArrayList<>();
-        errors = new ArrayList<>();
-        completed = new AtomicBoolean(false);
-        subscription = sut.start("Server").subscribeOn(Schedulers.computation()).observeOn(Schedulers.computation())
-                .subscribe(events::add, errors::add, () -> completed.set(true));
     }
 
-    @After
-    public void tearDown() throws Exception {
-        if (subscription != null) subscription.unsubscribe();
-    }
-
-    @Test
+    @Test(expected = ExpiryException.class)
     public void testExpiry() throws Exception {
         config.setExpLimit(2);
         config.setExpTimerInterval(1);
 
-        for (int i = 0; i < 100 && errors.isEmpty(); i++) Thread.sleep(5);
-        assertFalse(errors.isEmpty());
+        for (int i = 0; i < 5; i++) {
+            sut.receiverAlgorithm(false);
+            Thread.sleep(2);
+        }
     }
 
     @Test
@@ -91,31 +73,19 @@ public class ReceiverTest {
         config.setExpLimit(2);
         config.setExpTimerInterval(10_000);
 
-        for (int i = 0; i < 100 && errors.isEmpty(); i++) {
+        for (int i = 0; i < 10; i++) {
             sut.receive(new KeepAlive());
+            sut.receiverAlgorithm(false);
             Thread.sleep(2);
         }
-        assertTrue(errors.isEmpty());
     }
 
     @Test
     public void testReceiveAndProcessData() throws Exception {
         sut.receive(createDataPacket(1, TestData.getRandomData(1000)));
+        sut.receiverAlgorithm(false);
 
-        assertNotNull(sut.pollReceiveBuffer(1, TimeUnit.SECONDS));
-    }
-
-    @Test
-    public void testCheckEXPTimer() throws Exception {
-        config.setExpTimerInterval(1);
-        config.setExpLimit(2);
-
-        for (int i = 0; i < 100 && !subscription.isUnsubscribed() && errors.isEmpty(); i++) {
-            Thread.sleep(50);
-        }
-
-        assertFalse(errors.isEmpty());
-        Assert.assertEquals(IllegalStateException.class, errors.get(0).getClass());
+        assertNotNull(sut.pollReceiveBuffer(100, TimeUnit.MILLISECONDS));
     }
 
     private DataPacket createDataPacket(int relSeqNum, byte[] data) {

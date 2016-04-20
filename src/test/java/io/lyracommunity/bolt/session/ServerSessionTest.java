@@ -42,7 +42,7 @@ public class ServerSessionTest
                 InetAddress.getLocalHost()), remote);
         assertFalse(established);
 
-        established = sut.receiveHandshake(null, ConnectionHandshake.ofClientSecond(10, 1, 1000, 1, sut.getSocketID(),
+        established = sut.receiveHandshake(null, ConnectionHandshake.ofClientSecond(10, 1, 1000, 1, sut.getSessionID(),
                 sut.getState().getSessionCookie(), InetAddress.getLocalHost()), remote);
         assertTrue(established);
     }
@@ -54,7 +54,7 @@ public class ServerSessionTest
                 InetAddress.getLocalHost()), remote);
         assertFalse(established);
 
-        established = sut.receiveHandshake(new TestSubscriber<>(), ConnectionHandshake.ofClientSecond(10, 1, 1000, 1, sut.getSocketID(),
+        established = sut.receiveHandshake(new TestSubscriber<>(), ConnectionHandshake.ofClientSecond(10, 1, 1000, 1, sut.getSessionID(),
                 sut.getState().getSessionCookie() - 1, InetAddress.getLocalHost()), remote);
         assertFalse(established);
     }

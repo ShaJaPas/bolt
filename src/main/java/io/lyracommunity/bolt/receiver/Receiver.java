@@ -12,8 +12,6 @@ import io.lyracommunity.bolt.util.SeqNum;
 import io.lyracommunity.bolt.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
-import rx.Subscriber;
 
 import java.io.IOException;
 import java.util.List;
@@ -111,7 +109,7 @@ public class Receiver {
     private volatile int  ackSequenceNumber            = 0;
 
     /**
-     * Create a receiver with a valid {@link Session}.
+     * Create a receiver for a particular {@link Session}.
      *
      * @param config       bolt configuration.
      * @param sessionState the owning session state.
@@ -121,7 +119,7 @@ public class Receiver {
      * @param timers       the ACK/NAK/EXP event timers.
      */
     public Receiver(final Config config, final SessionState sessionState, final ChannelOut endpoint,
-                    final Sender sender, final BoltStatistics statistics, EventTimers timers) {
+                    final Sender sender, final BoltStatistics statistics, final EventTimers timers) {
         this.endpoint = endpoint;
         this.sessionState = sessionState;
         this.sender = sender;
@@ -136,35 +134,6 @@ public class Receiver {
         this.bufferSize = sessionState.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * sessionState.getFlowWindowSize());
         this.receiveBuffer = new ReceiveBuffer(2 * sessionState.getFlowWindowSize());
-    }
-
-    /**
-     * Starts the sender algorithm.
-     */
-    public Observable<?> start(final String threadSuffix) {
-        if (!sessionState.isReady()) throw new IllegalStateException("Session is not ready.");
-        return Observable.create(subscriber -> {
-            try {
-                Thread.currentThread().setName("Bolt-Receiver-" + threadSuffix);
-
-                while (!sessionState.isActive()) Thread.sleep(10);
-
-                LOG.info("Starting Receiver for {}", sessionState);
-                timers.init();
-                while (!subscriber.isUnsubscribed()) {
-                    receiverAlgorithm(subscriber);
-                }
-            }
-            catch (final InterruptedException ex) {
-                LOG.info("Receiver was interrupted.");
-            }
-            catch (final Exception ex) {
-                LOG.error("Unexpected receiver exception", ex);
-                subscriber.onError(ex);
-            }
-            LOG.info("Stopping Receiver for {}", sessionState);
-            subscriber.onCompleted();
-        });
     }
 
     public DataPacket pollReceiveBuffer(final int timeout, final TimeUnit unit) throws InterruptedException {
@@ -214,31 +183,39 @@ public class Receiver {
      * <li> Update LRSN. Go to 1).
      * </ol>
      */
-    private void receiverAlgorithm(final Subscriber<? super Object> sub) throws InterruptedException, IOException {
-        // Query for timer events.
-        checkTimers(sub);
+    boolean receiverAlgorithm(final boolean awaitPoll) throws InterruptedException, ExpiryException, IOException {
+        boolean addedData = false;
+        if (sessionState.isActive()) {
+            // Query for timer events.
+            checkTimers();
 
-        // Perform time-bounded UDP receive.
-        final BoltPacket packet = handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS);
+            // Perform time-bounded UDP receive.
+            final BoltPacket packet = awaitPoll
+                    ? handOffQueue.poll(Util.getSYNTime(), TimeUnit.MICROSECONDS)
+                    : handOffQueue.poll();
 
-        if (packet != null) {
-            // Reset EXP count for any packet.
-            timers.resetEXPCount();
+            if (packet != null) {
+                // Reset EXP count for any packet.
+                timers.resetEXPCount();
 
-            statistics.beginProcess();
-            processPacket(packet);
-            statistics.endProcess();
+                statistics.beginProcess();
+                addedData = processPacket(packet);
+                statistics.endProcess();
+            }
         }
+        return addedData;
     }
 
-    private void checkTimers(final Subscriber<? super Object> subscriber) throws IOException {
-        final long currentTime = Util.getCurrentTime();
+    private void checkTimers() throws IOException, ExpiryException {
+        timers.ensureInit();
+
+        final long currentTime = Util.currentTimeMicros();
         // Check ACK timer.
         if (timers.checkIsNextAck(currentTime)) processACKEvent(true);
         // Check NAK timer.
         if (timers.checkIsNextNak(currentTime)) processNAKEvent();
         // Check EXP timer.
-        if (timers.checkIsNextExp(currentTime)) processEXPEvent(subscriber);
+        if (timers.checkIsNextExp(currentTime)) processEXPEvent();
     }
 
     /**
@@ -294,7 +271,7 @@ public class Receiver {
             // between these two ACK packets is less than 2 RTTs, do not send(stop).
             final long timeOfLastSentAck = ackHistoryWindow.getTime(lastAckNumber);
 
-            if (Util.getCurrentTime() - timeOfLastSentAck < 2 * roundTripTime) {
+            if (Util.currentTimeMicros() - timeOfLastSentAck < 2 * roundTripTime) {
                 return;
             }
         }
@@ -308,7 +285,7 @@ public class Receiver {
             // 7) Records the ACK number, ackseqNumber and the departure time of this Ack in the ACK History Window.
             final long ackSeqNumber = sendAcknowledgment(ackNumber);
 
-            AckHistoryEntry sentAckNumber = new AckHistoryEntry(ackSeqNumber, ackNumber, Util.getCurrentTime());
+            AckHistoryEntry sentAckNumber = new AckHistoryEntry(ackSeqNumber, ackNumber, Util.currentTimeMicros());
             ackHistoryWindow.add(sentAckNumber);
             // Store ack number for next iteration
             lastAckNumber = ackNumber;
@@ -341,15 +318,16 @@ public class Receiver {
      * <li> Increase ExpCount by 1.
      * </ol>
      *
-     * @throws IOException if shutdown, stop or send of keep-alive fails.
+     * @throws IOException     if shutdown, stop or send of keep-alive fails.
+     * @throws ExpiryException if the session has just expired.
      */
-    private void processEXPEvent(final Subscriber<? super Object> subscriber) throws IOException {
+    private void processEXPEvent() throws IOException, ExpiryException {
         if (!sessionState.isActive()) return;
         // Put all the unacknowledged packets in the senders loss list.
         sender.putUnacknowledgedPacketsIntoLossList();
-        if (timers.isSessionExpired() && !subscriber.isUnsubscribed()) {
-            LOG.error("Session {} expired.", sessionState);
-            subscriber.onError(new IllegalStateException("Session expired."));
+        if (timers.isSessionExpired()) {
+            LOG.warn("Session {} expired.", sessionState);
+            throw new ExpiryException("Session expired.");
         }
         else if (!sender.haveLostPackets()) {
             sendKeepAlive();
@@ -357,11 +335,12 @@ public class Receiver {
         timers.incrementExpCount();
     }
 
-    private void processPacket(final BoltPacket p) throws IOException {
+    private boolean processPacket(final BoltPacket p) throws IOException {
+        boolean addedData = false;
         // 3) Check the packet type and process it according to this.
         if (!p.isControlPacket()) {
             statistics.beginDataProcess();
-            onDataPacketReceived((DataPacket) p);
+            addedData = onDataPacketReceived((DataPacket) p);
             statistics.endDataProcess();
         }
         else {
@@ -375,20 +354,24 @@ public class Receiver {
                 onAck2PacketReceived(ack2);
             }
         }
+        return addedData;
     }
 
-    private void onDataPacketReceived(final DataPacket dp) throws IOException {
+    /**
+     * @return true if new data was submitted to the receive buffer, otherwise false.
+     */
+    private boolean onDataPacketReceived(final DataPacket dp) throws IOException {
 
-        ReceiveBuffer.OfferResult OK = receiveBuffer.offer(dp);
+        final ReceiveBuffer.OfferResult OK = receiveBuffer.offer(dp);
         if (!OK.success) {
             if (OK == ReceiveBuffer.OfferResult.ERROR_DUPLICATE) statistics.incNumberOfDuplicateDataPackets();
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Dropping packet [{}  {}] : [{}]", dp.getPacketSeqNumber(), dp.getReliabilitySeqNumber(), OK.message);
             }
-            return;
+            return false;
         }
 
-        final long currentDataPacketArrivalTime = Util.getCurrentTime();
+        final long currentDataPacketArrivalTime = Util.currentTimeMicros();
         final int currentSeqNumber = dp.getPacketSeqNumber();
         statistics.addReceived(dp.getClassID(), dp.getDataLength());
 
@@ -429,7 +412,7 @@ public class Receiver {
                 if (reliableN % config.getAckInterval() == 0) processACKEvent(false);
             }
         }
-
+        return true;
     }
 
     /**
@@ -442,7 +425,7 @@ public class Receiver {
     private void sendNAK(final int currentRelSequenceNumber) throws IOException {
         final Nak nAckPacket = new Nak();
         nAckPacket.addLossRange(SeqNum.increment16(largestReceivedRelSeqNumber), currentRelSequenceNumber);
-        nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
+        nAckPacket.setDestinationID(sessionState.getDestinationSessionID());
         // Put all the sequence numbers between (but excluding) these two values into the receiver loss list.
         for (int i = SeqNum.increment16(largestReceivedRelSeqNumber);
              SeqNum.compare16(i, currentRelSequenceNumber) < 0;
@@ -461,7 +444,7 @@ public class Receiver {
                 ? reliabilitySeqNumbers.subList(0, 300) : reliabilitySeqNumbers;
         final Nak nAckPacket = new Nak();
         nAckPacket.addLossList(toSend);
-        nAckPacket.setDestinationID(sessionState.getDestinationSocketID());
+        nAckPacket.setDestinationID(sessionState.getDestinationSessionID());
         endpoint.doSend(nAckPacket, sessionState);
         statistics.incNumberOfNAKSent();
     }
@@ -475,7 +458,7 @@ public class Receiver {
 
     private long sendAcknowledgment(final int ackNumber) throws IOException {
         final Ack ack = Ack.buildAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar,
-                bufferSize, sessionState.getDestinationSocketID(),
+                bufferSize, sessionState.getDestinationSessionID(),
                 packetPairWindow.getEstimatedLinkCapacity(), packetHistoryWindow.getPacketArrivalSpeed());
 
         endpoint.doSend(ack, sessionState);
@@ -488,7 +471,7 @@ public class Receiver {
     // Builds a "light" Acknowledgement
     private Ack buildLightAcknowledgement(final int ackNumber) {
         return Ack.buildLightAcknowledgement(ackNumber, ++ackSequenceNumber, roundTripTime, roundTripTimeVar, bufferSize,
-                sessionState.getDestinationSocketID());
+                sessionState.getDestinationSessionID());
     }
 
     /**
@@ -521,7 +504,7 @@ public class Receiver {
 
     private void sendKeepAlive() throws IOException {
         final KeepAlive ka = new KeepAlive();
-        ka.setDestinationID(sessionState.getDestinationSocketID());
+        ka.setDestinationID(sessionState.getDestinationSessionID());
         endpoint.doSend(ka, sessionState);
     }
 

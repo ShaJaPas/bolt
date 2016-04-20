@@ -41,7 +41,7 @@ public class ConnectionHandshake extends ControlPacket {
     /**
      * Tell peer what the socket ID on this side is.
      */
-    private int socketID;
+    private int sessionID;
 
     private long cookie = 0;
 
@@ -57,7 +57,7 @@ public class ConnectionHandshake extends ControlPacket {
         decode(controlInformation);
     }
 
-    ConnectionHandshake(long packetSize, int initialSeqNo, long boltVersion, long connectionType, long maxFlowWndSize, int socketID,
+    ConnectionHandshake(long packetSize, int initialSeqNo, long boltVersion, long connectionType, long maxFlowWndSize, int sessionID,
             int destinationID, long cookie, InetAddress address) {
         this();
         Objects.requireNonNull(address);
@@ -66,7 +66,7 @@ public class ConnectionHandshake extends ControlPacket {
         this.boltVersion = boltVersion;
         this.connectionType = connectionType;
         this.maxFlowWndSize = maxFlowWndSize;
-        this.socketID = socketID;
+        this.sessionID = sessionID;
         this.destinationID = destinationID;
         this.cookie = cookie;
         this.address = address;
@@ -77,8 +77,8 @@ public class ConnectionHandshake extends ControlPacket {
      * This is the first client to server handshake request.
      */
     public static ConnectionHandshake ofClientInitial(long packetSize, int initialSeqNo, long maxFlowWndSize,
-                                                      int socketID, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID, 0, 0, address);
+                                                      int sessionID, InetAddress address) {
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, sessionID, 0, 0, address);
     }
 
     /**
@@ -86,8 +86,8 @@ public class ConnectionHandshake extends ControlPacket {
      * This is the client's acknowledgement of the previous server acknowledgement.
      */
     public static ConnectionHandshake ofClientSecond(long packetSize, int initialSeqNo, long maxFlowWndSize,
-                                                     int socketID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, socketID,
+                                                     int sessionID, int destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, sessionID,
                 destinationID, cookie, address);
     }
 
@@ -96,8 +96,8 @@ public class ConnectionHandshake extends ControlPacket {
      * This is the server response to the client handshake request.
      */
     public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
-                                                                int socketID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_SERVER_ACK, maxFlowWndSize, socketID,
+                                                                int sessionID, int destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_SERVER_ACK, maxFlowWndSize, sessionID,
                 destinationID, cookie, address);
     }
 
@@ -107,7 +107,7 @@ public class ConnectionHandshake extends ControlPacket {
         packetSize = PacketUtil.decode(data, 8);
         maxFlowWndSize = PacketUtil.decode(data, 12);
         connectionType = PacketUtil.decode(data, 16);
-        socketID = PacketUtil.decodeInt(data, 20);
+        sessionID = PacketUtil.decodeInt(data, 20);
         cookie = PacketUtil.decode(data, 24);
         // TODO ipv6 check
         address = PacketUtil.decodeInetAddress(data, 28, false);
@@ -133,8 +133,8 @@ public class ConnectionHandshake extends ControlPacket {
         return connectionType;
     }
 
-    public int getSocketID() {
-        return socketID;
+    public int getSessionID() {
+        return sessionID;
     }
 
     public long getCookie() {
@@ -154,7 +154,7 @@ public class ConnectionHandshake extends ControlPacket {
             bos.write(PacketUtil.encode(packetSize));
             bos.write(PacketUtil.encode(maxFlowWndSize));
             bos.write(PacketUtil.encode(connectionType));
-            bos.write(PacketUtil.encode(socketID));
+            bos.write(PacketUtil.encode(sessionID));
             bos.write(PacketUtil.encode(cookie));
             bos.write(PacketUtil.encode(address));
             return bos.toByteArray();
@@ -180,7 +180,7 @@ public class ConnectionHandshake extends ControlPacket {
                 packetSize == that.packetSize &&
                 maxFlowWndSize == that.maxFlowWndSize &&
                 connectionType == that.connectionType &&
-                socketID == that.socketID &&
+                sessionID == that.sessionID &&
                 cookie == that.cookie &&
                 Objects.equals(address, that.address);
     }
@@ -189,14 +189,14 @@ public class ConnectionHandshake extends ControlPacket {
     public int hashCode()
     {
         return Objects
-                .hash(super.hashCode(), boltVersion, initialSeqNo, packetSize, maxFlowWndSize, connectionType, socketID, cookie, address);
+                .hash(super.hashCode(), boltVersion, initialSeqNo, packetSize, maxFlowWndSize, connectionType, sessionID, cookie, address);
     }
 
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         sb.append("ConnectionHandshake [");
         sb.append("connectionType=").append(connectionType);
-        sb.append(", mySocketID=").append(socketID);
+        sb.append(", sessionID=").append(sessionID);
         sb.append(", initialSeqNo=").append(initialSeqNo);
         sb.append(", packetSize=").append(packetSize);
         sb.append(", maxFlowWndSize=").append(maxFlowWndSize);

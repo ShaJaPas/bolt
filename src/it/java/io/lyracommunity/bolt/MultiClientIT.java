@@ -143,7 +143,7 @@ public class MultiClientIT {
                     System.out.println(evt);
                     if (awaitingConnection.decrementAndGet() == 0) {
                         try {
-                            ts.server.send(toSend, evt.getSession().getSocketID());
+                            ts.server.send(toSend, evt.getSession().getSessionID());
                         }
                         catch (IOException e) {
                             throw new RuntimeException(e);

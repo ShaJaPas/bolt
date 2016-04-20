@@ -58,7 +58,7 @@ public class BoltClient implements Client
                         if (packet != null) {
                             final Object decoded = codecs.decode(packet, clientSession.getAssembleBuffer());
                             if (decoded != null) {
-                                subscriber.onNext(new ReceiveObject<>(clientSession.getSocketID(), decoded));
+                                subscriber.onNext(new ReceiveObject<>(clientSession.getSessionID(), decoded));
                             }
                         }
                     }
@@ -120,7 +120,7 @@ public class BoltClient implements Client
         final Destination destination = new Destination(address, port);
         // Create client session
         clientSession = new ClientSession(config, clientEndpoint, destination);
-        clientSessions.addSession(clientSession.getSocketID(), clientSession);
+        clientSessions.addSession(clientSession.getSessionID(), clientSession);
         LOG.info("BoltClient is connecting");
         return clientSession.connect();
     }
