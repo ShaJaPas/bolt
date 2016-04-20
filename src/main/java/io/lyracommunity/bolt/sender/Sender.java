@@ -319,6 +319,7 @@ public class Sender {
                 if (unAcknowledged >= cc.getCongestionWindowSize()) {
                     statistics.incNumberOfCCWindowExceededEvents();
                 }
+                // TODO this may be a bottleneck for servers with many clients connected
                 waitForAck();
             }
         }
