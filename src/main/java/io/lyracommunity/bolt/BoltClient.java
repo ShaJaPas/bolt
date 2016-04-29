@@ -81,8 +81,8 @@ public class BoltClient implements Client
     }
 
     @Override
-    public void send(final Object obj, final int destId) throws IOException {
-        send(obj);
+    public void send(final Object msg, final int destId) throws IOException {
+        send(msg);
     }
 
     public void send(final Object obj) throws BoltException

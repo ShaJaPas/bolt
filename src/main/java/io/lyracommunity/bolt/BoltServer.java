@@ -16,16 +16,16 @@ import rx.Subscriber;
 import rx.Subscription;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
 /**
- * Created by omahoc9 on 3/3/16.
+ * Bolt server implementation.
+ *
+ * @author Cian.
  */
 public class BoltServer implements Server {
 
@@ -33,9 +33,10 @@ public class BoltServer implements Server {
 
     private final CodecRepository codecs;
 
-    private final Config config;
-    private final SessionController serverSessions;
-    private volatile Endpoint serverEndpoint;
+    private final    Config            config;
+    private final    SessionController serverSessions;
+    private final    Queue<Integer>    clientsPendingDisconnect;
+    private volatile Endpoint          serverEndpoint;
 
 
     public BoltServer(final Config config) {
@@ -46,6 +47,7 @@ public class BoltServer implements Server {
         this.codecs = codecs;
         this.config = config;
         this.serverSessions = new SessionController(config, true);
+        this.clientsPendingDisconnect = new LinkedBlockingQueue<>();
     }
 
     @Override
@@ -58,11 +60,13 @@ public class BoltServer implements Server {
                 endpointSub = this.serverEndpoint.start().subscribe(subscriber);  // Pass subscriber to tie observable life-cycles together.
 
                 while (!subscriber.isUnsubscribed()) {
+                    applyRequestedDisconnects(subscriber);
+
                     pollReceivedData(subscriber);
                 }
             }
             catch (InterruptedException ex) {
-                // Do nothing.
+                // Let the server close cleanly and quietly.
             }
             catch (Exception ex) {
                 subscriber.onError(ex);
@@ -76,41 +80,26 @@ public class BoltServer implements Server {
         });
     }
 
-    private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
-
-        serverSessions.awaitPacketReady(100, TimeUnit.MILLISECONDS);
-
-        for (final Session session : serverSessions.getSessions()) {
-            DataPacket packet;
-            do {
-                packet = session.pollReceiveBuffer();
-
-                if (packet != null) {
-                    final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
-                    if (decoded != null) {
-                        subscriber.onNext(new ReceiveObject<>(session.getSessionID(), decoded));
-                    }
-                }
-            }
-            while (packet != null);
-        }
-
-    }
-
     public int getPort() {
         return (serverEndpoint != null) ? serverEndpoint.getLocalPort() : config.getLocalPort();
     }
 
-    public void sendToAll(final Object obj) throws IOException {
+    @Override
+    public void broadcast(final Object msg) throws IOException {
         final List<Integer> ids = serverSessions.getSessions().stream()
                 .map(Session::getSessionID)
                 .collect(Collectors.toList());
-        send(obj, ids);
+        send(msg, ids);
     }
 
     @Override
-    public void send(final Object obj, final int destID) throws IOException {
-        send(obj, Collections.singletonList(destID));
+    public void disconnectClient(final int sessionId) {
+        clientsPendingDisconnect.offer(sessionId);
+    }
+
+    @Override
+    public void send(final Object msg, final int destID) throws IOException {
+        send(msg, Collections.singletonList(destID));
     }
 
     public void send(final Object obj, final List<Integer> destIDs) throws IOException {
@@ -136,6 +125,33 @@ public class BoltServer implements Server {
 
     public CodecRepository codecs() {
         return codecs;
+    }
+
+    private void applyRequestedDisconnects(final Subscriber<? super Object> subscriber) {
+        Integer sessionId;
+        while ((sessionId = clientsPendingDisconnect.poll()) != null) {
+            serverSessions.endSession(subscriber, sessionId, "Requested by server");
+        }
+    }
+
+    private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
+
+        serverSessions.awaitPacketReady(100, TimeUnit.MILLISECONDS);
+
+        for (final Session session : serverSessions.getSessions()) {
+            DataPacket packet;
+            do {
+                packet = session.pollReceiveBuffer();
+
+                if (packet != null) {
+                    final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
+                    if (decoded != null) {
+                        subscriber.onNext(new ReceiveObject<>(session.getSessionID(), decoded));
+                    }
+                }
+            }
+            while (packet != null);
+        }
     }
 
 }

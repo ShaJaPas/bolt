@@ -2,19 +2,37 @@ package io.lyracommunity.bolt.api;
 
 import rx.Observable;
 
+import java.io.IOException;
+
 /**
- * Created by keen on 28/02/16.
+ * Bolt server.
+ *
+ * @author Cian.
  */
 public interface Server extends Sender {
 
-    /*
-    EVENTS:
-    Client connect
-    Client disconnect
-    Receive data
-     */
 
+    /**
+     * Send a message to all connected clients.
+     *
+     * @param msg the message to send.
+     * @throws IOException if an issue occurred while sending to a client.
+     */
+    void broadcast(final Object msg) throws IOException;
+
+    /**
+     * Begin the server.
+     *
+     * @return the async event stream.
+     */
     Observable<?> bind();
+
+    /**
+     * Mark a connected client to be disconnected.
+     *
+     * @param sessionId the client session to disconnect.
+     */
+    void disconnectClient(int sessionId);
 
 
 }

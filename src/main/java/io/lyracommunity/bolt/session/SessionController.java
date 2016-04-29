@@ -1,8 +1,6 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
-import io.lyracommunity.bolt.util.SharedCondition;
-import io.lyracommunity.bolt.util.SharedCondition.PhaseStrategy;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.event.ConnectionReady;
 import io.lyracommunity.bolt.event.PeerDisconnected;
@@ -10,6 +8,8 @@ import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.packet.PacketType;
+import io.lyracommunity.bolt.util.SharedCondition;
+import io.lyracommunity.bolt.util.SharedCondition.PhaseStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Subscriber;
@@ -63,10 +63,11 @@ public class SessionController {
         sessions.clear();
     }
 
-    public void endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
+    public boolean endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
         final Session session = sessions.remove(destinationID);
         if (session != null) session.cleanup();
         if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
+        return (session != null);
     }
 
     public void processPacket(final Subscriber<? super Object> subscriber, final Destination peer,

@@ -90,7 +90,7 @@ public class MultiClientIT {
                     System.out.println(evt);
                     if (awaitingConnection.decrementAndGet() == 0) {
                         try {
-                            ts.server.sendToAll(toSend);
+                            ts.server.broadcast(toSend);
                         }
                         catch (IOException e) {
                             throw new RuntimeException(e);
