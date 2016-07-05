@@ -43,7 +43,7 @@ public class BoltClient implements Client {
     }
 
     @Override
-    public Observable<?> connect(final InetAddress address, final int port) {
+    public Observable<BoltEvent> connect(final InetAddress address, final int port) {
 
         return Observable.create(subscriber -> {
             Thread.currentThread().setName("Bolt-Poller-Client" + Util.THREAD_INDEX.incrementAndGet());
@@ -104,7 +104,7 @@ public class BoltClient implements Client {
         flush();
     }
 
-    private Observable<?> startEndPoint() throws InterruptedException, IOException {
+    private Observable<BoltEvent> startEndPoint() throws InterruptedException, IOException {
         return clientEndpoint.start();
     }
 

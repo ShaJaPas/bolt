@@ -18,6 +18,6 @@ public interface Client extends Sender {
      * @param port the port to connect to.
      * @return the async stream of events for the connection.
      */
-    Observable<?> connect(InetAddress host, int port);
+    Observable<BoltEvent> connect(InetAddress host, int port);
 
 }
