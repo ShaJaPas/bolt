@@ -24,7 +24,7 @@ public class ServerSession extends Session {
     private static final Logger LOG                  = LoggerFactory.getLogger(ServerSession.class);
     private static final String DESCRIPTION_TEMPLATE = "ServerSession localPort={0} peer={1}:{2}";
 
-    private ConnectionHandshake finalConnectionHandshake;
+    private volatile ConnectionHandshake finalConnectionHandshake;
 
     public ServerSession(final Config config, final ChannelOut endPoint, final Destination peer) {
         super(config,
@@ -55,15 +55,13 @@ public class ServerSession extends Session {
         }
 
         else if (getStatus().seqNo() < READY.seqNo()) {
-            state.setDestinationSocketID(handshake.getSessionID());
 
             if (getStatus().seqNo() < HANDSHAKING.seqNo()) {
                 setStatus(HANDSHAKING);
             }
-
             try {
-                boolean handShakeComplete = handleSecondHandShake(handshake);
-                if (handShakeComplete) {
+                final boolean handshakingComplete = handleClientHandshake(handshake);
+                if (handshakingComplete) {
                     LOG.info("Handshake complete for Server!  [{}]", getSessionID());
                     setStatus(READY);
                     readyToStart = true;
@@ -81,26 +79,37 @@ public class ServerSession extends Session {
     }
 
     /**
-     * Handle the second connection handshake.
+     * Handle the client connection handshake.
      *
      * @param handshake the second connection handshake.
      * @throws IOException if the received cookie doesn't equal the expected cookie.
      */
-    private boolean handleSecondHandShake(final ConnectionHandshake handshake) throws IOException {
+    private boolean handleClientHandshake(final ConnectionHandshake handshake) throws IOException {
         if (state.getSessionCookie() == 0) {
+            state.setSessionCookie(1L + SeqNum.randomInt());
             ackInitialHandshake(handshake);
             // Need one more handshake.
             return false;
         }
-
         final long otherCookie = handshake.getCookie();
-        if (state.getSessionCookie() != otherCookie) {
+        final boolean initialHandshake = (otherCookie == 0);
+
+        // Is initial, need one more handshake.
+        if (initialHandshake) {
+            ackInitialHandshake(handshake);
+            return false;
+        }
+        // The cookie is incorrect.
+        else if (state.getSessionCookie() != otherCookie) {
             setStatus(INVALID);
             throw new IOException(MessageFormat.format("Invalid cookie [{0}] received; Expected cookie is [{1}]",
                     otherCookie, state.getSessionCookie()));
         }
-        sendFinalHandShake(handshake);
-        return true;
+        // Cookie is confirmed by client and equals server cookie. Send final confirmation handshake.
+        else {
+            sendFinalHandShake(handshake);
+            return true;
+        }
     }
 
     /**
@@ -115,13 +124,12 @@ public class ServerSession extends Session {
         final int initialSequenceNumber = handshake.getInitialSeqNo();
         state.setInitialSequenceNumber(initialSequenceNumber);
         setDatagramSize((int) bufferSize);
-        state.setSessionCookie(SeqNum.randomInt());
 
         final InetAddress localAddress = endPoint.getLocalAddress();
         if (localAddress == null)
             throw new IllegalStateException("Could not get local endpoint address for handshake response");
 
-        final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
+        final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerFirstCookieShareResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), localAddress);
         LOG.info("Sending reply {}", responseHandshake);
         endPoint.doSend(responseHandshake, state);
@@ -138,7 +146,7 @@ public class ServerSession extends Session {
             state.setInitialSequenceNumber(initialSequenceNumber);
             setDatagramSize((int) bufferSize);
 
-            finalConnectionHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
+            finalConnectionHandshake = ConnectionHandshake.ofServerFinalResponse(bufferSize, initialSequenceNumber,
                     handshake.getMaxFlowWndSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), endPoint.getLocalAddress());
         }
         LOG.info("Sending final handshake ack {}", finalConnectionHandshake);

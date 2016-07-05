@@ -13,7 +13,7 @@ public class Destination {
     private final InetSocketAddress socketAddress;
 
     /** Bolt socket ID of the peer */
-    private int sessionID;
+    private volatile int sessionID;
 
     public Destination(InetAddress address, int port) {
         this.address = address;
@@ -33,7 +33,7 @@ public class Destination {
         return sessionID;
     }
 
-    public void setSessionID(int sessionID) {
+    public void setSessionID(final int sessionID) {
         this.sessionID = sessionID;
     }
 

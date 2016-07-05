@@ -135,7 +135,7 @@ class Endpoint implements ChannelOut {
                 LOG.debug("{} socket timeout", name);
             }
             catch (SocketException ex) {
-                LOG.warn("{} SocketException: {}", name, ex.getMessage());
+                LOG.info("{} SocketException: {}", name, ex.getMessage());
                 if (dgSocket.isClosed()) subscriber.onError(ex);
             }
             catch (ClosedChannelException ex) {
@@ -143,6 +143,10 @@ class Endpoint implements ChannelOut {
             }
             catch (Exception ex) {
                 LOG.error("{} Unexpected endpoint error", name, ex);
+            }
+            catch (Throwable ex) {
+                LOG.error("{} Unexpected endpoint error", name, ex);
+                throw new RuntimeException(ex);
             }
         }
         LOG.info("{} completed naturally.", name);

@@ -33,7 +33,7 @@ public class SessionState {
     /**
      * Session cookie created during handshake.
      */
-    private long sessionCookie = 0;
+    private volatile long sessionCookie = 0;
     /**
      * Flow window size (how many data packets are in-flight at a single time).
      */

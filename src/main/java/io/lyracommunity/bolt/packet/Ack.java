@@ -71,7 +71,7 @@ public class Ack extends ControlPacket {
      */
     public static Ack buildLightAcknowledgement(final int ackNumber, final int ackSequenceNumber,
             final long roundTripTime, final long roundTripTimeVar, final long bufferSize, final int destinationID) {
-        Ack ack = new Ack();
+        final Ack ack = new Ack();
         // The packet sequence number to which all the packets have been received
         ack.setAckNumber(ackNumber);
         // Assign this ack a unique increasing ACK sequence number

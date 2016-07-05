@@ -24,10 +24,17 @@ import java.util.Objects;
 public class ConnectionHandshake extends ControlPacket {
 
 
-    private static final long CONNECTION_TYPE_REGULAR = 1L;
+    /**
+     * Response type in response handshake packet.
+     */
+    public static final long SERVER_FIRST_ACK_HANDSHAKE = -1L;
 
-    /** Connection type in response handshake packet. */
-    public static final long CONNECTION_SERVER_ACK = -1L;
+    /**
+     * Sent by server on completion of handshake process.
+     */
+    public static final long SERVER_FINISHED_HANDSHAKE = -2L;
+
+    private static final long CLIENT_HANDSHAKE = 1L;
 
     private static final long BOLT_VERSION = 1;
 
@@ -36,7 +43,7 @@ public class ConnectionHandshake extends ControlPacket {
     private int initialSeqNo = 0;
     private long packetSize;
     private long maxFlowWndSize;
-    private long connectionType = CONNECTION_TYPE_REGULAR;  // Regular or rendezvous mode
+    private long handshakeType = CLIENT_HANDSHAKE;  // Regular or rendezvous mode
 
     /**
      * Tell peer what the socket ID on this side is.
@@ -57,14 +64,14 @@ public class ConnectionHandshake extends ControlPacket {
         decode(controlInformation);
     }
 
-    ConnectionHandshake(long packetSize, int initialSeqNo, long boltVersion, long connectionType, long maxFlowWndSize, int sessionID,
-            int destinationID, long cookie, InetAddress address) {
+    ConnectionHandshake(long packetSize, int initialSeqNo, long boltVersion, long handshakeType, long maxFlowWndSize, int sessionID,
+                        int destinationID, long cookie, InetAddress address) {
         this();
         Objects.requireNonNull(address);
         this.packetSize = packetSize;
         this.initialSeqNo = initialSeqNo;
         this.boltVersion = boltVersion;
-        this.connectionType = connectionType;
+        this.handshakeType = handshakeType;
         this.maxFlowWndSize = maxFlowWndSize;
         this.sessionID = sessionID;
         this.destinationID = destinationID;
@@ -78,7 +85,7 @@ public class ConnectionHandshake extends ControlPacket {
      */
     public static ConnectionHandshake ofClientInitial(long packetSize, int initialSeqNo, long maxFlowWndSize,
                                                       int sessionID, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, sessionID, 0, 0, address);
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CLIENT_HANDSHAKE, maxFlowWndSize, sessionID, 0, 0, address);
     }
 
     /**
@@ -87,7 +94,7 @@ public class ConnectionHandshake extends ControlPacket {
      */
     public static ConnectionHandshake ofClientSecond(long packetSize, int initialSeqNo, long maxFlowWndSize,
                                                      int sessionID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_TYPE_REGULAR, maxFlowWndSize, sessionID,
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CLIENT_HANDSHAKE, maxFlowWndSize, sessionID,
                 destinationID, cookie, address);
     }
 
@@ -95,22 +102,20 @@ public class ConnectionHandshake extends ControlPacket {
      * Build the second stage of the three-way handshake.
      * This is the server response to the client handshake request.
      */
-    public static ConnectionHandshake ofServerHandshakeResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
-                                                                int sessionID, int destinationID, long cookie, InetAddress address) {
-        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, CONNECTION_SERVER_ACK, maxFlowWndSize, sessionID,
+    public static ConnectionHandshake ofServerFirstCookieShareResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
+                                                                       int sessionID, int destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, SERVER_FIRST_ACK_HANDSHAKE, maxFlowWndSize, sessionID,
                 destinationID, cookie, address);
     }
 
-    protected void decode(final byte[] data) throws IOException {
-        boltVersion = PacketUtil.decode(data, 0);
-        initialSeqNo = PacketUtil.decodeInt(data, 4);
-        packetSize = PacketUtil.decode(data, 8);
-        maxFlowWndSize = PacketUtil.decode(data, 12);
-        connectionType = PacketUtil.decode(data, 16);
-        sessionID = PacketUtil.decodeInt(data, 20);
-        cookie = PacketUtil.decode(data, 24);
-        // TODO ipv6 check
-        address = PacketUtil.decodeInetAddress(data, 28, false);
+    /**
+     * Build the second stage of the three-way handshake.
+     * This is the server response to the client handshake request.
+     */
+    public static ConnectionHandshake ofServerFinalResponse(long packetSize, int initialSeqNo, long maxFlowWndSize,
+                                                            int sessionID, int destinationID, long cookie, InetAddress address) {
+        return new ConnectionHandshake(packetSize, initialSeqNo, BOLT_VERSION, SERVER_FINISHED_HANDSHAKE, maxFlowWndSize, sessionID,
+                destinationID, cookie, address);
     }
 
     public long getBoltVersion() {
@@ -129,8 +134,8 @@ public class ConnectionHandshake extends ControlPacket {
         return maxFlowWndSize;
     }
 
-    public long getConnectionType() {
-        return connectionType;
+    public long getHandshakeType() {
+        return handshakeType;
     }
 
     public int getSessionID() {
@@ -145,6 +150,18 @@ public class ConnectionHandshake extends ControlPacket {
         return address;
     }
 
+    protected void decode(final byte[] data) throws IOException {
+        boltVersion = PacketUtil.decode(data, 0);
+        initialSeqNo = PacketUtil.decodeInt(data, 4);
+        packetSize = PacketUtil.decode(data, 8);
+        maxFlowWndSize = PacketUtil.decode(data, 12);
+        handshakeType = PacketUtil.decode(data, 16);
+        sessionID = PacketUtil.decodeInt(data, 20);
+        cookie = PacketUtil.decode(data, 24);
+        // TODO ipv6 check
+        address = PacketUtil.decodeInetAddress(data, 28, false);
+    }
+
     @Override
     public byte[] encodeControlInformation() {
         try {
@@ -153,7 +170,7 @@ public class ConnectionHandshake extends ControlPacket {
             bos.write(PacketUtil.encode(initialSeqNo));
             bos.write(PacketUtil.encode(packetSize));
             bos.write(PacketUtil.encode(maxFlowWndSize));
-            bos.write(PacketUtil.encode(connectionType));
+            bos.write(PacketUtil.encode(handshakeType));
             bos.write(PacketUtil.encode(sessionID));
             bos.write(PacketUtil.encode(cookie));
             bos.write(PacketUtil.encode(address));
@@ -166,8 +183,7 @@ public class ConnectionHandshake extends ControlPacket {
     }
 
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())
@@ -179,23 +195,22 @@ public class ConnectionHandshake extends ControlPacket {
                 initialSeqNo == that.initialSeqNo &&
                 packetSize == that.packetSize &&
                 maxFlowWndSize == that.maxFlowWndSize &&
-                connectionType == that.connectionType &&
+                handshakeType == that.handshakeType &&
                 sessionID == that.sessionID &&
                 cookie == that.cookie &&
                 Objects.equals(address, that.address);
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return Objects
-                .hash(super.hashCode(), boltVersion, initialSeqNo, packetSize, maxFlowWndSize, connectionType, sessionID, cookie, address);
+                .hash(super.hashCode(), boltVersion, initialSeqNo, packetSize, maxFlowWndSize, handshakeType, sessionID, cookie, address);
     }
 
     public String toString() {
         final StringBuilder sb = new StringBuilder();
         sb.append("ConnectionHandshake [");
-        sb.append("connectionType=").append(connectionType);
+        sb.append("handshakeType=").append(handshakeType);
         sb.append(", sessionID=").append(sessionID);
         sb.append(", initialSeqNo=").append(initialSeqNo);
         sb.append(", packetSize=").append(packetSize);

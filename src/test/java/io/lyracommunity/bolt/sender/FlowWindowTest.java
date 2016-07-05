@@ -20,7 +20,7 @@ public class FlowWindowTest
 
     @Test
     public void testFillWindow() throws InterruptedException, TimeoutException {
-        FlowWindow fw = new FlowWindow(3, 128);
+        FlowWindow fw = new FlowWindow(false, 3, 128);
 
         assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
@@ -39,7 +39,7 @@ public class FlowWindowTest
 
     @Test
     public void ConsumedFromFullWindow_ProducerWaitingForSignal_ProducerIsNotified() throws Exception {
-        FlowWindow fw = new FlowWindow(3, 128);
+        FlowWindow fw = new FlowWindow(false, 3, 128);
 
         assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
@@ -66,7 +66,7 @@ public class FlowWindowTest
 
     @Test
     public void testOverflow() throws InterruptedException, TimeoutException {
-        FlowWindow fw = new FlowWindow(3, 64);
+        FlowWindow fw = new FlowWindow(false, 3, 64);
 
         assertTrue(fw.tryProduce(createPacket(1, 1), 10, TimeUnit.MILLISECONDS));
         assertTrue(fw.tryProduce(createPacket(2, 1), 10, TimeUnit.MILLISECONDS));
@@ -92,7 +92,7 @@ public class FlowWindowTest
 
     @Test
     public void testConcurrentReadWrite_20() throws InterruptedException {
-        final FlowWindow fw = new FlowWindow(20, 64);
+        final FlowWindow fw = new FlowWindow(false, 20, 64);
         CompletableFuture.runAsync(() -> doRead(fw));
         CompletableFuture.runAsync(() -> doWrite(fw));
 
@@ -106,7 +106,7 @@ public class FlowWindowTest
 
     @Test
     public void testConcurrentReadWrite_2() throws InterruptedException {
-        final FlowWindow fw = new FlowWindow(2, 64);
+        final FlowWindow fw = new FlowWindow(false, 2, 64);
 
         CompletableFuture.runAsync(() -> doRead(fw));
         CompletableFuture.runAsync(() -> doWrite(fw));

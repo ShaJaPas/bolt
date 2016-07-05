@@ -96,7 +96,7 @@ public class ClientSession extends Session {
         boolean readyToStart = false;
         if (getStatus() == HANDSHAKING) {
             LOG.info("Received initial handshake response from {}\n{}", peer, handshake);
-            if (handshake.getConnectionType() == ConnectionHandshake.CONNECTION_SERVER_ACK) {
+            if (handshake.getHandshakeType() == ConnectionHandshake.SERVER_FIRST_ACK_HANDSHAKE) {
                 try {
                     final int peerSocketID = handshake.getSessionID();
                     state.setSessionCookie(handshake.getCookie());
@@ -117,7 +117,7 @@ public class ClientSession extends Session {
                 subscriber.onError(ex);
             }
         }
-        else if (getStatus() == HANDSHAKING2) {
+        else if (getStatus() == HANDSHAKING2 && ConnectionHandshake.SERVER_FINISHED_HANDSHAKE == handshake.getHandshakeType()) {
             try {
                 LOG.info("Received confirmation handshake response from {}\n{}", peer, handshake);
                 setStatus(READY);

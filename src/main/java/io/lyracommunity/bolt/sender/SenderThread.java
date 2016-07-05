@@ -62,6 +62,10 @@ public class SenderThread {
             catch (InterruptedException ex) {
                 LOG.info("Finished with an interrupt {}", (Object) ex);
             }
+            catch (Throwable ex) {
+                LOG.error("Unexpected sender thread exception", ex);
+                throw new RuntimeException(ex);
+            }
             LOG.info("Stopping sender");
             subscriber.onCompleted();
         });

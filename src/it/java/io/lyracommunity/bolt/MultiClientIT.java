@@ -2,6 +2,7 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.api.event.ConnectionReady;
 import io.lyracommunity.bolt.api.event.PeerDisconnected;
+import io.lyracommunity.bolt.api.event.ReceiveObject;
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestObjects;
@@ -26,8 +27,13 @@ public class MultiClientIT {
 
     @Before
     public void setUp() throws Exception {
-        numClients = 2 + new Random().nextInt(3);
+        setUp(2 + new Random().nextInt(3));
+    }
+
+    private void setUp(final int clientCount) {
+        numClients = clientCount;
         System.out.println("Total of " + numClients + " clients.");
+
     }
 
     @Test
@@ -161,5 +167,67 @@ public class MultiClientIT {
         }
     }
 
+    @Test
+    public void highConcurrentSessionCount() throws Throwable {
+        final AtomicInteger received = new AtomicInteger(0);
+
+        setUp(40);
+        final TestObjects.ReliableUnordered toSend = TestObjects.reliableUnordered(100);
+        final boolean sessionExpirable = false;
+
+        Infra.Builder builder = Infra.Builder.withServerAndClients(numClients)
+                .preconfigureServer(s -> s.config().setAllowSessionExpiry(sessionExpirable))
+                .onReadyClient((tc, rdy) -> tc.client.send(toSend))
+                .onEventServer((ts, evt) -> {
+                    if (evt instanceof ReceiveObject) System.out.println("RECEIVED: " + received.incrementAndGet());
+                })
+                .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
+                .setWaitCondition(tc -> tc.server().receivedOf(toSend.getClass()) < numClients);
+
+        try (Infra i = builder.build()) {
+            i.start().awaitCompletion(1, TimeUnit.MINUTES);
+
+            assertEquals(numClients, i.server().receivedOf(toSend.getClass()));
+        }
+    }
+
+    @Test
+    public void highRandomSessionCount() throws Throwable {
+        setUp(10);
+        final int numPhases = 50;
+        final AtomicInteger received = new AtomicInteger(0);
+        final TestObjects.ReliableUnordered toSend = TestObjects.reliableUnordered(100);
+        final boolean sessionExpirable = false;
+
+        Infra.Builder serverBuilder = Infra.Builder.withServerAndClients(0)
+                .preconfigureServer(s -> s.config().setAllowSessionExpiry(sessionExpirable))
+                .onEventServer((ts, evt) -> {
+                    if (evt instanceof ReceiveObject) System.out.println("RECEIVED: " + received.incrementAndGet());
+                })
+                .setWaitCondition(tc -> tc.server().receivedOf(toSend.getClass()) < numClients * numPhases);
+
+        try (Infra serverInf = serverBuilder.build()) {
+            serverInf.start();
+
+            for (int i = 0; i < numPhases; i++) {
+                final AtomicInteger done = new AtomicInteger(0);
+                Infra.Builder clientBuilder = Infra.Builder.clientsOnly(numClients, serverInf.server().server.getPort())
+                        .onReadyClient((tc, rdy) -> {
+                            tc.client.send(toSend);
+                            tc.client.flush();
+                            tc.close();
+                            done.incrementAndGet();
+                        })
+                        .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
+                        .setWaitCondition(tc -> done.get() < numClients);
+
+                try (Infra clientInf = clientBuilder.build()) {
+                    clientInf.start().awaitCompletion(1, TimeUnit.MINUTES);
+                }
+            }
+
+            assertEquals(numClients * numPhases, serverInf.server().receivedOf(toSend.getClass()));
+        }
+    }
 
 }

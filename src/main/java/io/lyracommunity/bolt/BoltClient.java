@@ -66,9 +66,10 @@ public class BoltClient implements Client {
             catch (final InterruptedException ex) {
                 LOG.info("Client interrupted.");
             }
-            catch (final Exception ex) {
+            catch (final Throwable ex) {
                 LOG.error("Unexpected client error", ex);
                 subscriber.onError(ex);
+                throw new RuntimeException(ex);
             }
             if (endpointAndSession != null) {
                 LOG.info("Enforcing endpoint stop by client");

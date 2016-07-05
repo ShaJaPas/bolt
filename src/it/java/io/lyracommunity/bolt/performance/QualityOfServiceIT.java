@@ -23,7 +23,7 @@ public class QualityOfServiceIT {
     @Test
     public void test_HighLatencyAndHighPacketLoss_TimeTakeToDeliveryReliable() throws Throwable {
 //        while (true) {
-            doTest(500, 0.2f, 20, TestObjects.reliableUnordered(100), 1500);
+            doTest(500, 0.2f, 20, TestObjects.reliableUnordered(100), 1000);
 //            System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 //            Thread.sleep(1000);
 //        }

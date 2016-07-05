@@ -18,28 +18,30 @@ import java.util.function.Predicate;
  */
 public class Infra implements AutoCloseable {
 
+    private final int serverPort;
     private final TestServer server;
     private final List<TestClient> clients;
     private final Predicate<Infra> waitCondition;
     private final AtomicLong totalTime = new AtomicLong();
 
-    private Infra(TestServer server, List<TestClient> clients, Predicate<Infra> waitCondition) {
+    private Infra(TestServer server, List<TestClient> clients, Predicate<Infra> waitCondition, int serverPort) {
         this.server = server;
         this.clients = clients;
         this.waitCondition = waitCondition;
+        this.serverPort = serverPort;
     }
 
     public Infra start() throws Exception {
         // Start servers/clients
-        server.start();
-        for (TestClient c : clients) c.start(server.server.getPort());
+        if (server != null) server.start();
+        for (TestClient c : clients) c.start(serverPort);
         return this;
     }
 
     public long awaitCompletion(final long time, final TimeUnit unit) throws Throwable {
         final long maxWaitMicros = unit.toMicros(time);
         final long startTime = Util.currentTimeMicros();
-        while (server.getErrors().isEmpty()
+        while ((server == null || server.getErrors().isEmpty())
                 && clients.stream().allMatch(c -> c.getErrors().isEmpty())
                 && waitCondition.test(this)) {
             Thread.sleep(3);
@@ -48,7 +50,7 @@ public class Infra implements AutoCloseable {
         final long readyTime = clients.stream().mapToLong(TestClient::getReadyTime).min().orElse(0);
         totalTime.set(System.currentTimeMillis() - readyTime);
 
-        if (!server.getErrors().isEmpty()) throw server.getErrors().get(0);
+        if (server != null && !server.getErrors().isEmpty()) throw server.getErrors().get(0);
 
         final Throwable clientEx = clients.stream().flatMap(c -> c.getErrors().stream()).findFirst().orElse(null);
         if (clientEx != null) throw clientEx;
@@ -59,7 +61,7 @@ public class Infra implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        server.close();
+        if (server != null) server.close();
         for (AutoCloseable c : clients) c.close();
         Thread.sleep(50);
     }
@@ -74,6 +76,8 @@ public class Infra implements AutoCloseable {
 
     public static class Builder {
 
+        private int serverPort;
+        private final boolean hasServer;
         private final int numClients;
         private Consumer<BoltServer> serverConfigurer;
         private Consumer<BoltClient> clientConfigurer;
@@ -83,12 +87,17 @@ public class Infra implements AutoCloseable {
         private BiConsumer<TestServer, ConnectionReady> onReadyServer;
         private Predicate<Infra> waitCondition;
 
+        public static Builder clientsOnly(final int numClients, final int serverPort) {
+            return new Builder(false, numClients, serverPort);
+        }
         public static Builder withServerAndClients(final int numClients) {
-            return new Builder(numClients);
+            return new Builder(true, numClients, -1);
         }
 
-        private Builder(int numClients) {
+        private Builder(boolean hasServer, int numClients, int serverPort) {
+            this.hasServer = hasServer;
             this.numClients = numClients;
+            this.serverPort = serverPort;
         }
 
         public Builder preconfigureServer(Consumer<BoltServer> serverConfigurer) {
@@ -128,12 +137,15 @@ public class Infra implements AutoCloseable {
 
         public Infra build() throws Exception {
 
-            final TestServer server = TestServer.runCustomServer(onEventServer, onReadyServer, serverConfigurer);
+            final TestServer server = (hasServer) ?
+                    TestServer.runCustomServer(onEventServer, onReadyServer, serverConfigurer) : null;
 
-            final List<TestClient> clients = TestClient.runClients(numClients, server.server.getPort(),
+            final int serverPort = hasServer ? server.server.getPort() : this.serverPort;
+
+            final List<TestClient> clients = TestClient.runClients(numClients, serverPort,
                     onEventClient, onReadyClient, clientConfigurer);
 
-            return new Infra(server, clients, waitCondition);
+            return new Infra(server, clients, waitCondition, serverPort);
         }
 
     }

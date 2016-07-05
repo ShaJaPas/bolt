@@ -68,7 +68,8 @@ public class BoltServer implements Server {
             catch (InterruptedException ex) {
                 // Let the server close cleanly and quietly.
             }
-            catch (Exception ex) {
+            catch (Throwable ex) {
+                LOG.error("Unexpected server error", ex);
                 subscriber.onError(ex);
             }
             if (endpointSub != null) {

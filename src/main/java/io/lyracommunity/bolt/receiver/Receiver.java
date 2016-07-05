@@ -130,7 +130,7 @@ public class Receiver {
         this.packetHistoryWindow = new PacketHistoryWindow(16);
         this.receiverLossList = new ReceiverLossList();
         this.packetPairWindow = new PacketPairWindow(16);
-        this.largestReceivedRelSeqNumber = 0;
+        // TODO is buffer size even required anymore?
         this.bufferSize = sessionState.getReceiveBufferSize();
         this.handOffQueue = new ArrayBlockingQueue<>(4 * sessionState.getFlowWindowSize());
         this.receiveBuffer = new ReceiveBuffer(2 * sessionState.getFlowWindowSize());
@@ -411,7 +411,9 @@ public class Receiver {
 
             // 8) Need to send an ACK? Some cc algorithms use this.
             if (config.getAckInterval() > 0) {
-                if (reliableN % config.getAckInterval() == 0) processACKEvent(false);
+                if (reliableN % config.getAckInterval() == 0) {
+                    processACKEvent(false);
+                }
             }
         }
         return true;

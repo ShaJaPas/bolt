@@ -5,7 +5,9 @@ import io.lyracommunity.bolt.util.Util;
 import java.net.InetAddress;
 
 /**
- * Created by omahoc9 on 3/11/16.
+ * Bolt configuration class.
+ *
+ * @author Cian.
  */
 public class Config {
 
@@ -26,23 +28,26 @@ public class Config {
     private          int         simulatedBandwidth;
     private          InetAddress localAddress;
     private          int         localPort;
-    private boolean allowSessionExpiry          = true;
+    private boolean allowSessionExpiry = true;
+
+    private boolean memoryPreAllocation = false;
+
     /**
      * The consecutive number of EXP events before the session expires.
      */
-    private int     expLimit                    = 16;
+    private int    expLimit                    = 16;
     /**
      * The initial congestion window size, in packets.
      */
-    private double  initialCongestionWindowSize = 16;
+    private double initialCongestionWindowSize = 16;
     /**
      * If larger than 0, the receiver should acknowledge every n'th packet.
      */
-    private int     ackInterval                 = 16;
+    private int    ackInterval                 = 16;
     /**
      * Microseconds to next EXP event. Default to 500 millis.
      */
-    private long    expTimerInterval            = 50 * Util.getSYNTime();
+    private long   expTimerInterval            = 50 * Util.getSYNTime();
 
     /**
      * Max ACK timer interval, in microseconds.
@@ -62,7 +67,8 @@ public class Config {
      * <p>
      * For high-throughput connections, thousands are recommended.
      */
-    private int flowWindowSize = 1024 * 10;
+//    private int flowWindowSize = 1024 * 10;
+    private int flowWindowSize = 256;
 
     /**
      * Create a new instance.
@@ -73,6 +79,40 @@ public class Config {
     public Config(final InetAddress localAddress, final int localPort) {
         this.localAddress = localAddress;
         this.localPort = localPort;
+    }
+
+    /**
+     * Suitable for a latency insensitive, high-performance and high-throughput connection.
+     * <p>
+     * May not be scalable for high number of sessions as memory requirements
+     * per session are considerable higher than the {@link #ofStandard(InetAddress, int) standard configuration}.
+     *
+     * @param localAddress the local address to bind on.
+     * @param localPort    the local port to bind on.
+     * @return the high throughput configuration.
+     */
+    public static Config ofHighThroughput(final InetAddress localAddress, final int localPort) {
+        final Config config = new Config(localAddress, localPort);
+        config.setFlowWindowSize(1024 * 10);
+        config.setMemoryPreAllocation(true);
+        return config;
+    }
+
+    /**
+     * Standard configuration.
+     * <p>
+     * Good for low-latency scenarios and capable of handling many open sessions,
+     * as memory requirements per session are low.
+     *
+     * @param localAddress the local address to bind on.
+     * @param localPort    the local port to bind on.
+     * @return the standard configuration.
+     */
+    public static Config ofStandard(final InetAddress localAddress, final int localPort) {
+        final Config config = new Config(localAddress, localPort);
+        config.setFlowWindowSize(256);
+        config.setMemoryPreAllocation(false);
+        return config;
     }
 
     public InetAddress getLocalAddress() {
@@ -213,5 +253,27 @@ public class Config {
 
     public void setFlowWindowSize(final int flowWindowSize) {
         this.flowWindowSize = flowWindowSize;
+    }
+
+    /**
+     * @return whether memory should be pre-allocated for sessions.
+     * @see Config#setMemoryPreAllocation(boolean)
+     */
+    public boolean isMemoryPreAllocation() {
+        return memoryPreAllocation;
+    }
+
+    /**
+     * Optimization strategy for memory vs. cpu.
+     * <p>
+     * If true, memory for all sessions will be pre-allocated. This will give
+     * performance gains on very high-throughput connections, but leaves open
+     * the vulnerability of OutOfMemoryErrors, especially on servers with many
+     * open client sessions.
+     *
+     * @param memoryPreAllocation the value to set.
+     */
+    private void setMemoryPreAllocation(final boolean memoryPreAllocation) {
+        this.memoryPreAllocation = memoryPreAllocation;
     }
 }

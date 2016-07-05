@@ -14,18 +14,19 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 class FlowWindow {
 
+    // TODO this can be a big source of memory when multiple sessions are open.
     private final DataPacket[] packets;
 
     private final int           length;
+    private final int           chunkSize;
     private final ReentrantLock lock;
     private final Condition     notFull;
-    private volatile boolean isEmpty = true;
-    private volatile boolean isFull  = false;
-
+    private volatile boolean isEmpty      = true;
+    private volatile boolean isFull       = false;
     /**
      * Valid entries that can be read.
      */
-    private volatile int validEntries = 0;
+    private volatile int     validEntries = 0;
 
     /**
      * Index where the next data packet will be written to.
@@ -40,18 +41,34 @@ class FlowWindow {
     private volatile int produced = 0;
 
     /**
-     * @param flowWindowSize flow window size
-     * @param chunkSize      data chunk size
+     * Initialize.
+     *
+     * @param preAllocateMemory whether to pre-allocate all memory for performance.
+     * @param flowWindowSize    flow window size
+     * @param chunkSize         data chunk size
      */
-    FlowWindow(final int flowWindowSize, final int chunkSize) {
+    FlowWindow(final boolean preAllocateMemory, final int flowWindowSize, final int chunkSize) {
         this.length = flowWindowSize + 1;
+        this.chunkSize = chunkSize;
         this.packets = new DataPacket[length];
-        for (int i = 0; i < packets.length; i++) {
-            packets[i] = new DataPacket();
-            packets[i].setData(new byte[chunkSize]);
+        if (preAllocateMemory) {
+            for (int i = 0; i < packets.length; i++) {
+                createDataPacket(i);
+            }
         }
         this.lock = new ReentrantLock(true);
         this.notFull = lock.newCondition();
+    }
+
+    private DataPacket createDataPacket(final int index) {
+        packets[index] = new DataPacket();
+        packets[index].setData(new byte[chunkSize]);
+        return packets[index];
+    }
+
+    private DataPacket getDataPacket(final int index) {
+        final DataPacket dp = packets[index];
+        return (dp != null) ? dp : createDataPacket(index);
     }
 
     boolean tryProduce(final DataPacket src, final int timeout, final TimeUnit unit) throws InterruptedException {
@@ -64,7 +81,7 @@ class FlowWindow {
                 nanos = notFull.awaitNanos(nanos);
             }
 
-            final DataPacket toProduce = packets[writePos];
+            final DataPacket toProduce = getDataPacket(writePos);
             toProduce.copyFrom(src);
 
             if (++writePos == length) writePos = 0;

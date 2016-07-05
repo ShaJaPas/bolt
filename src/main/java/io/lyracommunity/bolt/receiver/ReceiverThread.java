@@ -66,7 +66,7 @@ public class ReceiverThread {
             catch (final InterruptedException ex) {
                 LOG.info("Receiver was interrupted.");
             }
-            catch (final Exception ex) {
+            catch (final Throwable ex) {
                 LOG.error("Unexpected receiver exception", ex);
                 subscriber.onError(ex);
             }

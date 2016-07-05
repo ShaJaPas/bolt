@@ -86,7 +86,7 @@ public class Sender {
     /**
      * Last acknowledge number, initialised to the initial sequence number.
      */
-    private volatile int lastAckReliabilitySequenceNumber;
+    private volatile int lastAckReliabilitySequenceNumber = 0;
     private volatile boolean started = false;
     private volatile long nextStep;
 
@@ -109,7 +109,7 @@ public class Sender {
         this.currentSequenceNumber = state.getInitialSequenceNumber() - 1;
 
         final int chunkSize = config.getDatagramSize() - 24;
-        this.flowWindow = new FlowWindow(sessionState.getFlowWindowSize(), chunkSize);
+        this.flowWindow = new FlowWindow(config.isMemoryPreAllocation(), sessionState.getFlowWindowSize(), chunkSize);
     }
 
     /**
@@ -404,7 +404,7 @@ public class Sender {
     }
 
     public boolean haveAcknowledgementFor(final int reliabilitySequenceNumber) {
-        return SeqNum.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) <= 0;
+        return SeqNum.compare16(reliabilitySequenceNumber, lastAckReliabilitySequenceNumber) < 0;
     }
 
     public boolean isSentOut(final int packetSeqNum) {

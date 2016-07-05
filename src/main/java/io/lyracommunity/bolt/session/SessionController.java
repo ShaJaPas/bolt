@@ -17,6 +17,7 @@ import rx.Subscriber;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -99,7 +100,7 @@ public class SessionController {
                 }
             }
             else {
-                LOG.info("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
+                LOG.warn("Unknown session [{}] requested from [{}] - Packet Type [{}]", destID, peer, packet.getPacketType());
             }
         }
     }
@@ -118,12 +119,14 @@ public class SessionController {
         final int sessionID = packet.getDestinationSessionID();
         Session session = getSession(sessionID);
         if (session == null) {
+            final Integer peerSocketID = Objects.requireNonNull(packet.getSessionID());
+            peer.setSessionID(peerSocketID);
+
             session = sessionsBeingConnected.get(peer);
             // New session
             if (session == null) {
                 session = new ServerSession(config, endpoint, peer);
                 sessionsBeingConnected.put(peer, session);
-                sessions.put(session.getSessionID(), session);
             }
             // Confirmation handshake
             else if (session.getSessionID() == sessionID) {
@@ -134,8 +137,6 @@ public class SessionController {
                 LOG.warn("Destination ID sent by client does not match");
                 return;
             }
-            final Integer peerSocketID = packet.getSessionID();
-            peer.setSessionID(peerSocketID);
         }
         final boolean readyToStart = session.receiveHandshake(subscriber, packet, peer);
         if (readyToStart) {
