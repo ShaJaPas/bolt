@@ -1,9 +1,10 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.Server;
-import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionController;
@@ -51,7 +52,7 @@ public class BoltServer implements Server {
     }
 
     @Override
-    public Observable<?> bind() {
+    public Observable<BoltEvent> bind() {
         return Observable.create(subscriber -> {
             Subscription endpointSub = null;
             try {
@@ -128,14 +129,14 @@ public class BoltServer implements Server {
         return codecs;
     }
 
-    private void applyRequestedDisconnects(final Subscriber<? super Object> subscriber) {
+    private void applyRequestedDisconnects(final Subscriber<? super BoltEvent> subscriber) {
         Integer sessionId;
         while ((sessionId = clientsPendingDisconnect.poll()) != null) {
             serverSessions.endSession(subscriber, sessionId, "Requested by server");
         }
     }
 
-    private void pollReceivedData(final Subscriber<? super Object> subscriber) throws InterruptedException {
+    private void pollReceivedData(final Subscriber<? super BoltEvent> subscriber) throws InterruptedException {
 
         serverSessions.awaitPacketReady(100, TimeUnit.MILLISECONDS);
 

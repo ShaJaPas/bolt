@@ -37,8 +37,8 @@ public class ClientSession extends Session {
      *
      * @return an async event stream.
      */
-    public Observable<?> connect() {
-        return Observable.create(subscriber -> {
+    public Observable<BoltEvent> connect() {
+        return Observable.<BoltEvent>create(subscriber -> {
             int n = 0;
             int phase = 0;
             try {

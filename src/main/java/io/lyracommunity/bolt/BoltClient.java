@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.api.Client;
 import io.lyracommunity.bolt.api.Config;
@@ -115,7 +116,7 @@ public class BoltClient implements Client {
      * @param port    port of remote host.
      * @throws UnknownHostException
      */
-    private Observable<?> startSession(final InetAddress address, final int port) throws InterruptedException, IOException {
+    private Observable<BoltEvent> startSession(final InetAddress address, final int port) throws InterruptedException, IOException {
         final Destination destination = new Destination(address, port);
         // Create client session
         clientSession = new ClientSession(config, clientEndpoint, destination);

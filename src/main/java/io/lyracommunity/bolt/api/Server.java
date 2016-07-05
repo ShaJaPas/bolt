@@ -25,7 +25,7 @@ public interface Server extends Sender {
      *
      * @return the async event stream.
      */
-    Observable<?> bind();
+    Observable<BoltEvent> bind();
 
     /**
      * Mark a connected client to be disconnected.
