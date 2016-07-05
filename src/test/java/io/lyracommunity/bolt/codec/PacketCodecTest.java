@@ -63,6 +63,15 @@ public class PacketCodecTest {
         assertEquals(4, packets.size());
     }
 
+    @Test
+    public void encodeFromEmptyDataPacket_Ok() throws Exception {
+        setUp(DeliveryType.RELIABLE_ORDERED, 0);
+
+        final List<DataPacket> packets = sut.encode(o);
+
+        assertEquals(1, packets.size());
+    }
+
 //    @Test
     public void decodePerformanceTest() throws Exception {
 

@@ -1,13 +1,15 @@
 package io.lyracommunity.bolt.helper;
 
-import io.lyracommunity.bolt.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.ReceiveObject;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Created by keen on 09/04/16.
+ * Receive counter by class.
+ *
+ * @author Cian.
  */
 class PacketReceiver {
 

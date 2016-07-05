@@ -3,7 +3,7 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.Server;
 import io.lyracommunity.bolt.codec.CodecRepository;
-import io.lyracommunity.bolt.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionController;

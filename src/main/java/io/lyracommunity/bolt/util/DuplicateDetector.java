@@ -15,12 +15,12 @@ import java.util.BitSet;
  *
  * @author Cian O'Mahony
  */
-public class DuplicateDetector {
+class DuplicateDetector {
 
     static final int DEFAULT_SEGMENT_COUNT = 8;
 
-    private final int segments;
-    private final int itemsPerSegment;
+    private final int    segments;
+    private final int    itemsPerSegment;
     private final BitSet received;
 
     private int lastDupNum = -1;
@@ -33,7 +33,7 @@ public class DuplicateDetector {
 
     /**
      * Create with a fixed size.
-     * <p/>
+     * <p>
      * The provided size should be a power of two. If this not the case,
      * it will be rounded up to the next power of two.
      *
@@ -41,12 +41,12 @@ public class DuplicateDetector {
      *             object scales by one bit per increment of size.
      * @return the created object.
      */
-    public static DuplicateDetector ofSize(final int size) {
+    static DuplicateDetector ofSize(final int size) {
         final BitSet set = new BitSet(size);
         return fromBitSet(set);
     }
 
-    public static DuplicateDetector fromBitSet(final BitSet set) {
+    static DuplicateDetector fromBitSet(final BitSet set) {
         return new DuplicateDetector(DEFAULT_SEGMENT_COUNT, set.size() / DEFAULT_SEGMENT_COUNT, set);
     }
 
@@ -56,7 +56,7 @@ public class DuplicateDetector {
      * @param data the received packet.
      * @return true if a duplicate packet, false otherwise.
      */
-    public boolean receivePacket(final DataPacket data) {
+    boolean receivePacket(final DataPacket data) {
         final int duplicationId = getDuplicationId(data);
 
         final boolean isDuplicate = received.get(duplicationId);

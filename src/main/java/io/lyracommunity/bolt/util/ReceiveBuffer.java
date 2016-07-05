@@ -51,7 +51,7 @@ public class ReceiveBuffer
 
     /**
      * Offer a data packet into the buffer.
-     * <p/>
+     * <p>
      * This will only be accepted if the receive buffer is not already full.
      *
      * @param data the packet data to receive.
@@ -132,7 +132,7 @@ public class ReceiveBuffer
     }
 
     /**
-     * Return a data chunk, guaranteed to be in-order.
+     * @return a data chunk, guaranteed to be in-order.
      */
     public DataPacket poll() {
         if (numValidChunks.get() == 0) {

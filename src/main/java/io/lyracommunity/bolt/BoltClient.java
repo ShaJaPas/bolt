@@ -3,8 +3,8 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.BoltException;
 import io.lyracommunity.bolt.api.Client;
 import io.lyracommunity.bolt.api.Config;
+import io.lyracommunity.bolt.api.event.ReceiveObject;
 import io.lyracommunity.bolt.codec.CodecRepository;
-import io.lyracommunity.bolt.event.ReceiveObject;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.session.ClientSession;
@@ -22,16 +22,15 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-public class BoltClient implements Client
-{
+public class BoltClient implements Client {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoltClient.class);
 
     private final Endpoint          clientEndpoint;
     private final CodecRepository   codecs;
     private final Config            config;
-    private       ClientSession     clientSession;
     private final SessionController clientSessions;
+    private       ClientSession     clientSession;
 
 
     public BoltClient(final Config config) throws IOException {
@@ -85,8 +84,7 @@ public class BoltClient implements Client
         send(msg);
     }
 
-    public void send(final Object obj) throws BoltException
-    {
+    public void send(final Object obj) throws BoltException {
         final Collection<DataPacket> data = codecs.encode(obj, clientSession.getAssembleBuffer());
         for (final DataPacket dp : data) {
             try {
@@ -129,7 +127,7 @@ public class BoltClient implements Client
      * Sends the given data asynchronously.
      *
      * @param dataPacket the data and headers to send.
-     * @throws IOException
+     * @throws IOException if the packet could not be scheduled for send.
      */
     public void send(final DataPacket dataPacket) throws IOException {
         clientSession.doWrite(dataPacket);
@@ -138,7 +136,7 @@ public class BoltClient implements Client
     /**
      * Flush outstanding data, with the specified maximum waiting time.
      *
-     * @throws BoltException
+     * @throws BoltException if interrupted or there were no packets to flush.
      */
     public void flush() throws BoltException {
         try {

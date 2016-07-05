@@ -31,8 +31,8 @@ import java.util.Objects;
  * number is wrapped after it is increased to the maximum number (2^29 - 1).
  * <p>
  * The 32 bit checksum enhances the 16-bit checksum in the UDP datagram
- * header. This widens the theoretical collision to one in every 2^48 =>
- * 281 trillion => 281,474,976,710,656.
+ * header. This widens the theoretical collision to one in every 2^48 =&gt;
+ * 281 trillion =&gt; 281,474,976,710,656.
  * <p>
  * Following is the 16-bit Destination Socket ID.
  * The Destination ID is used for UDP multiplexer. Multiple Bolt socket

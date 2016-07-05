@@ -146,13 +146,15 @@ public class Receiver {
 
     /**
      * Packets are written by the endpoint.
+     *
+     * @param received the packet to receive.
      */
-    public void receive(final BoltPacket p) throws IOException {
+    public void receive(final BoltPacket received) {
         statistics.beginReceive();
-        if (!p.isControlPacket() && LOG.isTraceEnabled()) {
-            LOG.trace("++ {}  QueueSize={}", p, handOffQueue.size());
+        if (!received.isControlPacket() && LOG.isTraceEnabled()) {
+            LOG.trace("++ {}  QueueSize={}", received, handOffQueue.size());
         }
-        handOffQueue.offer(p);
+        handOffQueue.offer(received);
         statistics.endReceive();
     }
 

@@ -48,7 +48,7 @@ public class ReceiverTest {
         ChannelOut endpoint = new ChannelOutStub(config, true);
         final Destination peer = new Destination(InetAddress.getByName("localhost"), PortUtil.nextServerPort());
         final Session session = new ServerSession(config, endpoint, peer);
-        final SessionState sessionState = new SessionState(peer);
+        final SessionState sessionState = new SessionState(config, peer);
         sessionState.setStatus(SessionStatus.READY);
         sessionState.setActive(true);
 

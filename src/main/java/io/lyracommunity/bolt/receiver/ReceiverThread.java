@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.receiver;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionController;
@@ -30,8 +31,10 @@ public class ReceiverThread {
 
     /**
      * Starts the receiver algorithm.
+     *
+     * @return an async event stream.
      */
-    public Observable<?> start() {
+    public Observable<BoltEvent> start() {
         return Observable.create(subscriber -> {
             try {
                 LOG.info("Starting Receiver Thread");

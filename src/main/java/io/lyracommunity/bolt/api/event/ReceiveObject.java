@@ -1,10 +1,13 @@
-package io.lyracommunity.bolt.event;
+package io.lyracommunity.bolt.api.event;
+
+import io.lyracommunity.bolt.api.BoltEvent;
 
 /**
- * Created by keen on 06/03/16.
+ * Event signalling that a message has been received.
+ *
+ * @author Cian.
  */
-public class ReceiveObject<T>
-{
+public class ReceiveObject<T> implements BoltEvent {
 
     private final long sessionID;
 
@@ -16,7 +19,7 @@ public class ReceiveObject<T>
     }
 
     /**
-     * The ID of the session that this data was routed from.
+     * @return the ID of the session that this data was routed from.
      */
     public long getSessionID() {
         return sessionID;
@@ -32,6 +35,11 @@ public class ReceiveObject<T>
 
     public boolean isOfSubType(final Class<?> expected) {
         return payload != null && expected.isAssignableFrom(payload.getClass());
+    }
+
+    @Override
+    public BoltEventType getEventType() {
+        return BoltEventType.RECEIVE_OBJECT;
     }
 
 }

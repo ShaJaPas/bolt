@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.session;
 
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.Destination;
 import io.lyracommunity.bolt.util.SeqNum;
 
@@ -8,7 +9,9 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Created by keen on 07/04/16.
+ * Holds state for a particular session.
+ *
+ * @author Cian.
  */
 public class SessionState {
 
@@ -34,7 +37,7 @@ public class SessionState {
     /**
      * Flow window size (how many data packets are in-flight at a single time).
      */
-    private int flowWindowSize = 1024 * 10;
+    private final int flowWindowSize;
 
     /**
      * Initial packet sequence number.
@@ -52,8 +55,9 @@ public class SessionState {
     private volatile SessionStatus status = SessionStatus.START;
 
 
-    public SessionState(final Destination destination) {
+    public SessionState(final Config config, final Destination destination) {
         this.destination = destination;
+        this.flowWindowSize = config.getFlowWindowSize();
         this.dgPacket = new DatagramPacket(new byte[0], 0, destination.getAddress(), destination.getPort());
         this.mySocketID = NEXT_SOCKET_ID.incrementAndGet();
     }

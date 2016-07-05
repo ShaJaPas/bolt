@@ -3,14 +3,19 @@ package io.lyracommunity.bolt.util;
 import java.util.Arrays;
 
 /**
- * Circular array: the most recent value overwrites the oldest one if there is no more free
- * space in the array.
+ * An array that circle on overflow.
+ * <p>
+ * The most recent value overwrites the oldest one if there is no
+ * more free space in the array.
+ *
+ * @author Cian.
  */
 public class CircularArray<T> {
 
-    protected final int max;
-    private final Object[] circularArray;
-    protected int position = 0;
+    protected final int      max;
+    private final   Object[] circularArray;
+
+    protected int     position     = 0;
     protected boolean haveOverflow = false;
 
     /**
@@ -25,6 +30,8 @@ public class CircularArray<T> {
 
     /**
      * Add an entry.
+     *
+     * @param entry the entry to add at the current position.
      */
     public void add(T entry) {
         if (position >= max) {
@@ -36,7 +43,7 @@ public class CircularArray<T> {
     }
 
     /**
-     * Returns the number of elements in this list.
+     * @return the number of elements in this list.
      */
     public int size() {
         return haveOverflow ? max : Math.min(position, max);

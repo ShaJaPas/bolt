@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.Destination;
@@ -25,8 +26,10 @@ import java.nio.channels.ClosedChannelException;
 /**
  * The Endpoint takes care of sending and receiving UDP network packets,
  * dispatching them to the {@link SessionController}.
+ *
+ * @author Cian.
  */
-public class Endpoint implements ChannelOut {
+class Endpoint implements ChannelOut {
 
     private static final Logger LOG = LoggerFactory.getLogger(Endpoint.class);
 
@@ -71,15 +74,17 @@ public class Endpoint implements ChannelOut {
 
     /**
      * Start the endpoint.
+     *
+     * @return the stream of events.
      */
-    public Observable<?> start() {
+    public Observable<BoltEvent> start() {
         return Observable.merge(
                 receiverThread.start().subscribeOn(Schedulers.io()),
                 senderThread.start().subscribeOn(Schedulers.io()),
-                Observable.<Object>create(this::doReceive).subscribeOn(Schedulers.io()));
+                Observable.<BoltEvent>create(this::doReceive).subscribeOn(Schedulers.io()));
     }
 
-    void stop(final Subscriber<? super Object> subscriber) {
+    void stop(final Subscriber<? super BoltEvent> subscriber) {
         LOG.info("Stopping {}", name);
         sessionController.stop(subscriber, name + " is closing.");
         dgSocket.close();
@@ -102,7 +107,7 @@ public class Endpoint implements ChannelOut {
      * <li>dispatches the Bolt packets according to their destination ID.
      * </ul>
      */
-    private void doReceive(final Subscriber<? super Object> subscriber) {
+    private void doReceive(final Subscriber<? super BoltEvent> subscriber) {
         Thread.currentThread().setName("Bolt-" + name + "-" + Util.THREAD_INDEX.incrementAndGet());
         LOG.info("{} started.", name);
 

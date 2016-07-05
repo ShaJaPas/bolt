@@ -10,22 +10,22 @@ import java.net.InetAddress;
 public class Config {
 
     public static final int DEFAULT_DATAGRAM_SIZE = 1400;
-    private final int datagramSize = 1400;
-    private volatile float packetDropRate;
+    private final       int datagramSize          = 1400;
+    private volatile float       packetDropRate;
     /**
      * Simulated network latency, in milliseconds.
      */
-    private int simulatedLatency;
+    private          int         simulatedLatency;
     /**
      * Simulated network jitter, in milliseconds.
      */
-    private int simulatedMaxJitter;
+    private          int         simulatedMaxJitter;
     /**
      * Simulated network bandwidth, in KB/sec.
      */
-    private int simulatedBandwidth;
-    private InetAddress localAddress;
-    private int localPort;
+    private          int         simulatedBandwidth;
+    private          InetAddress localAddress;
+    private          int         localPort;
     private boolean allowSessionExpiry          = true;
     /**
      * The consecutive number of EXP events before the session expires.
@@ -53,6 +53,16 @@ public class Config {
      * Whether to collect more detailed statistics or not.
      */
     private boolean deepStatistics = true;
+
+    /**
+     * Flow window size (how many data packets are in-flight at a single time).
+     * <p>
+     * Memory usage per session will be almost directly proportional to the window size,
+     * as each window entry will require memory of one packet.
+     * <p>
+     * For high-throughput connections, thousands are recommended.
+     */
+    private int flowWindowSize = 1024 * 10;
 
     /**
      * Create a new instance.
@@ -89,7 +99,8 @@ public class Config {
     /**
      * Set an artificial packet loss.
      *
-     * @param packetLossPercentage the packet loss as a percentage (ie. x, where 0 <= x <= 1.0).
+     * @param packetLossPercentage the packet loss as a percentage (ie. x, where 0 &lt;= x &lt;= 1.0).
+     * @return this config.
      */
     public Config setPacketLoss(final float packetLossPercentage) {
         final float normalizedPacketLossPercentage = Math.min(packetLossPercentage, 1f);
@@ -106,7 +117,7 @@ public class Config {
     }
 
     /**
-     * Get the ACK interval. If larger than 0, the receiver should acknowledge
+     * @return the ACK interval. If larger than 0, the receiver should acknowledge
      * every n'th packet.
      */
     public int getAckInterval() {
@@ -116,8 +127,10 @@ public class Config {
     /**
      * Set the ACK interval. If larger than 0, the receiver should acknowledge
      * every n'th packet.
+     *
+     * @param ackInterval the ackInterval to set.
      */
-    public void setAckInterval(int ackInterval) {
+    public void setAckInterval(final int ackInterval) {
         this.ackInterval = ackInterval;
     }
 
@@ -192,5 +205,13 @@ public class Config {
 
     public void setInitialCongestionWindowSize(double initialCongestionWindowSize) {
         this.initialCongestionWindowSize = initialCongestionWindowSize;
+    }
+
+    public int getFlowWindowSize() {
+        return flowWindowSize;
+    }
+
+    public void setFlowWindowSize(final int flowWindowSize) {
+        this.flowWindowSize = flowWindowSize;
     }
 }

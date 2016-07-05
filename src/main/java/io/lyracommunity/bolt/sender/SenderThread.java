@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt.sender;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.session.Session;
 import io.lyracommunity.bolt.session.SessionController;
 import io.lyracommunity.bolt.util.Util;
@@ -25,8 +26,10 @@ public class SenderThread {
 
     /**
      * Starts the sender algorithm.
+     *
+     * @return an async stream of events.
      */
-    public Observable<?> start() throws IllegalStateException {
+    public Observable<BoltEvent> start() throws IllegalStateException {
         return Observable.create(subscriber -> {
             try {
                 Thread.currentThread().setName("Bolt-Sender");

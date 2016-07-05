@@ -1,8 +1,8 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
 import org.slf4j.Logger;
@@ -34,6 +34,8 @@ public class ClientSession extends Session {
 
     /**
      * Send connection handshake until a reply from server is received.
+     *
+     * @return an async event stream.
      */
     public Observable<?> connect() {
         return Observable.create(subscriber -> {
@@ -89,7 +91,7 @@ public class ClientSession extends Session {
     }
 
     @Override
-    public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
+    public boolean receiveHandshake(final Subscriber<? super BoltEvent> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
         boolean readyToStart = false;
         if (getStatus() == HANDSHAKING) {

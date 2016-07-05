@@ -147,6 +147,7 @@ public class Sender {
      * Writes a data packet, waiting at most for the specified time.
      * If this is not possible due to a full send queue.
      *
+     * @param src the data packet to send.
      * @throws InterruptedException if the thread was interrupted while waiting to send.
      */
     public void sendPacket(final DataPacket src) throws InterruptedException {
@@ -164,14 +165,16 @@ public class Sender {
 
     /**
      * Receive a packet from server from the peer.
+     *
+     * @param received the received packet.
      */
-    public void receive(final BoltPacket p) throws IOException {
-        if (p.isControlPacket()) {
-            if (PacketType.ACK == p.getPacketType()) {
-                onAckReceived((Ack) p);
+    public void receive(final BoltPacket received) throws IOException {
+        if (received.isControlPacket()) {
+            if (PacketType.ACK == received.getPacketType()) {
+                onAckReceived((Ack) received);
             }
-            else if (PacketType.NAK == p.getPacketType()) {
-                onNakReceived((Nak) p);
+            else if (PacketType.NAK == received.getPacketType()) {
+                onNakReceived((Nak) received);
             }
         }
     }
@@ -415,6 +418,7 @@ public class Sender {
     /**
      * Wait until the given sequence number has been acknowledged.
      *
+     * @param relSequenceNumber the reliability sequence number to wait for.
      * @throws InterruptedException if thread was interrupted while awaiting.
      */
     public void waitForAck(final int relSequenceNumber) throws InterruptedException {

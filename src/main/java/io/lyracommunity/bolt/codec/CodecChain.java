@@ -12,12 +12,12 @@ import java.util.stream.Collectors;
 /**
  * Created by omahoc9 on 3/1/16.
  */
-public class CodecChain<T> {
+class CodecChain<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CodecChain.class);
 
     private final ObjectSpliterator<T> spliterator;
-    private final PacketCodec<T> packageXCoder;
+    private final PacketCodec<T>       packageXCoder;
 
     private CodecChain(final ObjectSpliterator<T> spliterator, final PacketCodec<T> packageXCoder) {
         Objects.requireNonNull(packageXCoder);
@@ -25,7 +25,7 @@ public class CodecChain<T> {
         this.packageXCoder = packageXCoder;
     }
 
-    public static CodecChain rawBytePackageChain() {
+    static CodecChain rawBytePackageChain() {
         ObjectCodec<byte[]> byteXCoder = new ObjectCodec<byte[]>() {
             @Override
             public byte[] decode(byte[] data) {
@@ -71,7 +71,7 @@ public class CodecChain<T> {
         return packets;
     }
 
-    public void setClassId(final int classId) {
+    void setClassId(final int classId) {
         packageXCoder.setClassId(classId);
     }
 

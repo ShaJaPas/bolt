@@ -1,7 +1,9 @@
 package io.lyracommunity.bolt.api;
 
 /**
- * Created by keen on 06/03/16.
+ * Generic unchecked Bolt exception.
+ *
+ * @author Cian.
  */
 public class BoltException extends RuntimeException {
 

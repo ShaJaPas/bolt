@@ -41,12 +41,12 @@ public interface CongestionControl {
     long getEstimatedLinkCapacity();
 
     /**
-     * get the current value of the inter-packet interval in microseconds
+     * @return the current value of the inter-packet interval in microseconds.
      */
     double getSendInterval();
 
     /**
-     * get the congestion window size
+     * @return the congestion window size.
      */
     double getCongestionWindowSize();
 

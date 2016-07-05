@@ -6,16 +6,17 @@ import io.lyracommunity.bolt.util.CircularArray;
  * Packet Pair Window is a circular array that records the time
  * interval between each probing packet pair.
  *
- * @see {@link CircularArray}
+ * @author Cian.
+ * @see CircularArray
  */
-public class PacketPairWindow extends CircularArray<Long> {
+class PacketPairWindow extends CircularArray<Long> {
 
     /**
      * Construct a new packet pair window with the given size
      *
      * @param size the size of the window.
      */
-    public PacketPairWindow(int size) {
+    PacketPairWindow(int size) {
         super(size);
     }
 
@@ -24,7 +25,7 @@ public class PacketPairWindow extends CircularArray<Long> {
      *
      * @return time interval in microseconds.
      */
-    public double computeMedianTimeInterval() {
+    double computeMedianTimeInterval() {
         final int num = size();
         double median = 0;
         for (int i = 0; i < num; i++) {
@@ -52,7 +53,8 @@ public class PacketPairWindow extends CircularArray<Long> {
      *
      * @return number of packets per second.
      */
-    public long getEstimatedLinkCapacity() {
+    long getEstimatedLinkCapacity() {
         return (long) Math.ceil(1_000_000 / computeMedianTimeInterval());
     }
+
 }

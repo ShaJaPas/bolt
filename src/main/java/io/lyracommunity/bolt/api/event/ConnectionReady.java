@@ -1,12 +1,14 @@
-package io.lyracommunity.bolt.event;
+package io.lyracommunity.bolt.api.event;
 
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.session.Session;
 
 /**
- * Created by keen on 03/03/16.
+ * Event signalling that a connection has been established.
+ *
+ * @author Cian.
  */
-public class ConnectionReady
-{
+public class ConnectionReady implements BoltEvent {
 
     private final Session session;
 
@@ -19,11 +21,15 @@ public class ConnectionReady
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "ConnectionReady{" +
                 "session=" + session +
                 '}';
+    }
+
+    @Override
+    public BoltEventType getEventType() {
+        return BoltEventType.CONNECTION_READY;
     }
 
 }

@@ -1,7 +1,7 @@
 package io.lyracommunity.bolt;
 
-import io.lyracommunity.bolt.event.ConnectionReady;
-import io.lyracommunity.bolt.event.PeerDisconnected;
+import io.lyracommunity.bolt.api.event.ConnectionReady;
+import io.lyracommunity.bolt.api.event.PeerDisconnected;
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestObjects;

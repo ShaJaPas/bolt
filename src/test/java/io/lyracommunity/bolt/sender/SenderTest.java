@@ -40,9 +40,9 @@ public class SenderTest {
     private void setUp(Double initialCongestionWindowSize) throws UnknownHostException {
         senderLossList = new SenderLossList();
         final Destination remote = new Destination(InetAddress.getLocalHost(), 65432);
-        sessionState = new SessionState(remote);
         final Config config = new Config(InetAddress.getByName("localhost"), 12345);
         if (initialCongestionWindowSize != null) config.setInitialCongestionWindowSize(initialCongestionWindowSize);
+        sessionState = new SessionState(config, remote);
         endpoint = new ChannelOutStub(config, true);
         final BoltStatistics statistics = new BoltStatistics("testStatistics", Config.DEFAULT_DATAGRAM_SIZE);
         final CongestionControl cc = new BoltCongestionControl(sessionState, statistics, config.getInitialCongestionWindowSize());

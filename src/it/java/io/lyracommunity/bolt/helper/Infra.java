@@ -2,7 +2,7 @@ package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.BoltServer;
-import io.lyracommunity.bolt.event.ConnectionReady;
+import io.lyracommunity.bolt.api.event.ConnectionReady;
 import io.lyracommunity.bolt.util.Util;
 
 import java.util.List;

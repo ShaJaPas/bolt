@@ -1,6 +1,7 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -20,7 +21,7 @@ import static io.lyracommunity.bolt.session.SessionStatus.*;
  */
 public class ServerSession extends Session {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ServerSession.class);
+    private static final Logger LOG                  = LoggerFactory.getLogger(ServerSession.class);
     private static final String DESCRIPTION_TEMPLATE = "ServerSession localPort={0} peer={1}:{2}";
 
     private ConnectionHandshake finalConnectionHandshake;
@@ -36,10 +37,10 @@ public class ServerSession extends Session {
      *
      * @param subscriber the reactive subscriber.
      * @param handshake  incoming connection handshake from the client.
-     * @param peer the destination from where the packet was sent.
+     * @param peer       the destination from where the packet was sent.
      */
     @Override
-    public boolean receiveHandshake(final Subscriber<? super Object> subscriber, final ConnectionHandshake handshake,
+    public boolean receiveHandshake(final Subscriber<? super BoltEvent> subscriber, final ConnectionHandshake handshake,
                                     final Destination peer) {
         LOG.info("Handshake received in state [{}]:  {}", getStatus(), handshake);
         boolean readyToStart = false;
@@ -117,7 +118,8 @@ public class ServerSession extends Session {
         state.setSessionCookie(SeqNum.randomInt());
 
         final InetAddress localAddress = endPoint.getLocalAddress();
-        if (localAddress == null) throw new IllegalStateException("Could not get local endpoint address for handshake response");
+        if (localAddress == null)
+            throw new IllegalStateException("Could not get local endpoint address for handshake response");
 
         final ConnectionHandshake responseHandshake = ConnectionHandshake.ofServerHandshakeResponse(bufferSize, initialSequenceNumber,
                 handshake.getMaxFlowWndSize(), getSessionID(), state.getDestinationSessionID(), state.getSessionCookie(), localAddress);

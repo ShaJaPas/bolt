@@ -2,8 +2,8 @@ package io.lyracommunity.bolt.helper;
 
 import io.lyracommunity.bolt.BoltServer;
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.event.ConnectionReady;
-import io.lyracommunity.bolt.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.ConnectionReady;
+import io.lyracommunity.bolt.api.event.ReceiveObject;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 

@@ -70,7 +70,7 @@ public class PacketCodec<T> implements Codec<T, List<DataPacket>> {
     @Override
     public List<DataPacket> encode(final T object) throws BoltException {
         final byte[] bytes = objectCodec.encode(object);
-        final int chunkCount = (int) Math.ceil(bytes.length / (double) maxPacketSize);
+        final int chunkCount = Math.max(1, (int) Math.ceil(bytes.length / (double) maxPacketSize));
         final DeliveryType computedDeliveryType = computeDeliveryType(chunkCount);
 
         validateEncoding(chunkCount, computedDeliveryType);

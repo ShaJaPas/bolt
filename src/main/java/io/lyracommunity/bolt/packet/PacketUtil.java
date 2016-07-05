@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 public class PacketUtil {
 
     public static final int MAX_MESSAGE_CHUNK_NUM = (int) Math.pow(2, 15) - 1;
-    public static final int MAX_MESSAGE_ID = (int) Math.pow(2, 16) - 1;
+    public static final int MAX_MESSAGE_ID        = (int) Math.pow(2, 16) - 1;
 
     public static byte[] encode(long value) {
         byte m4 = (byte) (value >> 24);
@@ -28,14 +28,15 @@ public class PacketUtil {
     static byte[] encodeShort(int value) {
         byte m2 = (byte) (value >> 8);
         byte m1 = (byte) (value);
-        return new byte[] { m2, m1 };
+        return new byte[]{m2, m1};
     }
 
     static byte[] encodeSetHighest(boolean highest, long value) {
         byte m4;
         if (highest) {
             m4 = (byte) (0x80 | value >> 24);
-        } else {
+        }
+        else {
             m4 = (byte) (0x7f & value >> 24);
         }
         byte m3 = (byte) (value >> 16);
@@ -51,29 +52,32 @@ public class PacketUtil {
         return new byte[]{m4, m3, 0, 0};
     }
 
-    public static boolean isBitSet(int data, int position) {
+    static boolean isBitSet(int data, int position) {
         return ((data >> position) & 1) == 1;
     }
 
-    public static byte setBit(byte b, int bitIndex, boolean isSet) {
+    static byte setBit(byte b, int bitIndex, boolean isSet) {
         return (byte) (isSet
                 ? b | (1 << bitIndex)   // set bit to 1
                 : b & ~(1 << bitIndex)); // set bit to 0
     }
 
-    public static int setIntBit(int b, int bitIndex, boolean isSet) {
+    static int setIntBit(int b, int bitIndex, boolean isSet) {
         return (isSet
                 ? b | (1 << bitIndex)   // set bit to 1
                 : b & ~(1 << bitIndex)); // set bit to 0
     }
 
     /**
-     * @param value value to encode.
-     * @param data byte array to encode into.
-     * @param startBit first bit in data to set, as an offset from the right-most bit.
+     * Encode an number of bits from an integer value to a byte array.
+     *
+     * @param value        value to encode.
+     * @param data         byte array to encode into.
+     * @param startBit     first bit in data to set, as an offset from the right-most bit.
      * @param numBitsToSet number of bits to map.
+     * @return the encoded bytes.
      */
-    public static byte[] encodeMapToBytes(int value, byte[] data, int startBit, int numBitsToSet) {
+    static byte[] encodeMapToBytes(int value, byte[] data, int startBit, int numBitsToSet) {
         for (int i = 0; i < numBitsToSet; i++) {
             final int bitIndex = startBit - i;
             final int byteIndex = (bitIndex / 8);
@@ -84,7 +88,7 @@ public class PacketUtil {
         return data;
     }
 
-    public static int decodeShort(byte[] data, int start) {
+    static int decodeShort(byte[] data, int start) {
         return (data[start] & 0xFF) << 8
                 | (data[start + 1] & 0xFF);
     }
@@ -96,10 +100,10 @@ public class PacketUtil {
                 | (data[start + 3] & 0xFF);
     }
 
-    public static int decodeInt(byte[] data, int byteOffset, int startBitInclusive, int endBitExclusive) {
+    static int decodeInt(byte[] data, int byteOffset, int startBitInclusive, int endBitExclusive) {
         int decoded = decodeInt(data, byteOffset);
         decoded = decoded >> startBitInclusive;
-        return decoded & ((int)Math.pow(2, endBitExclusive - startBitInclusive) - 1);
+        return decoded & ((int) Math.pow(2, endBitExclusive - startBitInclusive) - 1);
     }
 
     public static long decode(byte[] data, int start) {
@@ -110,15 +114,15 @@ public class PacketUtil {
         return result;
     }
 
-    public static int decodeType(byte[] data, int start) {
-        int result = data[start + 1] & 0xFF;
-        return result;
+    static int decodeType(byte[] data, int start) {
+        return data[start + 1] & 0xFF;
     }
 
     /**
      * Encodes the specified address into 128 bit.
      *
      * @param address INet address.
+     * @return the encoded address.
      */
     public static byte[] encode(final InetAddress address) {
         byte[] res = new byte[16];
@@ -127,7 +131,7 @@ public class PacketUtil {
         return res;
     }
 
-    public static InetAddress decodeInetAddress(byte[] data, int start, boolean ipV6) throws UnknownHostException {
+    static InetAddress decodeInetAddress(byte[] data, int start, boolean ipV6) throws UnknownHostException {
         byte[] add = ipV6 ? new byte[16] : new byte[4];
         System.arraycopy(data, start, add, 0, add.length);
         return InetAddress.getByAddress(add);

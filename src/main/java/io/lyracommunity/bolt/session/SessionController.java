@@ -1,9 +1,10 @@
 package io.lyracommunity.bolt.session;
 
 import io.lyracommunity.bolt.ChannelOut;
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
-import io.lyracommunity.bolt.event.ConnectionReady;
-import io.lyracommunity.bolt.event.PeerDisconnected;
+import io.lyracommunity.bolt.api.event.ConnectionReady;
+import io.lyracommunity.bolt.api.event.PeerDisconnected;
 import io.lyracommunity.bolt.packet.BoltPacket;
 import io.lyracommunity.bolt.packet.ConnectionHandshake;
 import io.lyracommunity.bolt.packet.Destination;
@@ -56,21 +57,21 @@ public class SessionController {
         this.packetReady = new SharedCondition(PhaseStrategy.LATEST);
     }
 
-    public void stop(final Subscriber<? super Object> subscriber, final String reason) {
+    public void stop(final Subscriber<? super BoltEvent> subscriber, final String reason) {
         sessionsBeingConnected.clear();
         final Set<Integer> destIDs = sessions.keySet().stream().collect(Collectors.toSet());
         destIDs.forEach(destID -> endSession(subscriber, destID, reason));
         sessions.clear();
     }
 
-    public boolean endSession(final Subscriber<? super Object> subscriber, final int destinationID, final String reason) {
+    public boolean endSession(final Subscriber<? super BoltEvent> subscriber, final int destinationID, final String reason) {
         final Session session = sessions.remove(destinationID);
         if (session != null) session.cleanup();
         if (subscriber != null) subscriber.onNext(new PeerDisconnected(destinationID, reason));
         return (session != null);
     }
 
-    public void processPacket(final Subscriber<? super Object> subscriber, final Destination peer,
+    public void processPacket(final Subscriber<? super BoltEvent> subscriber, final Destination peer,
                               final BoltPacket packet, final ChannelOut endpoint) {
         final int destID = packet.getDestinationSessionID();
         final Session session = getSession(destID);
@@ -111,7 +112,7 @@ public class SessionController {
      * @param peer     peer that sent the handshake.
      * @param endpoint the UDP endpoint.
      */
-    private synchronized void connectionHandshake(final Subscriber<? super Object> subscriber,
+    private synchronized void connectionHandshake(final Subscriber<? super BoltEvent> subscriber,
                                                   final ConnectionHandshake packet, final Destination peer,
                                                   final ChannelOut endpoint) {
         final int sessionID = packet.getDestinationSessionID();

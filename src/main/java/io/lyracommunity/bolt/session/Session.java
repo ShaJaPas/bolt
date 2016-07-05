@@ -3,6 +3,7 @@ package io.lyracommunity.bolt.session;
 import io.lyracommunity.bolt.BoltCongestionControl;
 import io.lyracommunity.bolt.ChannelOut;
 import io.lyracommunity.bolt.CongestionControl;
+import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.codec.MessageAssembleBuffer;
 import io.lyracommunity.bolt.packet.*;
@@ -49,7 +50,6 @@ import static io.lyracommunity.bolt.session.SessionStatus.READY;
  * [RFC4987].
  * <li> Peer IP address: B's IP address.
  * </ol>
- * <p>
  * <h3>Client/Server Connection Setup</h3>
  * <p>
  * One Bolt entity starts first as the server (listener). The server
@@ -115,8 +115,7 @@ import static io.lyracommunity.bolt.session.SessionStatus.READY;
  * In our reference implementation, we use 3 seconds and 30 seconds,
  * respectively.
  */
-public abstract class Session
-{
+public abstract class Session {
 
     private static final Logger LOG = LoggerFactory.getLogger(Session.class);
 
@@ -124,23 +123,25 @@ public abstract class Session
     final CongestionControl cc;
     final ChannelOut        endPoint;
 
-    /** Statistics for the session. */
+    /**
+     * Statistics for the session.
+     */
     private final BoltStatistics statistics;
 
     private final MessageAssembleBuffer assembleBuffer;
-
-    /** Buffer size (i.e. datagram size). This is negotiated during connection setup. */
-    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
-
     // Processing received data
-    private final Receiver receiver;
-    private final Sender   sender;
+    private final Receiver              receiver;
+    private final Sender                sender;
+    /**
+     * Buffer size (i.e. datagram size). This is negotiated during connection setup.
+     */
+    private int datagramSize = Config.DEFAULT_DATAGRAM_SIZE;
 
 
     Session(final Config config, final ChannelOut endpoint, final Destination destination, final String description) {
         this.endPoint = endpoint;
         this.statistics = new BoltStatistics(description, datagramSize);
-        this.state = new SessionState(destination);
+        this.state = new SessionState(config, destination);
         this.cc = new BoltCongestionControl(state, statistics, config.getInitialCongestionWindowSize());
         this.assembleBuffer = new MessageAssembleBuffer();
 
@@ -159,7 +160,7 @@ public abstract class Session
         return canReceive;
     }
 
-    public abstract boolean receiveHandshake(Subscriber<? super Object> subscriber, ConnectionHandshake handshake, Destination peer);
+    public abstract boolean receiveHandshake(Subscriber<? super BoltEvent> subscriber, ConnectionHandshake handshake, Destination peer);
 
     /**
      * Marks the session as active and ready to Sender/Receiver processing.
@@ -184,7 +185,8 @@ public abstract class Session
     public void doWrite(final DataPacket dataPacket) throws IOException {
         try {
             sender.sendPacket(dataPacket);
-        } catch (InterruptedException ie) {
+        }
+        catch (InterruptedException ie) {
             throw new IOException(ie);
         }
         if (dataPacket.getDataLength() > 0) state.setActive(true);
@@ -198,6 +200,9 @@ public abstract class Session
     /**
      * Will block until the outstanding packets have really been sent out
      * and acknowledged.
+     *
+     * @throws IllegalStateException if there are no packets to flush.
+     * @throws InterruptedException  if interrupted while flushing.
      */
     public void flush() throws InterruptedException, IllegalStateException {
         if (!state.isActive()) return;
@@ -225,10 +230,8 @@ public abstract class Session
 
     /**
      * Close the connection.
-     *
-     * @throws IOException
      */
-    public void close() throws IOException {
+    public void close() {
         setStatus(SessionStatus.SHUTDOWN);
         state.setActive(false);
     }
