@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltBindException;
 import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.packet.BoltPacket;
@@ -56,12 +57,11 @@ class Endpoint implements ChannelOut {
         this.config = config;
         this.name = name;
         this.sessionController = sessionController;
-        this.dgSocket = new DatagramSocket(config.getLocalPort(), config.getLocalAddress());
+        this.dgSocket = new DatagramSocket(null);  // init to null in order to bind later.
         // If the port is zero, the system will pick an ephemeral port.
         this.port = (config.getLocalPort() > 0) ? config.getLocalPort() : dgSocket.getLocalPort();
         this.receiverThread = new ReceiverThread(config, sessionController);
         this.senderThread = new SenderThread(sessionController);
-        configureSocket();
     }
 
     private void configureSocket() throws SocketException {
@@ -70,6 +70,17 @@ class Endpoint implements ChannelOut {
         // buffer size
         dgSocket.setReceiveBufferSize(128 * 1024);
         dgSocket.setReuseAddress(false);
+    }
+
+    void bind() throws BoltBindException {
+        try {
+            dgSocket.bind(new InetSocketAddress(config.getLocalAddress(), config.getLocalPort()));
+            configureSocket();
+        }
+        catch (final SocketException e) {
+            dgSocket.close();
+            throw new BoltBindException(e);
+        }
     }
 
     /**
@@ -81,18 +92,24 @@ class Endpoint implements ChannelOut {
         return Observable.merge(
                 receiverThread.start().subscribeOn(Schedulers.io()),
                 senderThread.start().subscribeOn(Schedulers.io()),
-                Observable.<BoltEvent>create(this::doReceive).subscribeOn(Schedulers.io()));
+                Observable.<BoltEvent>create(this::doReceive).subscribeOn(Schedulers.io()))
+                .doOnSubscribe(this::bind);
     }
 
     void stop(final Subscriber<? super BoltEvent> subscriber) {
         LOG.info("Stopping {}", name);
         sessionController.stop(subscriber, name + " is closing.");
-        dgSocket.close();
+        closeSocket();
     }
 
     @Override
     public int getLocalPort() {
         return this.dgSocket.getLocalPort();
+    }
+
+    void closeSocket() {
+        final DatagramSocket s = getSocket();
+        if (s != null) s.close();
     }
 
     DatagramSocket getSocket() {

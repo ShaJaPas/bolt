@@ -108,8 +108,9 @@ public class UdpEndpointIT {
     public void testBindToAnyPort() throws Exception {
         final Config conf = new Config(InetAddress.getByName("localhost"), 0);
         final Endpoint ep = new Endpoint("Endpoint", conf, new SessionController(conf, true));
+        ep.bind();
         final int port = ep.getLocalPort();
-        ep.stop(new TestSubscriber<>());
+        System.out.println("Port:\t" + port);
         assertTrue(port > 0);
     }
 

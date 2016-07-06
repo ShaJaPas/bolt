@@ -45,7 +45,7 @@ public class BoltClient implements Client {
     @Override
     public Observable<BoltEvent> connect(final InetAddress address, final int port) {
 
-        return Observable.create(subscriber -> {
+        return Observable.<BoltEvent>create(subscriber -> {
             Thread.currentThread().setName("Bolt-Poller-Client" + Util.THREAD_INDEX.incrementAndGet());
             Subscription endpointAndSession = null;
             try {
@@ -78,7 +78,8 @@ public class BoltClient implements Client {
                 endpointAndSession.unsubscribe();
             }
             subscriber.onCompleted();
-        });
+        })
+                .doOnUnsubscribe(clientEndpoint::closeSocket);
     }
 
     @Override

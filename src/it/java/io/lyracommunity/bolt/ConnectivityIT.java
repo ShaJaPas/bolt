@@ -1,5 +1,6 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.BoltBindException;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.event.ConnectionReady;
 import io.lyracommunity.bolt.api.event.PeerDisconnected;
@@ -7,7 +8,6 @@ import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestObjects;
 import org.junit.Test;
 
-import java.net.BindException;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -154,7 +154,7 @@ public class ConnectivityIT {
         }
     }
 
-    @Test(expected = BindException.class)
+    @Test(expected = BoltBindException.class)
     public void testServerCannotBind() throws Throwable {
         final Consumer<BoltServer> configureServer = s -> s.config().setLocalPort(9999);
         Infra.Builder builder = Infra.Builder.withServerAndClients(1)
@@ -162,7 +162,9 @@ public class ConnectivityIT {
                 .setWaitCondition(inf -> inf.clients().get(0).receivedOf(ConnectionReady.class) < 1);
 
         try (Infra i1 = builder.build(); Infra i2 = builder.build()) {
-            i1.start().awaitCompletion(1, TimeUnit.MINUTES);
+            i1.start();
+
+            Thread.sleep(100);
 
             i2.start().awaitCompletion(10, TimeUnit.SECONDS);
             fail("Expected port binding to fail for second server.");

@@ -1,19 +1,23 @@
 package io.lyracommunity.bolt;
 
+import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestData;
 import org.junit.Test;
+import rx.Subscription;
+import rx.schedulers.Schedulers;
 
+import java.net.InetAddress;
 import java.security.MessageDigest;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
-public class BoltServerIT
-{
+public class BoltServerIT {
 
-    private int num_packets = 32;
-    private long total = 0;
+    private          int  num_packets   = 32;
+    private          long total         = 0;
     private volatile long totalReceived = 0;
     private MessageDigest serverMd5;
 
@@ -92,5 +96,20 @@ public class BoltServerIT
         }
     }
 
+    @Test
+    public void reuseOfAddress() throws Throwable {
+        final Random rnd = new Random();
+        final InetAddress localhostAddr = InetAddress.getByName("localhost");
+        final Config serverConfig = new Config(localhostAddr, 12345);
+
+        for (int i = 0; i < 10; i++) {
+            final BoltServer server = new BoltServer(serverConfig);
+            final Subscription sub = server.bind().subscribeOn(Schedulers.io())
+                    .subscribe(x -> {}, Throwable::printStackTrace);
+
+            if (rnd.nextBoolean()) Thread.sleep(1 + rnd.nextInt(100));
+            sub.unsubscribe();
+        }
+    }
 
 }
