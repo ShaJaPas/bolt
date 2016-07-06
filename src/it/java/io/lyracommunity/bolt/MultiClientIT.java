@@ -193,8 +193,8 @@ public class MultiClientIT {
 
     @Test
     public void highRandomSessionCount() throws Throwable {
-        setUp(10);
-        final int numPhases = 50;
+        setUp(50);
+        final int numPhases = 10;
         final AtomicInteger received = new AtomicInteger(0);
         final TestObjects.ReliableUnordered toSend = TestObjects.reliableUnordered(100);
         final boolean sessionExpirable = false;
