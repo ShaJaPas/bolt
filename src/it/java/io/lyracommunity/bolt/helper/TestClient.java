@@ -3,7 +3,7 @@ package io.lyracommunity.bolt.helper;
 import io.lyracommunity.bolt.BoltClient;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.event.ConnectionReady;
-import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.Message;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 
@@ -77,8 +77,8 @@ public class TestClient implements AutoCloseable {
                             receivedByType.receive(x);
                             if (onNext != null) {
                                 onNext.accept(this, x);
-                                if (ReceiveObject.class.equals(x.getClass()))
-                                    onNext.accept(this, ((ReceiveObject) x).getPayload());
+                                if (Message.class.equals(x.getClass()))
+                                    onNext.accept(this, ((Message) x).getPayload());
                             }
                             if (ConnectionReady.class.equals(x.getClass())) {
                                 readyTime.set(System.currentTimeMillis());

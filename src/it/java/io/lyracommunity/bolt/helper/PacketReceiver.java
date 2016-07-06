@@ -1,6 +1,6 @@
 package io.lyracommunity.bolt.helper;
 
-import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.Message;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +21,7 @@ class PacketReceiver {
         if (maybeInt == null) totalReceived.putIfAbsent(clazz, new AtomicInteger(0));
         totalReceived.get(clazz).incrementAndGet();
 
-        if (clazz.equals(ReceiveObject.class)) receive(((ReceiveObject) o).getPayload());
+        if (clazz.equals(Message.class)) receive(((Message) o).getPayload());
     }
 
     int getTotalReceived(final Class clazz) {

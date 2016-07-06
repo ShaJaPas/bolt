@@ -14,7 +14,7 @@ public class MessageAssembleBuffer
 
     private volatile int messageId = 0;
 
-    private Map<Integer, Message> messageMap = new HashMap<>();
+    private Map<Integer, MessageChunks> messageMap = new HashMap<>();
 
     public List<DataPacket> addChunk(final DataPacket dataPacket) {
         if (!dataPacket.isMessage()) {
@@ -27,12 +27,12 @@ public class MessageAssembleBuffer
         }
     }
 
-    private Message getOrCreate(final int messageId) {
-        messageMap.putIfAbsent(messageId, new Message());
+    private MessageChunks getOrCreate(final int messageId) {
+        messageMap.putIfAbsent(messageId, new MessageChunks());
         return messageMap.get(messageId);
     }
 
-    public int nextMessageId() {
+    int nextMessageId() {
         return messageId = SeqNum.increment(messageId, PacketUtil.MAX_MESSAGE_ID);
     }
 
@@ -40,7 +40,7 @@ public class MessageAssembleBuffer
         messageMap.clear();
     }
 
-    private static class Message {
+    private static class MessageChunks {
         private final Map<Integer, DataPacket> received = new HashMap<>();
         private int totalChunks;
 

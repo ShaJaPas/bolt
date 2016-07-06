@@ -2,7 +2,7 @@ package io.lyracommunity.bolt;
 
 import io.lyracommunity.bolt.api.event.ConnectionReady;
 import io.lyracommunity.bolt.api.event.PeerDisconnected;
-import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.Message;
 import io.lyracommunity.bolt.helper.Infra;
 import io.lyracommunity.bolt.helper.TestClient;
 import io.lyracommunity.bolt.helper.TestObjects;
@@ -179,7 +179,7 @@ public class MultiClientIT {
                 .preconfigureServer(s -> s.config().setAllowSessionExpiry(sessionExpirable))
                 .onReadyClient((tc, rdy) -> tc.client.send(toSend))
                 .onEventServer((ts, evt) -> {
-                    if (evt instanceof ReceiveObject) System.out.println("RECEIVED: " + received.incrementAndGet());
+                    if (evt instanceof Message) System.out.println("RECEIVED: " + received.incrementAndGet());
                 })
                 .preconfigureClients(client -> client.config().setAllowSessionExpiry(false))
                 .setWaitCondition(tc -> tc.server().receivedOf(toSend.getClass()) < numClients);
@@ -202,7 +202,7 @@ public class MultiClientIT {
         Infra.Builder serverBuilder = Infra.Builder.withServerAndClients(0)
                 .preconfigureServer(s -> s.config().setAllowSessionExpiry(sessionExpirable))
                 .onEventServer((ts, evt) -> {
-                    if (evt instanceof ReceiveObject) System.out.println("RECEIVED: " + received.incrementAndGet());
+                    if (evt instanceof Message) System.out.println("RECEIVED: " + received.incrementAndGet());
                 })
                 .setWaitCondition(tc -> tc.server().receivedOf(toSend.getClass()) < numClients * numPhases);
 

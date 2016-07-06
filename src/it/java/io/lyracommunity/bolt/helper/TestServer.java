@@ -3,7 +3,7 @@ package io.lyracommunity.bolt.helper;
 import io.lyracommunity.bolt.BoltServer;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.event.ConnectionReady;
-import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.Message;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 
@@ -43,7 +43,7 @@ public class TestServer implements AutoCloseable {
                         (x) -> {
                             receivedByType.receive(x);
                             if (onNext != null) {
-                                if (ReceiveObject.class.equals(x.getClass())) onNext.accept(this, ((ReceiveObject)x).getPayload());
+                                if (Message.class.equals(x.getClass())) onNext.accept(this, ((Message)x).getPayload());
                                 onNext.accept(this, x);
                             }
                             if (onReady != null && ConnectionReady.class.equals(x.getClass())) onReady.accept(this, (ConnectionReady) x);

@@ -3,7 +3,7 @@ package io.lyracommunity.bolt;
 import io.lyracommunity.bolt.api.BoltEvent;
 import io.lyracommunity.bolt.api.Config;
 import io.lyracommunity.bolt.api.Server;
-import io.lyracommunity.bolt.api.event.ReceiveObject;
+import io.lyracommunity.bolt.api.event.Message;
 import io.lyracommunity.bolt.codec.CodecRepository;
 import io.lyracommunity.bolt.packet.DataPacket;
 import io.lyracommunity.bolt.session.Session;
@@ -148,7 +148,7 @@ public class BoltServer implements Server {
                 if (packet != null) {
                     final Object decoded = codecs.decode(packet, session.getAssembleBuffer());
                     if (decoded != null) {
-                        subscriber.onNext(new ReceiveObject<>(session.getSessionID(), decoded));
+                        subscriber.onNext(new Message<>(session.getSessionID(), decoded));
                     }
                 }
             }

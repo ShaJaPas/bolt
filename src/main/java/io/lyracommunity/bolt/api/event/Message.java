@@ -7,13 +7,13 @@ import io.lyracommunity.bolt.api.BoltEvent;
  *
  * @author Cian.
  */
-public class ReceiveObject<T> implements BoltEvent {
+public class Message<T> implements BoltEvent {
 
     private final long sessionID;
 
     private final T payload;
 
-    public ReceiveObject(final long sessionID, final T payload) {
+    public Message(final long sessionID, final T payload) {
         this.sessionID = sessionID;
         this.payload = payload;
     }
