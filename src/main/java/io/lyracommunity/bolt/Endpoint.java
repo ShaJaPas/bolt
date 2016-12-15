@@ -192,14 +192,16 @@ class Endpoint implements ChannelOut {
         final DatagramPacket dgp = sessionState.getDatagram();
         dgp.setData(data);
         dgSocket.send(dgp);
+        LOG.debug("Sent bolt packet {}", packet);
     }
 
     public String toString() {
         return name + " port=" + port;
     }
 
-    void sendRaw(DatagramPacket p) throws IOException {
+    void sendRaw(final DatagramPacket p) throws IOException {
         dgSocket.send(p);
+        LOG.debug("Sent raw packet {}", p);
     }
 
     public Config getConfig() {

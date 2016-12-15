@@ -66,7 +66,10 @@ class CodecChain<T> {
         if (isMessage) {
             final int messageId = assembleBuffer.nextMessageId();
             for (final DataPacket packet : packets) packet.setMessageId(messageId);
-            LOG.info("Sending message {} with {} chunks.", messageId, packets.size());
+            LOG.debug("Sending message {} with {} chunks: {}.", messageId, packets.size(), object);
+        }
+        else {
+            LOG.debug("Sending non-message object {}", object);
         }
         return packets;
     }

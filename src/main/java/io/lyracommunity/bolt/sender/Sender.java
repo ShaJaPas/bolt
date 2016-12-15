@@ -70,24 +70,24 @@ public class Sender {
     /**
      * For generating data packet sequence numbers.
      */
-    private volatile int currentSequenceNumber            = 0;
+    private volatile int     currentSequenceNumber            = 0;
     /**
      * For generating reliability sequence numbers.
      */
-    private volatile int currentReliabilitySequenceNumber = 0;
+    private volatile int     currentReliabilitySequenceNumber = 0;
     /**
      * For generating order sequence numbers.
      */
-    private volatile int currentOrderSequenceNumber       = 0;
+    private volatile int     currentOrderSequenceNumber       = 0;
     /**
      * The largest data packet sequence number that has actually been sent out.
      */
-    private volatile int largestSentSequenceNumber        = -1;
+    private volatile int     largestSentSequenceNumber        = -1;
     /**
      * Last acknowledge number, initialised to the initial sequence number.
      */
-    private volatile int lastAckReliabilitySequenceNumber = 0;
-    private volatile boolean started = false;
+    private volatile int     lastAckReliabilitySequenceNumber = 0;
+    private volatile boolean started                          = false;
     private volatile long nextStep;
 
 
@@ -345,6 +345,7 @@ public class Sender {
      */
     private void handleRetransmit(final Integer reliabilitySeqNum) {
         try {
+            LOG.debug("Retransmitting reliable packet {}", reliabilitySeqNum);
             // Retransmit the packet.
             final DataPacket data = sendBuffer.get(reliabilitySeqNum);
             if (data != null) {

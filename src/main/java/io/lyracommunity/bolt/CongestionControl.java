@@ -4,6 +4,8 @@ import java.util.stream.IntStream;
 
 /**
  * Congestion control interface.
+ *
+ * @author Cian.
  */
 public interface CongestionControl {
 
@@ -25,8 +27,8 @@ public interface CongestionControl {
      * update packet arrival rate and link capacity with the
      * values received in an ACK packet
      *
-     * @param rate         - packet rate in packets per second
-     * @param linkCapacity - estimated link capacity in packets per second
+     * @param rate         packet rate in packets per second
+     * @param linkCapacity estimated link capacity in packets per second
      */
     void updatePacketArrivalRate(long rate, long linkCapacity);
 

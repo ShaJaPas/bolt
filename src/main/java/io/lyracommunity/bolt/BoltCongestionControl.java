@@ -145,6 +145,11 @@ public class BoltCongestionControl implements CongestionControl {
         return congestionWindowSize;
     }
 
+    public void updatePacketSendingPeriod(final double packetSendingPeriod) {
+        LOG.debug("Updating packet sending period: from {} to {}", this.packetSendingPeriod, packetSendingPeriod);
+        this.packetSendingPeriod = packetSendingPeriod;
+    }
+
     /**
      * @see CongestionControl#onACK(long)
      */
@@ -157,9 +162,10 @@ public class BoltCongestionControl implements CongestionControl {
             // But not beyond a maximum size.
             if (congestionWindowSize > sessionState.getFlowWindowSize()) {
                 slowStartPhase = false;
-                packetSendingPeriod = (packetArrivalRate > 0)
+                final double newPacketSendingPeriod = (packetArrivalRate > 0)
                         ? 1000000.0 / packetArrivalRate
                         : congestionWindowSize / (roundTripTime + Util.getSYNTimeD());
+                updatePacketSendingPeriod(newPacketSendingPeriod);
             }
 
         }
@@ -186,7 +192,7 @@ public class BoltCongestionControl implements CongestionControl {
 
         // 5) Update the send period
         final double factor = Util.getSYNTimeD() / (packetSendingPeriod * numOfIncreasingPacket + Util.getSYNTimeD());
-        packetSendingPeriod = factor * packetSendingPeriod;
+        updatePacketSendingPeriod(factor * packetSendingPeriod);
         // packetSendingPeriod=0.995*packetSendingPeriod;
 
         statistics.setSendPeriod(packetSendingPeriod);
@@ -215,10 +221,10 @@ public class BoltCongestionControl implements CongestionControl {
         // 1) If it is in slow start phase, set inter-packet interval to 1/recvrate. Slow start ends. Stop.
         if (slowStartPhase) {
             if (packetArrivalRate > 0) {
-                packetSendingPeriod = 100000.0 / packetArrivalRate;
+                updatePacketSendingPeriod(100000.0 / packetArrivalRate);
             }
             else {
-                packetSendingPeriod = congestionWindowSize / (roundTripTime + Util.getSYNTime());
+                updatePacketSendingPeriod(congestionWindowSize / (roundTripTime + Util.getSYNTime()));
             }
             slowStartPhase = false;
             return;
@@ -227,7 +233,7 @@ public class BoltCongestionControl implements CongestionControl {
         // 2) If this NAK starts a new congestion epoch
         if (SeqNum.compare16(firstBiggestLossRelSeqNo, lastDecreaseRelSeqNo) > 0) {
             // Increase inter-packet interval.
-            packetSendingPeriod = Math.ceil(packetSendingPeriod * 1.125);
+            updatePacketSendingPeriod(Math.ceil(packetSendingPeriod * 1.125));
             // Update AvgNakNum (the average number of NAKs per congestion).
             averageNakNum = (int) Math.ceil(averageNakNum * 0.875 + nakCount * 0.125);
             // Reset NAKCount and DecCount to 1,
@@ -242,7 +248,7 @@ public class BoltCongestionControl implements CongestionControl {
         // 3) If DecCount <= 5, and NAKCount == DecCount * DecRandom:
         else if (decCount <= 5 && nakCount == decCount * decreaseRandom) {
             // a. Update SND period: SND = SND * 1.125;
-            packetSendingPeriod = Math.ceil(packetSendingPeriod * 1.125);
+            updatePacketSendingPeriod(Math.ceil(packetSendingPeriod * 1.125));
             // b. Increase DecCount by 1;
             decCount++;
             // c. Record the current largest sent sequence number (LastDecSeq).
