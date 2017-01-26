@@ -12,7 +12,6 @@ Bolt UDP
 - [ ] Retransmit strategy (aggressive, on NAK)
 - [ ] Reduce 1+ second startup of local client/server
 - [ ] Consider making a sequence number class to encapsulate overflow, comparison, etc logic
-- [ ] Open-source the library
 - [ ] Configurable timeout on no response
 - [ ] Review Javadoc
 - [ ] Separate to core and api packages
@@ -25,6 +24,7 @@ Bolt UDP
 - [ ] Improve performance of sender onAcknowledgement
 - [ ] Improve performance in high-packet loss scenarios
 - [X] Reliable/Unreliable packets
+- [X] Open-source library
 - [X] In-order and out-of-order delivery
 - [X] Improve computed NAK seq numbers memory consumption
 - [X] Improve handshake completion time
