@@ -1,6 +1,7 @@
 Bolt UDP
 ==============
 
+![logo](logo.png)
 
 **Proposed Work**
 - [ ] Single Sender/Receiver threads
