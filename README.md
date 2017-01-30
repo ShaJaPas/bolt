@@ -15,6 +15,7 @@ Bolt is a UDP-based networking library which that offers support for:
  - Application level simulation of packet loss, latency and jitter.
 
 **Proposed Work**
+- [ ] Publish to maven central
 - [ ] Single Sender/Receiver threads
 - [ ] Review all thread sleeps in production code
 - [ ] Consider 16/32 bit packet checksum (UDP checksum is only 16 bit - not safe enough)
