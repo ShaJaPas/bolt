@@ -1,7 +1,18 @@
 Bolt UDP
 ==============
 
-![logo](logo.png)
+![logo](logo256.png)
+
+Bolt is a UDP-based networking library which that offers support for:
+ - Optional reliability.
+ - Optional ordering.
+ - Automatic serialization of large messages into packets.
+ - Session management.
+ - High level Client and multi-tenanted Server endpoints.
+ - Reactive API for easy handling of both messages and connection state events.
+ - Custom codec registration for message types.
+ - Session statistics.
+ - Application level simulation of packet loss, latency and jitter.
 
 **Proposed Work**
 - [ ] Single Sender/Receiver threads
@@ -25,30 +36,3 @@ Bolt UDP
 - [ ] Improve statistics legibility
 - [ ] Improve performance of sender onAcknowledgement
 - [ ] Improve performance in high-packet loss scenarios
-- [X] Reliable/Unreliable packets
-- [X] Open-source library
-- [X] In-order and out-of-order delivery
-- [X] Improve computed NAK seq numbers memory consumption
-- [X] Improve handshake completion time
-- [X] Improve receiver performance
-- [X] Message assembly/disassembly
-- [X] Delivery strategy
-- [X] Trim control and data packets
-- [X] Simulated packet-loss
-- [X] Simulated latency
-- [X] Simulated jitter
-- [X] Simulated bandwidth
-- [X] Handle duplicate ConnectionReady events
-- [X] Multi-client
-- [X] Distinguish unit/integration tests and use both surefire/failsafe
-- [X] Client disconnect (remove sessions, generate event)
-- [X] Client disconnect/reconnect (bad network conditions)
-- [X] Review thread sleep times for efficiency
-- [X] Use log4j with performant string interpolation
-- [X] Cleanup core classes (session, endpoint, sender, receiver, congestion-control)
-- [X] Review level of each log statement
-- [X] Remove BoltPacket forSender filtering functionality.
-- [X] Test keep-alives and session expiry
-- [X] Change Test classes names from (Test.*.java) to (.*Test.java)
-- [X] Add group to base of package (before bolt.*)
-- [X] Statistical breakdown of received data by class id.
